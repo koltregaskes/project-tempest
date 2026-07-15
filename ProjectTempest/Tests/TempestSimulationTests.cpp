@@ -15,6 +15,22 @@ void Expect(bool condition, const std::string &message)
     }
 }
 
+Tempest::Command MakeCommand(
+    std::uint64_t executeTick,
+    Tempest::CommandKind kind,
+    std::uint32_t actorId = 0,
+    std::uint32_t targetId = 0,
+    Tempest::Point point = {})
+{
+    Tempest::Command command;
+    command.executeTick = executeTick;
+    command.kind = kind;
+    command.actorId = actorId;
+    command.targetId = targetId;
+    command.point = point;
+    return command;
+}
+
 std::uint32_t FindCourier(const Tempest::MatchState &state)
 {
     for (const Tempest::Unit &unit : state.units) {
@@ -58,15 +74,15 @@ void TestInitialStateAndPause()
     Expect(FindBuilding(initial, Tempest::BuildingKind::Workshop) != 0, "Freegrid starts with a Workshop");
     Expect(FindBuilding(initial, Tempest::BuildingKind::ChorusCore) != 0, "Chorus starts with a Core");
 
-    simulation.Submit({ 0, Tempest::CommandKind::TogglePause });
+    simulation.Submit(MakeCommand(0, Tempest::CommandKind::TogglePause));
     simulation.Step();
     Expect(simulation.GetState().paused, "pause command pauses simulation");
     Expect(simulation.GetState().tick == 0, "paused simulation does not advance ticks");
-    simulation.Submit({ 0, Tempest::CommandKind::TogglePause });
+    simulation.Submit(MakeCommand(0, Tempest::CommandKind::TogglePause));
     simulation.Step();
     Expect(!simulation.GetState().paused && simulation.GetState().tick == 1, "unpause resumes fixed ticks");
 
-    simulation.Submit({ 1, Tempest::CommandKind::Restart });
+    simulation.Submit(MakeCommand(1, Tempest::CommandKind::Restart));
     simulation.Step();
     Expect(simulation.GetState().tick == 0 && simulation.GetState().freegridCredits == 500, "restart restores scenario state");
 }
@@ -76,7 +92,7 @@ void TestEconomyConstructionAndProduction()
     Tempest::Simulation simulation;
     const std::uint32_t courierId = FindCourier(simulation.GetState());
     const std::uint32_t nodeId = simulation.GetState().nodes.front().id;
-    simulation.Submit({ 0, Tempest::CommandKind::Capture, courierId, nodeId });
+    simulation.Submit(MakeCommand(0, Tempest::CommandKind::Capture, courierId, nodeId));
     simulation.Step(260);
 
     const Tempest::ControlNode &node = simulation.GetState().nodes.front();
@@ -84,7 +100,7 @@ void TestEconomyConstructionAndProduction()
     Expect(simulation.GetState().freegridCredits > 500, "captured substation produces deterministic income");
 
     const std::int32_t creditsBeforeRelay = simulation.GetState().freegridCredits;
-    simulation.Submit({ simulation.GetState().tick, Tempest::CommandKind::BuildRelay, 0, nodeId });
+    simulation.Submit(MakeCommand(simulation.GetState().tick, Tempest::CommandKind::BuildRelay, 0, nodeId));
     simulation.Step();
     Expect(simulation.GetState().freegridCredits == creditsBeforeRelay - 200, "Relay reserves its full credit cost");
     simulation.Step(Tempest::TicksPerSecond * 4);
@@ -92,7 +108,7 @@ void TestEconomyConstructionAndProduction()
     Expect(relayId != 0, "owned substation can construct a Relay");
 
     const std::size_t unitsBeforeProduction = simulation.GetState().units.size();
-    simulation.Submit({ simulation.GetState().tick, Tempest::CommandKind::ProduceCourier, relayId });
+    simulation.Submit(MakeCommand(simulation.GetState().tick, Tempest::CommandKind::ProduceCourier, relayId));
     simulation.Step(Tempest::TicksPerSecond * 3 + 1);
     Expect(simulation.GetState().units.size() == unitsBeforeProduction + 1, "completed Relay produces a Courier");
 }
@@ -102,7 +118,7 @@ void TestArcPulseRange()
     Tempest::Simulation simulation;
     const std::uint32_t courierId = FindCourier(simulation.GetState());
     const std::int32_t initialPower = simulation.GetState().freegridPower;
-    simulation.Submit({ 0, Tempest::CommandKind::ArcPulse, courierId, 0, { 50000, 50000 } });
+    simulation.Submit(MakeCommand(0, Tempest::CommandKind::ArcPulse, courierId, 0, { 50000, 50000 }));
     simulation.Step();
     Expect(simulation.GetState().freegridPower == initialPower, "Arc Pulse rejects an out-of-range cast point");
 }
@@ -111,14 +127,18 @@ void TestVictoryAndDefeat()
 {
     Tempest::Simulation victorySimulation;
     const std::uint32_t workshopId = FindBuilding(victorySimulation.GetState(), Tempest::BuildingKind::Workshop);
-    victorySimulation.Submit({ 0, Tempest::CommandKind::ProduceCourier, workshopId });
-    victorySimulation.Submit({ 0, Tempest::CommandKind::ProduceCourier, workshopId });
-    victorySimulation.Submit({ 0, Tempest::CommandKind::ProduceCourier, workshopId });
+    victorySimulation.Submit(MakeCommand(0, Tempest::CommandKind::ProduceCourier, workshopId));
+    victorySimulation.Submit(MakeCommand(0, Tempest::CommandKind::ProduceCourier, workshopId));
+    victorySimulation.Submit(MakeCommand(0, Tempest::CommandKind::ProduceCourier, workshopId));
     victorySimulation.Step(Tempest::TicksPerSecond * 10);
 
     const std::uint32_t chorusCoreId = FindBuilding(victorySimulation.GetState(), Tempest::BuildingKind::ChorusCore);
     for (const std::uint32_t courierId : FindCouriers(victorySimulation.GetState())) {
-        victorySimulation.Submit({ victorySimulation.GetState().tick, Tempest::CommandKind::Attack, courierId, chorusCoreId });
+        victorySimulation.Submit(MakeCommand(
+            victorySimulation.GetState().tick,
+            Tempest::CommandKind::Attack,
+            courierId,
+            chorusCoreId));
     }
     victorySimulation.Step(Tempest::TicksPerSecond * 120);
     if (victorySimulation.GetState().outcome != Tempest::MatchOutcome::Victory) {
@@ -148,9 +168,9 @@ std::vector<std::uint64_t> RunDeterministicScript()
     const std::uint32_t courierId = FindCourier(simulation.GetState());
     const std::uint32_t firstNode = simulation.GetState().nodes[0].id;
     const std::uint32_t secondNode = simulation.GetState().nodes[1].id;
-    simulation.Submit({ 0, Tempest::CommandKind::Capture, courierId, firstNode });
-    simulation.Submit({ 260, Tempest::CommandKind::Capture, courierId, secondNode });
-    simulation.Submit({ 520, Tempest::CommandKind::ArcPulse, courierId, 0, { 1000, 2500 } });
+    simulation.Submit(MakeCommand(0, Tempest::CommandKind::Capture, courierId, firstNode));
+    simulation.Submit(MakeCommand(260, Tempest::CommandKind::Capture, courierId, secondNode));
+    simulation.Submit(MakeCommand(520, Tempest::CommandKind::ArcPulse, courierId, 0, { 1000, 2500 }));
 
     std::vector<std::uint64_t> checksums;
     for (int tick = 0; tick < 700; ++tick) {
