@@ -1,3 +1,15 @@
+# Project Tempest
+
+Project Tempest is a downstream, experimental modernization programme for a legally distinct real-time strategy game.
+It preserves the GPL-licensed engine history from Electronic Arts and builds on the active engineering work maintained
+by TheSuperHackers. It is not endorsed by, affiliated with, or a product of Electronic Arts.
+
+No Project Tempest binary or modified public release may use Electronic Arts or *Command & Conquer* trademarks. The
+current engine still requires legally owned retail game data while the standalone content and identity pipeline is
+developed. See [PROJECT_TEMPEST.md](PROJECT_TEMPEST.md) for the delivery contract and release gates.
+
+## Community baseline
+
 [![GitHub Release](https://img.shields.io/github/v/release/TheSuperHackers/GeneralsGameCode?include_prereleases&sort=date&display_name=tag&style=flat&label=Release)](https://github.com/TheSuperHackers/GeneralsGameCode/releases)
 ![GitHub milestone details](https://img.shields.io/github/milestones/progress-percent/TheSuperHackers/GeneralsGameCode/3)
 ![GitHub milestone details](https://img.shields.io/github/milestones/progress-percent/TheSuperHackers/GeneralsGameCode/1)
