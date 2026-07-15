@@ -1,5 +1,7 @@
 add_executable(project_tempest_demo WIN32
     Code/ProjectTempestDemo.cpp
+    Code/TempestInterface.cpp
+    Code/TempestInterface.h
     Code/TempestSimulation.cpp
 )
 
@@ -53,6 +55,8 @@ foreach(asset IN LISTS PROJECT_TEMPEST_RUNTIME_ASSETS)
 endforeach()
 
 add_executable(project_tempest_sim_tests
+    Code/TempestInterface.cpp
+    Code/TempestInterface.h
     Code/TempestSimulation.cpp
     Tests/TempestSimulationTests.cpp
 )

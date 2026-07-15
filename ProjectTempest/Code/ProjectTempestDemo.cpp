@@ -27,6 +27,7 @@
 #include "matrix3d.h"
 #include "rendobj.h"
 #include "scene.h"
+#include "TempestInterface.h"
 #include "TempestSimulation.h"
 #include "vector3.h"
 #include "ww3d.h"
@@ -47,9 +48,15 @@ constexpr double kSimulationTickSeconds = 1.0 / static_cast<double>(Tempest::Tic
 
 bool g_keys[256] = {};
 bool g_rendererReady = false;
+bool g_applicationActive = true;
 std::uint32_t g_selectedUnitId = 0;
 Tempest::Point g_pointerPoint;
+POINT g_pointerClient = {};
 double g_simulationAccumulator = 0.0;
+float g_cameraCenterX = 0.0F;
+float g_cameraCenterY = 0.0F;
+char g_feedback[160] = "Select a Courier and restore the first substation.";
+DWORD g_feedbackUntil = 0;
 
 WW3DAssetManager *g_assetManager = nullptr;
 SimpleSceneClass *g_scene = nullptr;
@@ -57,6 +64,12 @@ CameraClass *g_camera = nullptr;
 LightClass *g_keyLight = nullptr;
 
 Tempest::Simulation g_simulation;
+Tempest::Ui::InterfaceState g_interface;
+
+HFONT g_hudFont = nullptr;
+HFONT g_hudSmallFont = nullptr;
+HFONT g_hudTitleFont = nullptr;
+int g_hudFontScale = 0;
 
 struct UnitVisual {
     std::uint32_t id = 0;
@@ -83,6 +96,10 @@ std::vector<Line3DClass *> g_gridLines;
 Line3DClass *g_selectionHorizontal = nullptr;
 Line3DClass *g_selectionVertical = nullptr;
 
+void UpdateCameraTransform();
+void UpdateCameraProjection(int width, int height);
+void DrawInterface();
+
 std::int64_t DistanceSquared(Tempest::Point left, Tempest::Point right)
 {
     const std::int64_t dx = static_cast<std::int64_t>(left.x) - right.x;
@@ -96,7 +113,7 @@ Tempest::Command MakeCommand(
     std::uint32_t targetId = 0,
     Tempest::Point point = {})
 {
-    Tempest::Command command;
+    Tempest::Command command {};
     command.executeTick = g_simulation.GetState().tick;
     command.kind = kind;
     command.actorId = actorId;
@@ -159,6 +176,12 @@ Tempest::Point ScreenToSimulationPoint(int mouseX, int mouseY)
     };
 }
 
+void SetFeedback(const char *message)
+{
+    std::snprintf(g_feedback, sizeof(g_feedback), "%s", message);
+    g_feedbackUntil = timeGetTime() + 2600;
+}
+
 void RemoveRenderObject(RenderObjClass *&object)
 {
     if (object) {
@@ -177,30 +200,12 @@ void RemoveLine(Line3DClass *&line)
 
 void UpdateWindowTitle()
 {
-    const Tempest::MatchState &match = g_simulation.GetState();
-    const Tempest::Unit *selected = FindUnit(g_selectedUnitId);
-    const int capturedNodes = static_cast<int>(std::count_if(
-        match.nodes.begin(), match.nodes.end(), [](const Tempest::ControlNode &node) {
-            return node.owner == Tempest::Faction::Freegrid;
-        }));
-    const char *outcome = match.outcome == Tempest::MatchOutcome::Victory
-        ? "VICTORY"
-        : (match.outcome == Tempest::MatchOutcome::Defeat ? "DEFEAT" : (match.paused ? "PAUSED" : "ACTIVE"));
-    const int selectedHitPoints = selected ? selected->hitPoints : 0;
-    const int selectedMaximumHitPoints = selected ? selected->maximumHitPoints : 0;
-    char title[512];
+    char title[160];
     std::snprintf(
         title,
         sizeof(title),
-        "Project Tempest: Substation 9 | %s T%llu | Credits %d  Power %d  Nodes %d/3 | Selected #%u HP %d/%d | LMB select  RMB order  B relay  U courier  F pulse  Space pause  R restart",
-        outcome,
-        static_cast<unsigned long long>(match.tick),
-        match.freegridCredits,
-        match.freegridPower,
-        capturedNodes,
-        g_selectedUnitId,
-        selectedHitPoints,
-        selectedMaximumHitPoints);
+        "Project Tempest - Substation 9 | %s",
+        Tempest::Ui::InterfaceState::ScreenName(g_interface.GetScreen()));
     SetWindowTextA(ApplicationHWnd, title);
 }
 
@@ -208,6 +213,9 @@ void ResetPrototype()
 {
     g_simulation.Reset();
     g_simulationAccumulator = 0.0;
+    g_cameraCenterX = 0.0F;
+    g_cameraCenterY = 0.0F;
+    UpdateCameraTransform();
     g_selectedUnitId = 0;
     for (const Tempest::Unit &unit : g_simulation.GetState().units) {
         if (unit.alive && unit.faction == Tempest::Faction::Freegrid && unit.kind == Tempest::UnitKind::Courier) {
@@ -234,6 +242,7 @@ void SelectFromScreen(int mouseX, int mouseY)
             g_selectedUnitId = unit.id;
         }
     }
+    SetFeedback(g_selectedUnitId != 0 ? "Courier selected." : "No Freegrid unit at cursor.");
     UpdateWindowTitle();
 }
 
@@ -269,6 +278,7 @@ void IssueContextOrder(int mouseX, int mouseY)
     }
     if (targetId != 0) {
         g_simulation.Submit(MakeCommand(Tempest::CommandKind::Attack, selected->id, targetId));
+        SetFeedback("Attack order acknowledged.");
         return;
     }
 
@@ -283,8 +293,10 @@ void IssueContextOrder(int mouseX, int mouseY)
     }
     if (targetId != 0) {
         g_simulation.Submit(MakeCommand(Tempest::CommandKind::Capture, selected->id, targetId));
+        SetFeedback("Grid-link capture order acknowledged.");
     } else {
         g_simulation.Submit(MakeCommand(Tempest::CommandKind::Move, selected->id, 0, g_pointerPoint));
+        SetFeedback("Move order acknowledged.");
     }
 }
 
@@ -308,6 +320,7 @@ void BuildRelayAtNearestOwnedNode()
     }
     if (targetId != 0) {
         g_simulation.Submit(MakeCommand(Tempest::CommandKind::BuildRelay, 0, targetId));
+        SetFeedback("Relay construction requested at the nearest owned node.");
     }
 }
 
@@ -318,6 +331,7 @@ void ProduceCourier()
             building.faction == Tempest::Faction::Freegrid &&
             building.kind == Tempest::BuildingKind::Workshop) {
             g_simulation.Submit(MakeCommand(Tempest::CommandKind::ProduceCourier, building.id));
+            SetFeedback("Courier production queued.");
             return;
         }
     }
@@ -333,22 +347,36 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
             if ((lParam & (1L << 30)) != 0) {
                 return 0;
             }
-            if (wParam == VK_ESCAPE) {
-                DestroyWindow(window);
-            } else if (wParam == 'R') {
-                ResetPrototype();
-            } else if (wParam == VK_SPACE) {
-                g_simulation.Submit(MakeCommand(Tempest::CommandKind::TogglePause));
-            } else if (wParam == 'B') {
-                BuildRelayAtNearestOwnedNode();
-            } else if (wParam == 'U') {
-                ProduceCourier();
-            } else if (wParam == 'F' && g_selectedUnitId != 0) {
-                g_simulation.Submit(MakeCommand(
-                    Tempest::CommandKind::ArcPulse,
-                    g_selectedUnitId,
-                    0,
-                    g_pointerPoint));
+            {
+                const Tempest::Ui::InputEvent event = g_interface.HandleKey(static_cast<std::uint16_t>(wParam));
+                if (event.intent == Tempest::Ui::Intent::ExitRequested) {
+                    DestroyWindow(window);
+                } else if (event.intent == Tempest::Ui::Intent::BeginMatch) {
+                    ResetPrototype();
+                    SetFeedback("Link established. Capture a substation, build a Relay, then break the Chorus Spire.");
+                } else if (event.intent == Tempest::Ui::Intent::RestartMatch) {
+                    ResetPrototype();
+                    SetFeedback("Substation 9 restarted.");
+                } else if (event.intent == Tempest::Ui::Intent::BindingChanged) {
+                    SetFeedback("Control binding updated.");
+                } else if (event.intent == Tempest::Ui::Intent::BindingRejected) {
+                    SetFeedback("That key is reserved or already assigned.");
+                } else if (event.intent == Tempest::Ui::Intent::GameplayAction &&
+                           event.action == Tempest::Ui::Action::BuildRelay) {
+                    BuildRelayAtNearestOwnedNode();
+                } else if (event.intent == Tempest::Ui::Intent::GameplayAction &&
+                           event.action == Tempest::Ui::Action::ProduceCourier) {
+                    ProduceCourier();
+                } else if (event.intent == Tempest::Ui::Intent::GameplayAction &&
+                           event.action == Tempest::Ui::Action::ArcPulse && g_selectedUnitId != 0) {
+                    g_simulation.Submit(MakeCommand(
+                        Tempest::CommandKind::ArcPulse,
+                        g_selectedUnitId,
+                        0,
+                        g_pointerPoint));
+                    SetFeedback("Arc Pulse requested at cursor.");
+                }
+                UpdateWindowTitle();
             }
             return 0;
 
@@ -359,15 +387,32 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
             return 0;
 
         case WM_LBUTTONDOWN:
-            SelectFromScreen(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            if (g_interface.AllowsGameplayInput()) {
+                SelectFromScreen(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            }
             return 0;
 
         case WM_RBUTTONDOWN:
-            IssueContextOrder(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            if (g_interface.AllowsGameplayInput()) {
+                IssueContextOrder(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            }
             return 0;
 
         case WM_MOUSEMOVE:
-            g_pointerPoint = ScreenToSimulationPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            g_pointerClient = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            g_pointerPoint = ScreenToSimulationPoint(g_pointerClient.x, g_pointerClient.y);
+            return 0;
+
+        case WM_ACTIVATEAPP:
+            g_applicationActive = wParam != 0;
+            if (!wParam) {
+                std::fill_n(g_keys, 256, false);
+                if (g_interface.GetScreen() == Tempest::Ui::Screen::Playing) {
+                    g_interface.HandleKey(Tempest::Ui::KeyEscape);
+                    SetFeedback("Paused because the game window lost focus.");
+                    UpdateWindowTitle();
+                }
+            }
             return 0;
 
         case WM_SIZE:
@@ -375,7 +420,20 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
                 const int width = std::max(1, static_cast<int>(LOWORD(lParam)));
                 const int height = std::max(1, static_cast<int>(HIWORD(lParam)));
                 WW3D::Set_Device_Resolution(width, height, 24, true);
+                UpdateCameraProjection(width, height);
             }
+            return 0;
+
+        case WM_PAINT:
+            {
+                PAINTSTRUCT paint = {};
+                BeginPaint(window, &paint);
+                EndPaint(window, &paint);
+            }
+            return 0;
+
+        case WM_CLOSE:
+            DestroyWindow(window);
             return 0;
 
         case WM_ERASEBKGND:
@@ -435,6 +493,66 @@ Line3DClass *AddLine(const Vector3 &start, const Vector3 &end, float width, cons
     return line;
 }
 
+void UpdateCameraTransform()
+{
+    if (!g_camera) {
+        return;
+    }
+    Matrix3D cameraTransform;
+    cameraTransform.Look_At(
+        Vector3(g_cameraCenterX, g_cameraCenterY - 38.0F, 31.0F),
+        Vector3(g_cameraCenterX, g_cameraCenterY, 0.0F),
+        0.0F);
+    g_camera->Set_Transform(cameraTransform);
+}
+
+void UpdateCameraProjection(int width, int height)
+{
+    if (!g_camera) {
+        return;
+    }
+    const float aspect = static_cast<float>(std::max(1, width)) / static_cast<float>(std::max(1, height));
+    constexpr float halfHeight = 0.5625F;
+    const float halfWidth = halfHeight * aspect;
+    g_camera->Set_View_Plane(Vector2(-halfWidth, -halfHeight), Vector2(halfWidth, halfHeight));
+}
+
+void UpdateCameraPan(float deltaSeconds)
+{
+    if (!g_applicationActive || !g_interface.AllowsGameplayInput()) {
+        return;
+    }
+    float directionX = 0.0F;
+    float directionY = 0.0F;
+    directionX += g_interface.IsActionPressed(Tempest::Ui::Action::MoveRight, g_keys, 256) ? 1.0F : 0.0F;
+    directionX -= g_interface.IsActionPressed(Tempest::Ui::Action::MoveLeft, g_keys, 256) ? 1.0F : 0.0F;
+    directionY += g_interface.IsActionPressed(Tempest::Ui::Action::MoveUp, g_keys, 256) ? 1.0F : 0.0F;
+    directionY -= g_interface.IsActionPressed(Tempest::Ui::Action::MoveDown, g_keys, 256) ? 1.0F : 0.0F;
+
+    RECT client = {};
+    GetClientRect(ApplicationHWnd, &client);
+    if (g_interface.GetSettings().edgeScroll && !g_interface.GetSettings().reducedMotion &&
+        client.right > 0 && client.bottom > 0) {
+        const int clientWidth = static_cast<int>(client.right);
+        const int clientHeight = static_cast<int>(client.bottom);
+        const int edge = std::max(8, std::min(clientWidth, clientHeight) / 60);
+        directionX -= g_pointerClient.x >= 0 && g_pointerClient.x <= edge ? 1.0F : 0.0F;
+        directionX += g_pointerClient.x >= client.right - edge && g_pointerClient.x <= client.right ? 1.0F : 0.0F;
+        directionY += g_pointerClient.y >= 0 && g_pointerClient.y <= edge ? 1.0F : 0.0F;
+        directionY -= g_pointerClient.y >= client.bottom - edge && g_pointerClient.y <= client.bottom ? 1.0F : 0.0F;
+    }
+    if (directionX == 0.0F && directionY == 0.0F) {
+        return;
+    }
+    const float normalizer = directionX != 0.0F && directionY != 0.0F ? 0.7071067F : 1.0F;
+    const float speed = 9.0F *
+        (static_cast<float>(g_interface.GetSettings().cameraSpeedPercent) / 100.0F) * deltaSeconds * normalizer;
+    g_cameraCenterX = std::clamp(g_cameraCenterX + (directionX * speed), -9.0F, 9.0F);
+    g_cameraCenterY = std::clamp(g_cameraCenterY + (directionY * speed), -9.0F, 9.0F);
+    UpdateCameraTransform();
+    g_pointerPoint = ScreenToSimulationPoint(g_pointerClient.x, g_pointerClient.y);
+}
+
 void CreateArenaGrid()
 {
     const Vector3 gridColor(0.035F, 0.16F, 0.23F);
@@ -475,12 +593,27 @@ CrossVisual *EnsureCrossVisual(std::vector<CrossVisual> &visuals, std::uint32_t 
     return &visuals.back();
 }
 
-void UpdateCrossVisual(CrossVisual &visual, Tempest::Point point, float extent, const Vector3 &color)
+void UpdateCrossVisual(
+    CrossVisual &visual,
+    Tempest::Point point,
+    float extent,
+    const Vector3 &color,
+    Tempest::Faction owner)
 {
     const float x = static_cast<float>(point.x) * kSimulationToWorld;
     const float y = static_cast<float>(point.y) * kSimulationToWorld;
-    visual.horizontal->Reset(Vector3(x - extent, y, 0.06F), Vector3(x + extent, y, 0.06F));
-    visual.vertical->Reset(Vector3(x, y - extent, 0.06F), Vector3(x, y + extent, 0.06F));
+    const bool chorusShape = g_interface.GetSettings().colourIndependentCues && owner == Tempest::Faction::Chorus;
+    if (chorusShape) {
+        visual.horizontal->Reset(
+            Vector3(x - extent, y - extent, 0.06F),
+            Vector3(x + extent, y + extent, 0.06F));
+        visual.vertical->Reset(
+            Vector3(x - extent, y + extent, 0.06F),
+            Vector3(x + extent, y - extent, 0.06F));
+    } else {
+        visual.horizontal->Reset(Vector3(x - extent, y, 0.06F), Vector3(x + extent, y, 0.06F));
+        visual.vertical->Reset(Vector3(x, y - extent, 0.06F), Vector3(x, y + extent, 0.06F));
+    }
     visual.horizontal->Re_Color(color.X, color.Y, color.Z);
     visual.vertical->Re_Color(color.X, color.Y, color.Z);
 }
@@ -496,7 +629,7 @@ void SyncMarkerVisuals()
         const Vector3 &color = node.owner == Tempest::Faction::Freegrid
             ? freegridColor
             : (node.owner == Tempest::Faction::Chorus ? chorusColor : neutralColor);
-        UpdateCrossVisual(*visual, node.position, 1.4F, color);
+        UpdateCrossVisual(*visual, node.position, 1.4F, color, node.owner);
     }
 
     for (auto visual = g_buildingVisuals.begin(); visual != g_buildingVisuals.end();) {
@@ -517,7 +650,7 @@ void SyncMarkerVisuals()
         const float extent = building.kind == Tempest::BuildingKind::ChorusCore
             ? 3.2F
             : (building.kind == Tempest::BuildingKind::Workshop ? 2.7F : 2.1F);
-        UpdateCrossVisual(*visual, building.position, extent, color);
+        UpdateCrossVisual(*visual, building.position, extent, color, building.faction);
     }
 }
 
@@ -700,13 +833,10 @@ bool InitialiseRenderer()
     g_scene->Add_Render_Object(g_keyLight);
 
     g_camera = new CameraClass;
-    Matrix3D cameraTransform;
-    cameraTransform.Look_At(
-        Vector3(0.0F, -38.0F, 31.0F),
-        Vector3(0.0F, 0.0F, 0.0F),
-        0.0F);
-    g_camera->Set_Transform(cameraTransform);
-    g_camera->Set_View_Plane(Vector2(-1.0F, -0.5625F), Vector2(1.0F, 0.5625F));
+    UpdateCameraTransform();
+    UpdateCameraProjection(
+        std::max(1L, client.right - client.left),
+        std::max(1L, client.bottom - client.top));
     g_camera->Set_Clip_Planes(1.0F, 250.0F);
 
     CreateArenaGrid();
@@ -715,29 +845,451 @@ bool InitialiseRenderer()
     return SyncBuildingModelVisuals() && SyncUnitVisuals();
 }
 
+int ScalePixels(float value, float scale)
+{
+    return std::max(1, static_cast<int>(std::lround(value * scale)));
+}
+
+float GetInterfaceScale(const RECT &client)
+{
+    const float widthScale = static_cast<float>(std::max(1L, client.right - client.left)) /
+        static_cast<float>(kInitialWidth);
+    const float heightScale = static_cast<float>(std::max(1L, client.bottom - client.top)) /
+        static_cast<float>(kInitialHeight);
+    const float userScale = static_cast<float>(g_interface.GetSettings().uiScalePercent) / 100.0F;
+    return std::clamp(std::min(widthScale, heightScale) * userScale, 0.72F, 3.25F);
+}
+
+void EnsureHudFonts(float scale)
+{
+    const int scaleKey = static_cast<int>(std::lround(scale * 100.0F));
+    if (scaleKey == g_hudFontScale && g_hudFont && g_hudSmallFont && g_hudTitleFont) {
+        return;
+    }
+    if (g_hudFont) {
+        DeleteObject(g_hudFont);
+    }
+    if (g_hudSmallFont) {
+        DeleteObject(g_hudSmallFont);
+    }
+    if (g_hudTitleFont) {
+        DeleteObject(g_hudTitleFont);
+    }
+    g_hudSmallFont = CreateFontA(
+        -ScalePixels(13.0F, scale), 0, 0, 0, FW_MEDIUM, FALSE, FALSE, FALSE,
+        ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
+        DEFAULT_PITCH | FF_SWISS, "Segoe UI");
+    g_hudFont = CreateFontA(
+        -ScalePixels(17.0F, scale), 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
+        ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
+        DEFAULT_PITCH | FF_SWISS, "Segoe UI");
+    g_hudTitleFont = CreateFontA(
+        -ScalePixels(28.0F, scale), 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+        ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
+        DEFAULT_PITCH | FF_SWISS, "Segoe UI");
+    g_hudFontScale = scaleKey;
+}
+
+void DrawPanel(HDC device, const RECT &rect, COLORREF fill, COLORREF border)
+{
+    HBRUSH fillBrush = CreateSolidBrush(fill);
+    HBRUSH borderBrush = CreateSolidBrush(border);
+    FillRect(device, &rect, fillBrush);
+    FrameRect(device, &rect, borderBrush);
+    DeleteObject(borderBrush);
+    DeleteObject(fillBrush);
+}
+
+void DrawLabel(
+    HDC device,
+    HFONT font,
+    COLORREF color,
+    const RECT &rect,
+    const char *text,
+    UINT flags = DT_LEFT | DT_TOP | DT_SINGLELINE)
+{
+    SelectObject(device, font);
+    SetTextColor(device, color);
+    RECT drawRect = rect;
+    DrawTextA(device, text, -1, &drawRect, flags | DT_NOPREFIX);
+}
+
+void FormatKeyName(std::uint16_t key, char *buffer, std::size_t bufferSize)
+{
+    const char *special = nullptr;
+    switch (key) {
+        case Tempest::Ui::KeySpace: special = "SPACE"; break;
+        case Tempest::Ui::KeyLeft: special = "LEFT"; break;
+        case Tempest::Ui::KeyRight: special = "RIGHT"; break;
+        case Tempest::Ui::KeyUp: special = "UP"; break;
+        case Tempest::Ui::KeyDown: special = "DOWN"; break;
+        default: break;
+    }
+    if (special) {
+        std::snprintf(buffer, bufferSize, "%s", special);
+    } else if ((key >= '0' && key <= '9') || (key >= 'A' && key <= 'Z')) {
+        std::snprintf(buffer, bufferSize, "%c", static_cast<char>(key));
+    } else {
+        std::snprintf(buffer, bufferSize, "VK-%u", static_cast<unsigned int>(key));
+    }
+}
+
+void DrawHud(HDC device, const RECT &client, float scale)
+{
+    const Tempest::MatchState &match = g_simulation.GetState();
+    const Tempest::Unit *selected = FindUnit(g_selectedUnitId);
+    const int margin = ScalePixels(14.0F, scale);
+    const int topHeight = ScalePixels(66.0F, scale);
+    const int bottomHeight = ScalePixels(58.0F, scale);
+    const COLORREF panel = RGB(7, 17, 26);
+    const COLORREF border = RGB(28, 187, 217);
+    const COLORREF primary = RGB(225, 244, 247);
+    const COLORREF secondary = RGB(141, 181, 190);
+    const COLORREF accent = RGB(31, 218, 242);
+
+    RECT top = { margin, margin, client.right - margin, margin + topHeight };
+    DrawPanel(device, top, panel, border);
+    const int freegridNodes = static_cast<int>(std::count_if(
+        match.nodes.begin(), match.nodes.end(), [](const Tempest::ControlNode &node) {
+            return node.owner == Tempest::Faction::Freegrid;
+        }));
+    const int chorusNodes = static_cast<int>(std::count_if(
+        match.nodes.begin(), match.nodes.end(), [](const Tempest::ControlNode &node) {
+            return node.owner == Tempest::Faction::Chorus;
+        }));
+    char status[384];
+    std::snprintf(
+        status,
+        sizeof(status),
+        "SUBSTATION 9    SALVAGE %d    GRID CHARGE %d%%    RELAYS [F] %d / [C] %d / 3    %02llu:%02llu",
+        match.freegridCredits,
+        match.freegridPower,
+        freegridNodes,
+        chorusNodes,
+        static_cast<unsigned long long>(match.tick / Tempest::TicksPerSecond / 60),
+        static_cast<unsigned long long>(match.tick / Tempest::TicksPerSecond % 60));
+    RECT statusRect = {
+        top.left + ScalePixels(18.0F, scale),
+        top.top + ScalePixels(11.0F, scale),
+        top.right - ScalePixels(18.0F, scale),
+        top.bottom,
+    };
+    DrawLabel(device, g_hudFont, accent, statusRect, status);
+
+    char detail[384];
+    if (selected) {
+        std::snprintf(
+            detail,
+            sizeof(detail),
+            "SELECTED  COURIER #%u  INTEGRITY %d/%d    OBJECTIVE  Secure relays, then destroy the Chorus Spire [C].",
+            selected->id,
+            selected->hitPoints,
+            selected->maximumHitPoints);
+    } else {
+        std::snprintf(
+            detail,
+            sizeof(detail),
+            "SELECTED  NONE    OBJECTIVE  Secure relays, then destroy the Chorus Spire [C].");
+    }
+    RECT detailRect = statusRect;
+    detailRect.top += ScalePixels(29.0F, scale);
+    DrawLabel(device, g_hudSmallFont, primary, detailRect, detail);
+
+    RECT bottom = {
+        margin,
+        client.bottom - margin - bottomHeight,
+        client.right - margin,
+        client.bottom - margin,
+    };
+    DrawPanel(device, bottom, panel, border);
+    char buildKey[24];
+    char produceKey[24];
+    char pulseKey[24];
+    char pauseKey[24];
+    char settingsKey[24];
+    FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::BuildRelay), buildKey, sizeof(buildKey));
+    FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::ProduceCourier), produceKey, sizeof(produceKey));
+    FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::ArcPulse), pulseKey, sizeof(pulseKey));
+    FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::Pause), pauseKey, sizeof(pauseKey));
+    FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
+    char commands[512];
+    std::snprintf(
+        commands,
+        sizeof(commands),
+        "LMB SELECT   RMB MOVE / CAPTURE / ATTACK   [%s] RELAY   [%s] COURIER   [%s] ARC PULSE   [%s] PAUSE   [%s] SETTINGS",
+        buildKey,
+        produceKey,
+        pulseKey,
+        pauseKey,
+        settingsKey);
+    RECT commandRect = {
+        bottom.left + ScalePixels(14.0F, scale),
+        bottom.top + ScalePixels(9.0F, scale),
+        bottom.right - ScalePixels(14.0F, scale),
+        bottom.bottom,
+    };
+    DrawLabel(device, g_hudSmallFont, primary, commandRect, commands);
+    if (g_feedbackUntil == 0 || static_cast<LONG>(g_feedbackUntil - timeGetTime()) > 0) {
+        commandRect.top += ScalePixels(25.0F, scale);
+        DrawLabel(device, g_hudSmallFont, secondary, commandRect, g_feedback);
+    }
+}
+
+void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
+{
+    const int width = std::min(
+        static_cast<int>(client.right) - ScalePixels(24.0F, scale),
+        ScalePixels(940.0F, scale));
+    const int height = std::min(
+        static_cast<int>(client.bottom) - ScalePixels(24.0F, scale),
+        ScalePixels(610.0F, scale));
+    RECT panel = {
+        (client.right - width) / 2,
+        (client.bottom - height) / 2,
+        (client.right + width) / 2,
+        (client.bottom + height) / 2,
+    };
+    DrawPanel(device, panel, RGB(6, 13, 21), RGB(41, 209, 231));
+    const int padding = ScalePixels(24.0F, scale);
+    RECT title = { panel.left + padding, panel.top + padding, panel.right - padding, panel.top + ScalePixels(66.0F, scale) };
+    DrawLabel(device, g_hudTitleFont, RGB(222, 248, 250), title, "SETTINGS / ACCESSIBILITY");
+    RECT hint = title;
+    hint.top += ScalePixels(38.0F, scale);
+    DrawLabel(
+        device,
+        g_hudSmallFont,
+        RGB(135, 180, 188),
+        hint,
+        "UP/DOWN select   LEFT/RIGHT adjust   ENTER rebind   ESC return to pause");
+
+    const char *settingNames[Tempest::Ui::InterfaceState::AdjustableSettingCount] = {
+        "Camera speed",
+        "UI scale",
+        "Master volume",
+        "Music volume",
+        "Effects volume",
+        "Edge scroll",
+        "Reduced motion",
+        "Reduced flashes",
+        "Colour-independent cues",
+    };
+    const Tempest::Ui::Settings &settings = g_interface.GetSettings();
+    const int selectedRow = g_interface.GetSelectedSettingsRow();
+    const int rowHeight = ScalePixels(31.0F, scale);
+    const int contentTop = panel.top + ScalePixels(100.0F, scale);
+    const int gutter = ScalePixels(20.0F, scale);
+    const int columnWidth = (panel.right - panel.left - (padding * 2) - gutter) / 2;
+    for (int row = 0; row < Tempest::Ui::InterfaceState::AdjustableSettingCount; ++row) {
+        RECT rowRect = {
+            panel.left + padding,
+            contentTop + (row * rowHeight),
+            panel.left + padding + columnWidth,
+            contentTop + ((row + 1) * rowHeight) - ScalePixels(3.0F, scale),
+        };
+        if (row == selectedRow) {
+            HBRUSH selected = CreateSolidBrush(RGB(20, 77, 91));
+            FillRect(device, &rowRect, selected);
+            DeleteObject(selected);
+        }
+        char value[96];
+        switch (row) {
+            case 0: std::snprintf(value, sizeof(value), "%d%%", settings.cameraSpeedPercent); break;
+            case 1: std::snprintf(value, sizeof(value), "%d%%", settings.uiScalePercent); break;
+            case 2: std::snprintf(value, sizeof(value), "%d%%", settings.masterVolume); break;
+            case 3: std::snprintf(value, sizeof(value), "%d%%", settings.musicVolume); break;
+            case 4: std::snprintf(value, sizeof(value), "%d%%", settings.effectsVolume); break;
+            case 5: std::snprintf(value, sizeof(value), "%s", settings.edgeScroll ? "ON" : "OFF"); break;
+            case 6: std::snprintf(value, sizeof(value), "%s", settings.reducedMotion ? "ON" : "OFF"); break;
+            case 7: std::snprintf(value, sizeof(value), "%s", settings.reducedFlashes ? "ON" : "OFF"); break;
+            case 8: std::snprintf(value, sizeof(value), "%s", settings.colourIndependentCues ? "ON" : "OFF"); break;
+            default: value[0] = '\0'; break;
+        }
+        char line[180];
+        std::snprintf(line, sizeof(line), "%s    %s", settingNames[row], value);
+        rowRect.left += ScalePixels(8.0F, scale);
+        DrawLabel(device, g_hudSmallFont, RGB(223, 242, 244), rowRect, line, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    }
+
+    for (int actionRow = 0; actionRow < Tempest::Ui::InterfaceState::RemappableActionCount; ++actionRow) {
+        const int absoluteRow = Tempest::Ui::InterfaceState::AdjustableSettingCount + actionRow;
+        const Tempest::Ui::Action action = g_interface.ActionForSettingsRow(absoluteRow);
+        RECT rowRect = {
+            panel.left + padding + columnWidth + gutter,
+            contentTop + (actionRow * rowHeight),
+            panel.right - padding,
+            contentTop + ((actionRow + 1) * rowHeight) - ScalePixels(3.0F, scale),
+        };
+        if (absoluteRow == selectedRow) {
+            HBRUSH selected = CreateSolidBrush(RGB(20, 77, 91));
+            FillRect(device, &rowRect, selected);
+            DeleteObject(selected);
+        }
+        char keyName[24];
+        FormatKeyName(g_interface.KeyFor(action), keyName, sizeof(keyName));
+        char line[180];
+        std::snprintf(line, sizeof(line), "%s    [%s]", Tempest::Ui::InterfaceState::ActionName(action), keyName);
+        rowRect.left += ScalePixels(8.0F, scale);
+        DrawLabel(device, g_hudSmallFont, RGB(223, 242, 244), rowRect, line, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    }
+    if (g_interface.IsCapturingBinding()) {
+        RECT capture = { panel.left + padding, panel.bottom - ScalePixels(55.0F, scale), panel.right - padding, panel.bottom };
+        DrawLabel(device, g_hudFont, RGB(255, 184, 67), capture, "PRESS A NEW KEY - ESC CANCELS", DT_CENTER | DT_TOP | DT_SINGLELINE);
+    } else {
+        RECT note = { panel.left + padding, panel.bottom - ScalePixels(45.0F, scale), panel.right - padding, panel.bottom };
+        DrawLabel(
+            device,
+            g_hudSmallFont,
+            RGB(128, 164, 173),
+            note,
+            "Volume controls are wired to the interface state; original music/effects playback remains an M5 content task.",
+            DT_CENTER | DT_TOP | DT_SINGLELINE);
+    }
+}
+
+void DrawModalOverlay(HDC device, const RECT &client, float scale)
+{
+    const Tempest::Ui::Screen screen = g_interface.GetScreen();
+    if (screen == Tempest::Ui::Screen::Playing) {
+        return;
+    }
+    if (screen == Tempest::Ui::Screen::Settings) {
+        DrawSettingsOverlay(device, client, scale);
+        return;
+    }
+    const int width = std::min(
+        static_cast<int>(client.right) - ScalePixels(30.0F, scale),
+        ScalePixels(760.0F, scale));
+    const int height = std::min(
+        static_cast<int>(client.bottom) - ScalePixels(30.0F, scale),
+        ScalePixels(410.0F, scale));
+    RECT panel = {
+        (client.right - width) / 2,
+        (client.bottom - height) / 2,
+        (client.right + width) / 2,
+        (client.bottom + height) / 2,
+    };
+    DrawPanel(device, panel, RGB(5, 12, 20), RGB(40, 210, 232));
+    const int padding = ScalePixels(30.0F, scale);
+    RECT title = { panel.left + padding, panel.top + padding, panel.right - padding, panel.top + ScalePixels(85.0F, scale) };
+    RECT body = { panel.left + padding, panel.top + ScalePixels(98.0F, scale), panel.right - padding, panel.bottom - padding };
+    if (screen == Tempest::Ui::Screen::Briefing) {
+        DrawLabel(device, g_hudTitleFont, RGB(226, 249, 250), title, "BLACK CURRENT / SUBSTATION 9");
+        DrawLabel(
+            device,
+            g_hudFont,
+            RGB(195, 224, 228),
+            body,
+            "2089. Chorus has colonised the basin's abandoned control grid.\n\n"
+            "SELECT a Freegrid Courier. CAPTURE substations to earn salvage and grid charge. "
+            "BUILD Relays, PRODUCE Couriers, then destroy the Chorus Spire [C]. "
+            "If your Relay Core [F] falls, the district is lost.\n\n"
+            "ENTER  establish link and begin     O  settings     ESC  exit",
+            DT_LEFT | DT_TOP | DT_WORDBREAK);
+    } else if (screen == Tempest::Ui::Screen::Pause) {
+        DrawLabel(device, g_hudTitleFont, RGB(226, 249, 250), title, "NETWORK PAUSED");
+        char pauseKey[24];
+        char settingsKey[24];
+        char restartKey[24];
+        FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::Pause), pauseKey, sizeof(pauseKey));
+        FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
+        FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::Restart), restartKey, sizeof(restartKey));
+        char copy[320];
+        std::snprintf(
+            copy,
+            sizeof(copy),
+            "Simulation time is stopped.\n\n[%s] or ESC  resume\n[%s]  settings / controls\n[%s]  restart Substation 9",
+            pauseKey,
+            settingsKey,
+            restartKey);
+        DrawLabel(device, g_hudFont, RGB(195, 224, 228), body, copy, DT_LEFT | DT_TOP | DT_WORDBREAK);
+    } else if (screen == Tempest::Ui::Screen::Result) {
+        const Tempest::MatchState &match = g_simulation.GetState();
+        const bool victory = match.outcome == Tempest::MatchOutcome::Victory;
+        DrawLabel(
+            device,
+            g_hudTitleFont,
+            victory ? RGB(51, 231, 209) : RGB(255, 79, 106),
+            title,
+            victory ? "GRID RESTORED" : "DISTRICT LOST");
+        const int freegridNodes = static_cast<int>(std::count_if(
+            match.nodes.begin(), match.nodes.end(), [](const Tempest::ControlNode &node) {
+                return node.owner == Tempest::Faction::Freegrid;
+            }));
+        char restartKey[24];
+        char settingsKey[24];
+        FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::Restart), restartKey, sizeof(restartKey));
+        FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
+        char copy[512];
+        std::snprintf(
+            copy,
+            sizeof(copy),
+            "%s\n\nDecisive state: %d of 3 substations linked, %d salvage banked, %d%% grid charge.\n\n[%s]  restart without returning to desktop\n[%s]  settings\nESC  exit",
+            victory
+                ? "You severed the Chorus Spire and returned the grid to Freegrid control."
+                : "The Relay Core fell before the Chorus signal could be isolated.",
+            freegridNodes,
+            match.freegridCredits,
+            match.freegridPower,
+            restartKey,
+            settingsKey);
+        DrawLabel(device, g_hudFont, RGB(195, 224, 228), body, copy, DT_LEFT | DT_TOP | DT_WORDBREAK);
+    }
+}
+
+void DrawInterface()
+{
+    if (!ApplicationHWnd) {
+        return;
+    }
+    RECT client = {};
+    GetClientRect(ApplicationHWnd, &client);
+    if (client.right <= 0 || client.bottom <= 0) {
+        return;
+    }
+    const float scale = GetInterfaceScale(client);
+    EnsureHudFonts(scale);
+    HDC device = GetDC(ApplicationHWnd);
+    if (!device) {
+        return;
+    }
+    SetBkMode(device, TRANSPARENT);
+    DrawHud(device, client, scale);
+    DrawModalOverlay(device, client, scale);
+    ReleaseDC(ApplicationHWnd, device);
+}
+
+void DrawLoadingScreen()
+{
+    RECT client = {};
+    GetClientRect(ApplicationHWnd, &client);
+    HDC device = GetDC(ApplicationHWnd);
+    if (!device) {
+        return;
+    }
+    HBRUSH background = CreateSolidBrush(RGB(4, 11, 18));
+    FillRect(device, &client, background);
+    DeleteObject(background);
+    const float scale = GetInterfaceScale(client);
+    EnsureHudFonts(scale);
+    SetBkMode(device, TRANSPARENT);
+    RECT title = { 0, client.bottom / 2 - ScalePixels(60.0F, scale), client.right, client.bottom };
+    DrawLabel(device, g_hudTitleFont, RGB(38, 216, 237), title, "PROJECT TEMPEST", DT_CENTER | DT_TOP | DT_SINGLELINE);
+    title.top += ScalePixels(48.0F, scale);
+    DrawLabel(device, g_hudFont, RGB(164, 201, 208), title, "Linking original Substation 9 content...", DT_CENTER | DT_TOP | DT_SINGLELINE);
+    ReleaseDC(ApplicationHWnd, device);
+}
+
 void UpdatePrototype(float deltaSeconds)
 {
-    g_simulationAccumulator = std::min(0.25, g_simulationAccumulator + static_cast<double>(deltaSeconds));
-    while (g_simulationAccumulator >= kSimulationTickSeconds) {
-        const Tempest::Unit *selected = FindUnit(g_selectedUnitId);
-        if (selected && !g_simulation.GetState().paused &&
-            g_simulation.GetState().outcome == Tempest::MatchOutcome::InProgress) {
-            std::int32_t inputX = 0;
-            std::int32_t inputY = 0;
-            inputX += (g_keys['D'] || g_keys[VK_RIGHT]) ? 1 : 0;
-            inputX -= (g_keys['A'] || g_keys[VK_LEFT]) ? 1 : 0;
-            inputY += (g_keys['W'] || g_keys[VK_UP]) ? 1 : 0;
-            inputY -= (g_keys['S'] || g_keys[VK_DOWN]) ? 1 : 0;
-            if (inputX != 0 || inputY != 0) {
-                const std::int32_t step = inputX != 0 && inputY != 0 ? 640 : 900;
-                const Tempest::Point target {
-                    std::clamp(selected->position.x + (inputX * step), -18000, 18000),
-                    std::clamp(selected->position.y + (inputY * step), -18000, 18000),
-                };
-                g_simulation.Submit(MakeCommand(Tempest::CommandKind::Move, selected->id, 0, target));
-            }
-        }
+    UpdateCameraPan(deltaSeconds);
+    if (g_interface.AdvancesSimulation()) {
+        g_simulationAccumulator = std::min(0.25, g_simulationAccumulator + static_cast<double>(deltaSeconds));
+    } else {
+        g_simulationAccumulator = 0.0;
+    }
+    while (g_interface.AdvancesSimulation() && g_simulationAccumulator >= kSimulationTickSeconds) {
         g_simulation.Step();
+        g_interface.SyncOutcome(g_simulation.GetState().outcome);
         g_simulationAccumulator -= kSimulationTickSeconds;
     }
 
@@ -762,6 +1314,7 @@ void RenderPrototype(float deltaSeconds)
         WW3D::Render(g_scene, g_camera, false, false);
         WW3D::End_Render();
     }
+    DrawInterface();
 }
 
 void ShutdownRenderer()
@@ -791,6 +1344,20 @@ void ShutdownRenderer()
     RemoveLine(g_selectionHorizontal);
     RemoveLine(g_selectionVertical);
 
+    if (g_hudFont) {
+        DeleteObject(g_hudFont);
+        g_hudFont = nullptr;
+    }
+    if (g_hudSmallFont) {
+        DeleteObject(g_hudSmallFont);
+        g_hudSmallFont = nullptr;
+    }
+    if (g_hudTitleFont) {
+        DeleteObject(g_hudTitleFont);
+        g_hudTitleFont = nullptr;
+    }
+    g_hudFontScale = 0;
+
     if (g_keyLight) {
         g_keyLight->Remove();
     }
@@ -816,6 +1383,7 @@ void ShutdownRenderer()
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
 {
     ApplicationHInstance = instance;
+    g_interface.ResetForBoot();
 
     char executablePath[MAX_PATH] = {};
     GetModuleFileNameA(nullptr, executablePath, MAX_PATH);
@@ -830,6 +1398,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
         return 1;
     }
 
+    RECT client = {};
+    GetClientRect(ApplicationHWnd, &client);
+    g_pointerClient = { client.right / 2, client.bottom / 2 };
+    DrawLoadingScreen();
+
     if (!InitialiseRenderer()) {
         MessageBoxA(
             ApplicationHWnd,
@@ -839,6 +1412,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
         ShutdownRenderer();
         return 2;
     }
+    SetFeedback("Press ENTER to establish the Freegrid link.");
 
     LARGE_INTEGER frequency = {};
     LARGE_INTEGER previous = {};

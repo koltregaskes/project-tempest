@@ -196,8 +196,28 @@ if (
     throw "Project Tempest renderer does not map Relay/Chorus simulation entities to their dedicated runtime models."
 }
 
+foreach ($interfaceSource in @("Code/TempestInterface.cpp", "Code/TempestInterface.h")) {
+    if ($cmakeContent -notmatch [regex]::Escape($interfaceSource)) {
+        throw "Project Tempest CMake contract is missing '$interfaceSource'."
+    }
+}
+$combinedInterfaceSource = $demoSource +
+    (Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/Code/TempestInterface.cpp") -Raw)
+foreach ($interfaceContract in @(
+    "DrawHud",
+    "DrawSettingsOverlay",
+    "DrawModalOverlay",
+    "SyncOutcome",
+    "colourIndependentCues",
+    "RestartMatch"
+)) {
+    if ($combinedInterfaceSource -notmatch [regex]::Escape($interfaceContract)) {
+        throw "Project Tempest interface contract is missing '$interfaceContract'."
+    }
+}
+
 $validated | Format-Table -AutoSize
-Write-Host "Validated $($validated.Count) Project Tempest assets, Courier/Drone/Relay runtime contracts, and the manual-only renderer policy."
+Write-Host "Validated $($validated.Count) Project Tempest assets, runtime/interface contracts, and the manual-only renderer policy."
 
 if ($VerifyReproducibility) {
     $reproducibilityScript = Join-Path $PSScriptRoot "test-project-tempest-reproducibility.ps1"

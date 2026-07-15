@@ -135,13 +135,24 @@ state and a fixed 20 Hz tick, sequences commands deterministically, and owns Sub
 construction, production, combat, Arc Pulse, basic Chorus AI, pause/restart, and outcomes. A console-only test target
 replays the same command stream twice and compares every per-tick checksum. The standalone renderer now consumes that
 state, converts mouse/keyboard input into sequenced commands, and visualises units, control nodes, buildings, selection,
-and damage state with original/procedural content. This proves the compile-time rules/presentation seam; safe manual
-gameplay evidence and a full in-window HUD remain required before it constitutes the governed skirmish demo. Dedicated
+and damage state with original/procedural content. A portable interface controller now owns briefing, play, pause,
+settings, result, restart, bounded settings, and collision-safe keyboard remapping; it is covered by the same strict
+headless test executable as the simulation. The renderer consumes that controller through a scalable in-window HUD,
+visible command feedback, a mission/result explanation, adjustable camera/UI/accessibility state, and `+`/`X` plus
+`[F]`/`[C]` colour-independent ownership cues. This proves the compile-time rules/presentation seam; safe manual
+gameplay and multi-resolution evidence remain required before it constitutes the governed skirmish demo. Dedicated
 Chorus Drone and Freegrid Relay assets now replace their Courier/procedural proxies: each has three authored LOD states,
 single-pass textured meshes, collision, exact round-trip validation, complete internal-development provenance, and a
 package/load contract. The Relay additionally uses native `HouseColor0`/`HouseColor1`/`HouseColor2` mesh names. Their
 W3Ds and shared magenta texture are byte-stable across clean background regenerations; normal-zoom in-engine readability
 remains a manual-only non-RDP gate.
+
+Current interface boundary (2026-07-15): camera speed, UI scale, master/music/effects values, edge scroll, reduced
+motion, reduced flashes, colour-independent cues, and ten keyboard bindings can be changed in-window. The camera and
+HUD consume their applicable settings immediately; reduced motion disables edge-driven camera motion, and losing focus
+clears held inputs and pauses the interface. Audio playback, settings persistence, mouse-button remapping,
+normal-zoom readability, and the target-resolution clipping matrix remain open; adjustable volume state is not treated
+as proof of an audio pipeline.
 
 ### Golden asset and format decision
 
