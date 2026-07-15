@@ -200,7 +200,7 @@ jobs:
               $artifactSources += $tempestDir
             }
             $files = Get-ChildItem -Path $artifactSources -File |
-              Where-Object { $_.Extension -in @(".exe", ".dll", ".pdb", ".w3d", ".tga") } -Verbose
+              Where-Object { $_.Extension -in @(".exe", ".dll", ".pdb", ".w3d", ".tga", ".wav") } -Verbose
           } else {
             $files = Get-ChildItem -Path "$buildDir\Core","$buildDir\${{ inputs.game }}" -File |
               Where-Object { $_.Extension -in @(".exe", ".dll", ".pdb") } -Verbose

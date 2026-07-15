@@ -251,8 +251,12 @@ foreach ($audioAsset in $audioAssets) {
 
 $cmakeContent = Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/CMakeLists.txt") -Raw
 $ciContent = Get-Content -LiteralPath (Join-Path $repositoryRoot ".github/workflows/ci.yml") -Raw
+$buildToolchainContent = Get-Content -LiteralPath (Join-Path $repositoryRoot ".github/workflows/build-toolchain.yml") -Raw
 if ($ciContent -notmatch [regex]::Escape("scripts/create-tempest-audio.py")) {
     throw "Project Tempest CI path filtering must include the deterministic audio generator."
+}
+if ($buildToolchainContent -notmatch '(?s)ProjectTempest.*?Where-Object\s*\{[^}]*?"\.wav"') {
+    throw "Win32 Project Tempest artifacts must include WAV runtime audio assets."
 }
 foreach ($packagedAsset in @(
     "drone.w3d",
