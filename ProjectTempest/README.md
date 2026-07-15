@@ -127,8 +127,9 @@ executable for that missing evidence.
 The standalone code now includes a deterministic Substation 9 simulation core in
 `Code/TempestSimulation.h` and `Code/TempestSimulation.cpp`. It advances at a fixed 20 ticks per second, accepts
 sequence-stable commands, and models role-specific movement and combat for all four Freegrid units and all three Chorus
-units, three capturable substations, salvage/ability-charge income, grid-relay Dynamo restoration, capacity-aware roster
-production, Fabricator repair, Arc Pulse, escalating Chorus reinforcement/target AI, pause, restart, victory, and defeat.
+units, three capturable substations, salvage/ability-charge income, grid-relay Dynamo and Arc Sentry construction,
+capacity-aware roster production, Fabricator repair, Signal Pylon pressure, grid-link scan, emergency overcharge,
+Arc Pulse, escalating Chorus reinforcement/target AI, pause, restart, victory, and defeat.
 `Code/TempestInterface.*` owns the original briefing, play, pause, settings, and
 result state machine without
 coupling presentation state to the deterministic match checksum. `Tests/TempestSimulationTests.cpp` validates both
@@ -153,8 +154,9 @@ Fabricator Bay, and Chorus Spire art remain required before the skirmish is rele
 Modern Generals Win32 builds also produce `ProjectTempestDemo.exe`, a retail-asset-free executable that loads the
 Courier scout, damaged Courier scout, Skitter, and Freegrid Dynamo relay directly from this tree. Its current Substation
 9 integration slice provides a bounded panning RTS camera, bounded Freegrid unit selection, context-sensitive
-movement/capture/attack/repair orders, node income, relay restoration, production of all four Freegrid roles,
-role-specific combat, Arc Pulse, pause/settings/restart/result flow, escalating Chorus reinforcements, and
+movement/capture/attack/repair orders, node income, Dynamo/Arc Sentry construction, production of all four Freegrid
+roles, role-specific combat, Signal Pylon pressure, grid-link scan, emergency overcharge, Arc Pulse,
+pause/settings/restart/result flow, escalating Chorus reinforcements, and
 victory/defeat. It is an executable
 integration checkpoint, not the final polished vertical slice.
 
@@ -165,12 +167,14 @@ Controls:
   Fabricator rig to repair a damaged friendly target.
 - `WASD` pans the camera; configurable edge scroll is enabled by default.
 - `B` restores a relay Dynamo at the nearest owned substation when a Fabricator rig is selected.
+- `T` builds an Arc Sentry at the nearest eligible owned substation when a Fabricator rig is selected.
 - `G`, `U`, `I`, and `P` queue a Fabricator rig, Courier scout, Lancer crew, and Coil carrier respectively.
-- `F` casts Arc Pulse at the pointer; `Space` or `Esc` pauses; `O` opens settings.
+- `Q` scans for contacts at the pointer; `E` activates emergency overcharge; `F` casts Arc Pulse at the pointer.
+- `Space` or `Esc` pauses; `O` opens settings.
 - `Enter` starts from the briefing; `R` restarts from pause/result; `Esc` exits from briefing/result.
 
 The settings overlay supports camera speed, UI scale, master/music/effects levels, edge-scroll disable, reduced motion,
-reduced flashes, colour-independent ownership cues, and collision-safe keyboard-or-mouse remapping for all fifteen
+reduced flashes, colour-independent ownership cues, and collision-safe keyboard-or-mouse remapping for all eighteen
 actions, including primary selection and context command. Left, right, middle, Mouse 4, and Mouse 5 are recognised.
 The HUD scales from the current client height and aspect ratio rather than assuming 1280×720. Chorus ownership uses an
 `X` shape and `[C]` text while Freegrid uses a `+` shape and `[F]` text, so hostile state is not communicated by hue
@@ -179,8 +183,8 @@ held keyboard and mouse inputs and enters the pause screen.
 
 Changes are stored in `%LOCALAPPDATA%\ProjectTempest\settings.ini`. The versioned file contains the complete settings
 and binding set; invalid, partial, out-of-range, or duplicate data is rejected without partially changing live state.
-Version-one profiles migrate to version two with collision-free defaults for the three new roster bindings while
-preserving existing user remaps.
+Version-one and version-two profiles migrate to version three with collision-free defaults for newly introduced roster,
+structure, and ability bindings while preserving existing user remaps.
 Saving writes a same-directory temporary file before replacing the prior profile. The three volume controls now drive
 the XAudio2 master/music/effects routing used by the original score and cues. Player-visible multi-resolution verification,
 manual audible-quality proof, and manual runtime proof of persistence/remapping remain open M5 work.

@@ -48,6 +48,7 @@ constexpr int kInitialWidth = 1280;
 constexpr int kInitialHeight = 720;
 constexpr float kArenaExtent = 18.0F;
 constexpr float kSimulationToWorld = 0.001F;
+constexpr std::int32_t kGridScanRange = 5000;
 constexpr std::int32_t kScreenPickRadius = 2200;
 constexpr double kSimulationTickSeconds = 1.0 / static_cast<double>(Tempest::TicksPerSecond);
 
@@ -122,7 +123,9 @@ Tempest::Command MakeCommand(
     std::uint32_t actorId = 0,
     std::uint32_t targetId = 0,
     Tempest::Point point = {},
-    Tempest::UnitKind unitKind = Tempest::UnitKind::CourierScout)
+    Tempest::UnitKind unitKind = Tempest::UnitKind::CourierScout,
+    Tempest::BuildingKind buildingKind = Tempest::BuildingKind::Dynamo,
+    Tempest::AbilityKind abilityKind = Tempest::AbilityKind::GridLinkScan)
 {
     Tempest::Command command {};
     command.executeTick = g_simulation.GetState().tick;
@@ -131,6 +134,8 @@ Tempest::Command MakeCommand(
     command.targetId = targetId;
     command.point = point;
     command.unitKind = unitKind;
+    command.buildingKind = buildingKind;
+    command.abilityKind = abilityKind;
     return command;
 }
 
@@ -404,16 +409,20 @@ bool IssueContextOrder(int mouseX, int mouseY)
     return true;
 }
 
-bool BuildRelayAtNearestOwnedNode()
+bool BuildStructureAtNearestOwnedNode(Tempest::BuildingKind kind)
 {
     const Tempest::Unit *selected = FindUnit(g_selectedUnitId);
     if (!selected || selected->kind != Tempest::UnitKind::FabricatorRig || g_simulation.GetState().paused) {
+        SetFeedback("Construction requires an active selected Fabricator rig while the match is running.");
         return false;
     }
     std::uint32_t targetId = 0;
     std::int64_t closestDistance = std::numeric_limits<std::int64_t>::max();
     for (const Tempest::ControlNode &node : g_simulation.GetState().nodes) {
         if (node.owner != Tempest::Faction::Freegrid) {
+            continue;
+        }
+        if (!g_simulation.CanBuildStructure(selected->id, node.id, kind)) {
             continue;
         }
         const std::int64_t distance = DistanceSquared(node.position, selected->position);
@@ -423,11 +432,59 @@ bool BuildRelayAtNearestOwnedNode()
         }
     }
     if (targetId != 0) {
-        g_simulation.Submit(MakeCommand(Tempest::CommandKind::BuildRelay, selected->id, targetId));
-        SetFeedback("Grid relay restoration requested at the nearest owned node.");
+        g_simulation.Submit(MakeCommand(
+            Tempest::CommandKind::BuildStructure,
+            selected->id,
+            targetId,
+            {},
+            Tempest::UnitKind::CourierScout,
+            kind));
+        char feedback[160];
+        std::snprintf(
+            feedback,
+            sizeof(feedback),
+            "%s construction requested at the nearest eligible owned node.",
+            Tempest::GetBuildingDefinition(kind).displayName);
+        SetFeedback(feedback);
         return true;
     }
+    SetFeedback("No eligible owned node or insufficient salvage for that structure.");
     return false;
+}
+
+bool ActivateFactionAbility(Tempest::AbilityKind kind, Tempest::Point point = {})
+{
+    if (!g_simulation.CanActivateAbility(kind)) {
+        const Tempest::MatchState &match = g_simulation.GetState();
+        const Tempest::AbilityDefinition &definition = Tempest::GetAbilityDefinition(kind);
+        const std::size_t index = static_cast<std::size_t>(kind);
+        char feedback[192];
+        std::snprintf(
+            feedback,
+            sizeof(feedback),
+            "%s unavailable: needs %d charge; cooldown %ds.",
+            definition.displayName,
+            definition.abilityChargeCost,
+            (match.abilityCooldownTicks[index] + Tempest::TicksPerSecond - 1) / Tempest::TicksPerSecond);
+        SetFeedback(feedback);
+        return false;
+    }
+    g_simulation.Submit(MakeCommand(
+        Tempest::CommandKind::ActivateAbility,
+        0,
+        0,
+        point,
+        Tempest::UnitKind::CourierScout,
+        Tempest::BuildingKind::Dynamo,
+        kind));
+    char feedback[160];
+    std::snprintf(
+        feedback,
+        sizeof(feedback),
+        "%s activated.",
+        Tempest::GetAbilityDefinition(kind).displayName);
+    SetFeedback(feedback);
+    return true;
 }
 
 bool ProduceUnit(Tempest::UnitKind kind)
@@ -544,7 +601,12 @@ void HandleInterfaceEvent(HWND window, const Tempest::Ui::InputEvent &event)
     } else if (event.intent == Tempest::Ui::Intent::GameplayAction) {
         switch (event.action) {
             case Tempest::Ui::Action::BuildRelay:
-                g_audio.Play(BuildRelayAtNearestOwnedNode()
+                g_audio.Play(BuildStructureAtNearestOwnedNode(Tempest::BuildingKind::Dynamo)
+                        ? Tempest::Audio::Cue::Command
+                        : Tempest::Audio::Cue::Alert);
+                break;
+            case Tempest::Ui::Action::BuildArcSentry:
+                g_audio.Play(BuildStructureAtNearestOwnedNode(Tempest::BuildingKind::ArcSentry)
                         ? Tempest::Audio::Cue::Command
                         : Tempest::Audio::Cue::Alert);
                 break;
@@ -581,6 +643,16 @@ void HandleInterfaceEvent(HWND window, const Tempest::Ui::InputEvent &event)
                     g_audio.Play(Tempest::Audio::Cue::Alert);
                     SetFeedback("Arc Pulse is unavailable while paused or without a selected Freegrid unit.");
                 }
+                break;
+            case Tempest::Ui::Action::GridLinkScan:
+                g_audio.Play(ActivateFactionAbility(Tempest::AbilityKind::GridLinkScan, g_pointerPoint)
+                        ? Tempest::Audio::Cue::Command
+                        : Tempest::Audio::Cue::Alert);
+                break;
+            case Tempest::Ui::Action::EmergencyOvercharge:
+                g_audio.Play(ActivateFactionAbility(Tempest::AbilityKind::EmergencyOvercharge)
+                        ? Tempest::Audio::Cue::Command
+                        : Tempest::Audio::Cue::Alert);
                 break;
             case Tempest::Ui::Action::PrimarySelect:
                 g_audio.Play(SelectFromScreen(g_pointerClient.x, g_pointerClient.y)
@@ -1314,8 +1386,8 @@ void DrawHud(HDC device, const RECT &client, float scale)
     const Tempest::MatchState &match = g_simulation.GetState();
     const Tempest::Unit *selected = FindUnit(g_selectedUnitId);
     const int margin = ScalePixels(14.0F, scale);
-    const int topHeight = ScalePixels(66.0F, scale);
-    const int bottomHeight = ScalePixels(84.0F, scale);
+    const int topHeight = ScalePixels(86.0F, scale);
+    const int bottomHeight = ScalePixels(108.0F, scale);
     const COLORREF panel = RGB(7, 17, 26);
     const COLORREF border = RGB(28, 187, 217);
     const COLORREF primary = RGB(225, 244, 247);
@@ -1373,6 +1445,58 @@ void DrawHud(HDC device, const RECT &client, float scale)
     detailRect.top += ScalePixels(29.0F, scale);
     DrawLabel(device, g_hudSmallFont, primary, detailRect, detail);
 
+    const std::size_t scanIndex = static_cast<std::size_t>(Tempest::AbilityKind::GridLinkScan);
+    const std::size_t overchargeIndex = static_cast<std::size_t>(Tempest::AbilityKind::EmergencyOvercharge);
+    int scanContacts = 0;
+    if (match.abilityDurationTicks[scanIndex] > 0) {
+        scanContacts += static_cast<int>(std::count_if(
+            match.units.begin(), match.units.end(), [&match](const Tempest::Unit &unit) {
+                return unit.alive && unit.faction == Tempest::Faction::Chorus &&
+                    DistanceSquared(unit.position, match.scanCenter) <=
+                        static_cast<std::int64_t>(kGridScanRange) * kGridScanRange;
+            }));
+        scanContacts += static_cast<int>(std::count_if(
+            match.buildings.begin(), match.buildings.end(), [&match](const Tempest::Building &building) {
+                return building.hitPoints > 0 && building.faction == Tempest::Faction::Chorus &&
+                    DistanceSquared(building.position, match.scanCenter) <=
+                        static_cast<std::int64_t>(kGridScanRange) * kGridScanRange;
+            }));
+    }
+    char scanStatus[96];
+    if (match.abilityDurationTicks[scanIndex] > 0) {
+        std::snprintf(scanStatus, sizeof(scanStatus), "ACTIVE / CONTACTS %d", scanContacts);
+    } else if (match.abilityCooldownTicks[scanIndex] > 0) {
+        std::snprintf(
+            scanStatus,
+            sizeof(scanStatus),
+            "COOLDOWN %ds",
+            (match.abilityCooldownTicks[scanIndex] + Tempest::TicksPerSecond - 1) / Tempest::TicksPerSecond);
+    } else {
+        std::snprintf(scanStatus, sizeof(scanStatus), "READY");
+    }
+    char overchargeStatus[96];
+    if (match.abilityDurationTicks[overchargeIndex] > 0) {
+        std::snprintf(overchargeStatus, sizeof(overchargeStatus), "ACTIVE / +25%% MOVE / +50%% DAMAGE");
+    } else if (match.abilityCooldownTicks[overchargeIndex] > 0) {
+        std::snprintf(
+            overchargeStatus,
+            sizeof(overchargeStatus),
+            "COOLDOWN %ds",
+            (match.abilityCooldownTicks[overchargeIndex] + Tempest::TicksPerSecond - 1) / Tempest::TicksPerSecond);
+    } else {
+        std::snprintf(overchargeStatus, sizeof(overchargeStatus), "READY");
+    }
+    char abilityStatus[256];
+    std::snprintf(
+        abilityStatus,
+        sizeof(abilityStatus),
+        "GRID SCAN  %s    OVERCHARGE  %s",
+        scanStatus,
+        overchargeStatus);
+    RECT abilityRect = detailRect;
+    abilityRect.top += ScalePixels(20.0F, scale);
+    DrawLabel(device, g_hudSmallFont, secondary, abilityRect, abilityStatus);
+
     RECT bottom = {
         margin,
         client.bottom - margin - bottomHeight,
@@ -1381,11 +1505,14 @@ void DrawHud(HDC device, const RECT &client, float scale)
     };
     DrawPanel(device, bottom, panel, border);
     char buildKey[24];
+    char sentryKey[24];
     char fabricatorKey[24];
     char courierKey[24];
     char lancerKey[24];
     char coilKey[24];
     char pulseKey[24];
+    char scanKey[24];
+    char overchargeKey[24];
     char pauseKey[24];
     char settingsKey[24];
     char selectKey[24];
@@ -1393,25 +1520,33 @@ void DrawHud(HDC device, const RECT &client, float scale)
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::PrimarySelect), selectKey, sizeof(selectKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ContextCommand), contextKey, sizeof(contextKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::BuildRelay), buildKey, sizeof(buildKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::BuildArcSentry), sentryKey, sizeof(sentryKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ProduceFabricator), fabricatorKey, sizeof(fabricatorKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ProduceCourier), courierKey, sizeof(courierKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ProduceLancer), lancerKey, sizeof(lancerKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ProduceCoilCarrier), coilKey, sizeof(coilKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ArcPulse), pulseKey, sizeof(pulseKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::GridLinkScan), scanKey, sizeof(scanKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::EmergencyOvercharge), overchargeKey, sizeof(overchargeKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::Pause), pauseKey, sizeof(pauseKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
-    char commands[512];
+    char commands[768];
     std::snprintf(
         commands,
         sizeof(commands),
-        "[%s] SELECT   [%s] MOVE / CAPTURE / ATTACK / REPAIR   [%s] DYNAMO\n[%s] RIG   [%s] SCOUT   [%s] LANCER   [%s] COIL   [%s] ARC PULSE   [%s] PAUSE   [%s] SETTINGS",
+        "[%s] SELECT   [%s] MOVE / CAPTURE / ATTACK / REPAIR\n"
+        "[%s] DYNAMO   [%s] SENTRY   [%s] RIG   [%s] SCOUT   [%s] LANCER   [%s] COIL\n"
+        "[%s] GRID SCAN   [%s] OVERCHARGE   [%s] ARC PULSE   [%s] PAUSE   [%s] SETTINGS",
         selectKey,
         contextKey,
         buildKey,
+        sentryKey,
         fabricatorKey,
         courierKey,
         lancerKey,
         coilKey,
+        scanKey,
+        overchargeKey,
         pulseKey,
         pauseKey,
         settingsKey);
@@ -1423,7 +1558,7 @@ void DrawHud(HDC device, const RECT &client, float scale)
     };
     DrawLabel(device, g_hudSmallFont, primary, commandRect, commands, DT_LEFT | DT_TOP);
     if (g_feedbackUntil == 0 || static_cast<LONG>(g_feedbackUntil - timeGetTime()) > 0) {
-        commandRect.top += ScalePixels(48.0F, scale);
+        commandRect.top += ScalePixels(72.0F, scale);
         DrawLabel(device, g_hudSmallFont, secondary, commandRect, g_feedback);
     }
 }
@@ -1468,7 +1603,7 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
     };
     const Tempest::Ui::Settings &settings = g_interface.GetSettings();
     const int selectedRow = g_interface.GetSelectedSettingsRow();
-    const int rowHeight = ScalePixels(28.0F, scale);
+    const int rowHeight = ScalePixels(25.0F, scale);
     const int contentTop = panel.top + ScalePixels(100.0F, scale);
     const int gutter = ScalePixels(20.0F, scale);
     const int columnWidth = (panel.right - panel.left - (padding * 2) - gutter) / 2;

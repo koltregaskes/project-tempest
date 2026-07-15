@@ -363,9 +363,12 @@ foreach ($interfaceContract in @(
     "HandleMouseButton",
     "PrimarySelect",
     "ContextCommand",
+    "BuildArcSentry",
     "ProduceFabricator",
     "ProduceLancer",
     "ProduceCoilCarrier",
+    "GridLinkScan",
+    "EmergencyOvercharge",
     "MoveFileExW"
 )) {
     if ($combinedInterfaceSource -notmatch [regex]::Escape($interfaceContract)) {
@@ -390,7 +393,12 @@ foreach ($behaviorContract in @(
     "moveDistancePerTick",
     "attackRange",
     "repairCooldownTicks",
-    "chorusWave"
+    "chorusWave",
+    "CommandKind::BuildStructure",
+    "CommandKind::ActivateAbility",
+    "UpdateBuildingCombat",
+    "abilityCooldownTicks",
+    "abilityDurationTicks"
 )) {
     if (($demoSource + $simulationHeader + $simulationSource) -notmatch [regex]::Escape($behaviorContract)) {
         throw "Project Tempest roster behavior is missing '$behaviorContract'."
