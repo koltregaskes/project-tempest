@@ -290,12 +290,17 @@ void Simulation::Execute(const Command &command)
                 actor->abilityCooldownTicks = ArcPulseCooldownTicks;
                 for (Unit &unit : m_state.units) {
                     if (unit.alive && unit.faction == Faction::Chorus && IsWithin(unit.position, command.point, ArcPulseRange)) {
-                        unit.hitPoints -= 70;
+                        unit.hitPoints = std::max(0, unit.hitPoints - 70);
+                        if (unit.hitPoints == 0) {
+                            unit.alive = false;
+                            unit.order = OrderKind::Idle;
+                            unit.targetId = 0;
+                        }
                     }
                 }
                 for (Building &building : m_state.buildings) {
                     if (building.faction == Faction::Chorus && IsWithin(building.position, command.point, ArcPulseRange)) {
-                        building.hitPoints -= 45;
+                        building.hitPoints = std::max(0, building.hitPoints - 45);
                     }
                 }
             }

@@ -43,14 +43,26 @@ set(PROJECT_TEMPEST_RUNTIME_ASSETS
     "Content/Art/Textures/ptmagnta.tga"
 )
 
+set(PROJECT_TEMPEST_RUNTIME_ASSET_SOURCES)
+set(PROJECT_TEMPEST_RUNTIME_ASSET_COMMANDS
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:project_tempest_demo>"
+)
 foreach(asset IN LISTS PROJECT_TEMPEST_RUNTIME_ASSETS)
-    add_custom_command(TARGET project_tempest_demo POST_BUILD
+    list(APPEND PROJECT_TEMPEST_RUNTIME_ASSET_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/${asset}")
+    list(APPEND PROJECT_TEMPEST_RUNTIME_ASSET_COMMANDS
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/${asset}"
             "$<TARGET_FILE_DIR:project_tempest_demo>"
-        VERBATIM
     )
 endforeach()
+
+add_custom_target(project_tempest_runtime_assets
+    ${PROJECT_TEMPEST_RUNTIME_ASSET_COMMANDS}
+    DEPENDS ${PROJECT_TEMPEST_RUNTIME_ASSET_SOURCES}
+    COMMENT "Synchronising Project Tempest runtime assets"
+    VERBATIM
+)
+add_dependencies(project_tempest_demo project_tempest_runtime_assets)
 
 add_executable(project_tempest_sim_tests
     Code/TempestSimulation.cpp

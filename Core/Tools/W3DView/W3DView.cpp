@@ -27,7 +27,6 @@
 #include "W3DViewView.h"
 #include "Utils.h"
 #include "ColorUtils.h"
-#include "verchk.h"
 #include "wwmath.h"
 #include "WWAudio.h"
 #include "ViewerAssetMgr.h"
@@ -137,30 +136,6 @@ WinMain
 #endif //RTS_DEBUG
 
 	return retcode;
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-//  Do_Version_Check
-//
-////////////////////////////////////////////////////////////
-void
-Do_Version_Check ()
-{
-	char curr_filename[MAX_PATH];
-	::GetModuleFileName (nullptr, curr_filename, MAX_PATH);
-
-	CString filename = "\\\\cabal\\mis\\r&d\\w3d\\w3dview\\";
-	filename += ::Get_Filename_From_Path (curr_filename);
-
-	//
-	//	Check the version of the viewer that is out on the network
-	// against the version we are running.
-	//
-	if (Compare_EXE_Version ((int)::AfxGetInstanceHandle (), filename) < 0) {
-		::MessageBox (nullptr, "There is a newer version of the W3DViewer, please run W3DUpdate to upgrade your local copy.", "Version Info", MB_ICONEXCLAMATION | MB_OK | MB_SETFOREGROUND | MB_SYSTEMMODAL);
-	}
 }
 
 
