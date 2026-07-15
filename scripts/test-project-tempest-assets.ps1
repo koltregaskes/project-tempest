@@ -60,8 +60,8 @@ if ($null -eq $runtimeAsset -or $runtimeAsset.validation.export_mode -ne "HM") {
     throw "The Courier runtime asset must record a validated W3D HM export."
 }
 
-if ($runtimeAsset.validation.imported_render_mesh_count -ne 4 -or $runtimeAsset.validation.imported_box_count -ne 1) {
-    throw "The Courier runtime asset must record four imported LOD/team meshes and one collision box."
+if ($runtimeAsset.validation.imported_render_mesh_count -ne 12 -or $runtimeAsset.validation.imported_box_count -ne 1) {
+    throw "The Courier runtime asset must record twelve single-material LOD meshes and one collision box."
 }
 
 $requiredCollisionFlags = @("PHYSICAL", "PROJECTILE", "VEHICLE", "VIS")
@@ -70,8 +70,16 @@ if (($requiredCollisionFlags -join ",") -ne ($recordedCollisionFlags -join ","))
     throw "The Courier collision validation flags are incomplete: $($recordedCollisionFlags -join ', ')"
 }
 
-if (@($runtimeAsset.validation.recolor_materials).Count -ne 2) {
-    throw "The Courier runtime asset must record one house-colour material for each LOD."
+if ($runtimeAsset.validation.material_passes_per_render_mesh -ne 1) {
+    throw "Every Courier render submesh must use one material pass for Generals engine compatibility."
+}
+
+if ((@($runtimeAsset.validation.house_color_meshes) -join ",") -ne "HouseColor0,HouseColor1") {
+    throw "The Courier runtime asset must use the native HouseColor mesh convention in both LODs."
+}
+
+if ($runtimeAsset.review.engine_render -notlike "pass_*") {
+    throw "The Courier runtime asset must have native W3D Viewer render evidence."
 }
 
 $validated | Format-Table -AutoSize

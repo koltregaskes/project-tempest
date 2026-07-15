@@ -163,13 +163,15 @@ but the export mapping must enforce legal runtime identifiers.
 
 Authored baseline (2026-07-15): the concept has been translated into a 47-part procedural Blender source, hero and
 orthographic top-down review renders, and `ProjectTempest/Content/Art/W3D/courier.w3d`. The export master contains a
-1,800-vertex LOD0, a 752-vertex LOD1, dedicated `CRTEAM0`/`CRTEAM1` house-colour submeshes, and one oriented
-`BOUNDINGBOX` with physical, projectile, visibility, and vehicle collision flags. W3D `HM` export is hash-stable across
-regeneration; immediate round-trip import recovers four visible submeshes, two `UseRecolorColors` materials, and one
-collision box (11,139 vertices after the plugin's W3D UV/material vertex splitting). This proves
+1,800-vertex LOD0, a 760-vertex LOD1, six single-material render submeshes per LOD, native `HouseColor0`/`HouseColor1`
+team-colour meshes, and one oriented `BOUNDINGBOX` with physical, projectile, visibility, and vehicle collision flags.
+W3D `HM` export is hash-stable across regeneration; immediate round-trip import recovers twelve visible submeshes and
+one collision box (10,998 vertices after the plugin's W3D UV/material vertex splitting). The single-material topology
+keeps every mesh below the engine's four-pass ceiling. CI-built `W3DViewV.exe` then loads the HLOD and renders 3,424
+polygons through the hash-pinned BSD-2-Clause d3d8to9 v1.15.1 bridge on the Windows RDP adapter. This proves
 the original editable source, static hierarchy, first LOD transition payload, collision payload, and engine-format
-serialization and team-colour metadata. M2 remains open until damage state, production materials/textures, in-engine team readability, data
-definition, selection bounds, and an actual Project Tempest engine render pass are proven.
+serialization, native house-colour routing, and actual engine geometry rendering. M2 remains open until damage state,
+production materials/textures, in-engine team readability, data definition, and selection bounds are proven.
 
 ## Capability and tool routing
 

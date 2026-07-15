@@ -52,6 +52,7 @@ jobs:
               - 'ProjectTempest/**'
               - 'PROJECT_TEMPEST*.md'
               - 'scripts/create-courier-blockout.*'
+              - 'scripts/prepare-w3dview-compat.ps1'
               - 'scripts/test-project-tempest-assets.ps1'
               - 'scripts/test-w3d-pipeline.*'
 

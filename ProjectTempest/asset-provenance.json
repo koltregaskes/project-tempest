@@ -36,12 +36,12 @@
       "input_references": [
         "PT-CONCEPT-FG-COURIER-001"
       ],
-      "sha256": "0c5ed66bce4f7842821eef24fe32bacf565ec6884f8125dedefa2c572d1a322b",
+      "sha256": "6f0581bcbb207de5f3e127360fd4d2651d81bdc4a798c013384063583d6306fa",
       "review": {
         "creative": "approved_as_first_editable_blockout",
         "top_down_readability": "pass",
         "lod_and_collision": "pass_scripted_lod0_lod1_and_box_source",
-        "team_colour": "pass_dedicated_recolour_submeshes_in_both_lods",
+        "team_colour": "pass_native_housecolor_meshes_in_both_lods",
         "production_geometry": "pending_damage_and_material_pass",
         "public_distribution": "pending_explicit_rights_and_identity_review"
       },
@@ -55,7 +55,7 @@
       "tool": "Blender 5.1.2 Workbench",
       "source_asset": "PT-MODEL-FG-COURIER-001",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "44939e8ad683a4d0df0d134429bda7d457cb861ea2508388ba297c623460eaec",
+      "sha256": "e5b68561cc8850197b33bb6854cd0b1b983296986783361249036f4c494b84ab",
       "review": {
         "frame": "nonblank_1280x720",
         "silhouette": "pass",
@@ -71,7 +71,7 @@
       "tool": "Blender 5.1.2 Workbench",
       "source_asset": "PT-MODEL-FG-COURIER-001",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "4c1e389e4d91c52e48143af860d63fd05321267b5fbc3fb6a65bf677cad36303",
+      "sha256": "eac17ada834c2a344e4f8577ba1fb559eefd5fef11b4518c39848e03b975a363",
       "review": {
         "frame": "nonblank_1280x720",
         "top_down_silhouette": "pass",
@@ -83,26 +83,27 @@
     {
       "asset_id": "PT-RUNTIME-FG-COURIER-001",
       "path": "Content/Art/W3D/courier.w3d",
-      "role": "engine-format Courier blockout with hierarchy, LODs, and collision",
+      "role": "engine-format Courier blockout with hierarchy, LODs, collision, and native house-colour meshes",
       "origin": "exported_from_project_source",
       "tool": "OpenSAGE Blender plugin 0.7.3",
       "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
       "source_asset": "PT-MODEL-FG-COURIER-001",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "a20739adbd6cae482eb46240af9c3854cf5045f269d282976a175fab73346add",
+      "sha256": "141fec8a5aea3d8b6a88c9bf959536093f2d6ff6f72b023d963882effa77ecb9",
       "validation": {
         "repeat_export_hash_stable": true,
         "roundtrip_import": "pass",
         "export_mode": "HM",
         "authored_lod0_vertex_count": 1800,
-        "authored_lod1_vertex_count": 752,
-        "imported_mesh_count": 5,
-        "imported_render_mesh_count": 4,
+        "authored_lod1_vertex_count": 760,
+        "imported_mesh_count": 13,
+        "imported_render_mesh_count": 12,
         "imported_box_count": 1,
-        "imported_vertex_count_after_w3d_splitting": 11139,
-        "recolor_materials": [
-          "CRTEAM0.DefaultW3D.fx",
-          "CRTEAM1.DefaultW3D.fx"
+        "imported_vertex_count_after_w3d_splitting": 10998,
+        "material_passes_per_render_mesh": 1,
+        "house_color_meshes": [
+          "HouseColor0",
+          "HouseColor1"
         ],
         "collision_flags": [
           "PHYSICAL",
@@ -113,12 +114,40 @@
         "filename_and_mesh_identifier_limit": 16
       },
       "review": {
-        "engine_render": "pending",
+        "engine_render": "pass_ci_w3dview_with_d3d8to9_v1.15.1",
         "lod_roundtrip": "pass",
         "collision_roundtrip": "pass",
-        "team_colour_roundtrip": "pass",
+        "team_colour_roundtrip": "pass_native_housecolor_mesh_names",
         "production_geometry": "pending_damage_and_material_pass",
         "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-EVIDENCE-FG-COURIER-001",
+      "path": "ReviewEvidence/courier-w3dview-engine.png",
+      "role": "native W3D Viewer render evidence for the Courier HLOD blockout",
+      "origin": "captured_from_project_runtime_asset",
+      "tool": "CI W3DViewV from db8c122445ebb335ea521c627443e9b598b5e11b with d3d8to9 v1.15.1",
+      "source_asset": "PT-RUNTIME-FG-COURIER-001",
+      "sha256": "21ea3ab92617684c348f66b0ae33556a5ed388712adef9f6335e0b3b43115125",
+      "validation": {
+        "viewer_sha256": "d31185afd443365ce9ee159fb2fd122dd9f7f66f3e14fbd9d4987f37fb8bb544",
+        "viewer_ci_run": "https://github.com/koltregaskes/project-tempest/actions/runs/29405282513",
+        "d3d8to9_version": "v1.15.1",
+        "d3d8to9_commit": "65870f2302e9c496cd6d873d6095961d5c777668",
+        "d3d8to9_license": "BSD-2-Clause",
+        "d3d8to9_sha256": "ab6bf7a9a9f4b3e66a75ca038d8d10289c88acbfe8d52c3b5a8a9a259cb26cd5",
+        "miles_stub_commit": "6e32700d7ba4b4713a03bf1f5ffc3b0ac8d17264",
+        "miles_stub_license": "GPL-3.0",
+        "miles_stub_sha256": "5c09cec5f15de4b0ee4f40ca65fd39bb15a1a41159bcade80b8a7e1855b904d5",
+        "rendered_polygons": 3424,
+        "window_title": "courier.w3d - W3D Viewer"
+      },
+      "review": {
+        "engine_geometry": "pass",
+        "engine_hlod": "pass",
+        "production_materials": "pending"
       },
       "distribution": "internal_development_only"
     }

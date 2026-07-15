@@ -8,6 +8,7 @@ demo. It must never contain copied or derived Electronic Arts retail assets.
 - `SourceAssets/Concepts`: original visual references used to author production assets.
 - `SourceAssets/Models`: future editable Blender masters, collision sources, LOD sources, and export settings.
 - `Content`: future loose runtime data using the engine's existing `Data`, `Art`, map, audio, and localisation paths.
+- `ReviewEvidence`: durable native-engine screenshots linked from the provenance manifest.
 - `asset-provenance.json`: machine-readable origin, prompt, edit, rights-review, hash, and distribution status.
 
 Source filenames may be descriptive. Every W3D export filename and internal mesh identifier must be 16 characters or
@@ -26,8 +27,22 @@ hero/top-down review renders, and runtime W3D with:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\create-courier-blockout.ps1
 ```
 
-The generator authors `CRLOD0`, a 0.35-ratio decimated `CRLOD1`, dedicated `CRTEAM0`/`CRTEAM1` house-colour submeshes,
-and a `BOUNDINGBOX` collision primitive with physical, projectile, visibility, and vehicle flags. It exports in W3D `HM`
-mode and immediately re-imports the file, failing unless both LODs, both `UseRecolorColors` materials, and exactly one
-collision box survive the round trip. The W3D output is deterministic; Workbench preview PNG and Blender container hashes
-are recorded for the committed artifacts but are not deterministic build keys.
+The generator splits each visual material into a single-pass render submesh, producing six submeshes per LOD plus a
+`BOUNDINGBOX` collision primitive with physical, projectile, visibility, and vehicle flags. `HouseColor0` and
+`HouseColor1` deliberately use Generals' native mesh-name recolouring convention. It exports in W3D `HM` mode and
+immediately re-imports the file, failing unless all twelve render meshes, both house-colour meshes, and exactly one
+collision box survive the round trip. This one-material-per-submesh rule is required because the engine supports no more
+than four render passes per mesh. The W3D output is deterministic; Workbench preview PNG and Blender container hashes are
+recorded for the committed artifacts but are not deterministic build keys.
+
+The runtime W3D is also proven in the repository's native `W3DViewV.exe`. On current Windows RDP sessions, prepare the
+viewer directory with the hash-pinned BSD-2-Clause d3d8to9 bridge and GPL Miles stub before opening the model:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\prepare-w3dview-compat.ps1 `
+  -ViewerDirectory .\build\ci-w3dview-fixed
+```
+
+The captured engine result is
+[`courier-w3dview-engine.png`](ReviewEvidence/courier-w3dview-engine.png). It proves geometry and HLOD loading, not final
+materials; the production texture/material pass remains open.

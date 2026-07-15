@@ -46,7 +46,7 @@ bpy.ops.object.select_all(action="SELECT")
 bpy.ops.object.delete(use_global=False)
 
 
-def material(name, color, metallic=0.0, roughness=0.55, emission=None, recolor=False):
+def material(name, color, metallic=0.0, roughness=0.55, emission=None):
     mat = bpy.data.materials.new(name)
     mat.diffuse_color = (*color, 1.0)
     mat.use_nodes = True
@@ -58,22 +58,12 @@ def material(name, color, metallic=0.0, roughness=0.55, emission=None, recolor=F
         if emission:
             shader.inputs["Emission Color"].default_value = (*emission, 1.0)
             shader.inputs["Emission Strength"].default_value = 3.0
-    if recolor:
-        mat.material_type = "SHADER_MATERIAL"
-        mat.use_recolor = True
-        mat.recolor_mult = 1.0
     return mat
 
 
 dark_steel = material("PT_DARK_STEEL", (0.055, 0.065, 0.07), metallic=0.75, roughness=0.38)
 off_white = material("PT_WORN_WHITE", (0.52, 0.47, 0.36), metallic=0.35, roughness=0.62)
-amber = material(
-    "PT_TEAM_AMBER",
-    (0.74, 0.30, 0.025),
-    metallic=0.35,
-    roughness=0.48,
-    recolor=True,
-)
+amber = material("PT_TEAM_AMBER", (0.74, 0.30, 0.025), metallic=0.35, roughness=0.48)
 rubber = material("PT_RUBBER", (0.018, 0.022, 0.024), metallic=0.0, roughness=0.9)
 cyan = material(
     "PT_STATUS_CYAN", (0.015, 0.38, 0.45), metallic=0.1, roughness=0.25, emission=(0.0, 0.65, 0.8)
@@ -81,14 +71,13 @@ cyan = material(
 cable_red = material("PT_CABLE_RED", (0.32, 0.025, 0.018), metallic=0.15, roughness=0.58)
 
 vehicle_objects = []
-team_objects = []
+material_objects = {}
 
 
 def remember(obj, mat=None):
     if mat:
         obj.data.materials.append(mat)
-        if mat.use_recolor:
-            team_objects.append(obj)
+        material_objects.setdefault(mat.name, []).append(obj)
     vehicle_objects.append(obj)
     return obj
 
@@ -242,11 +231,20 @@ def join_objects(objects, object_name):
     return joined
 
 
-lod0_object = join_objects(
-    [obj for obj in vehicle_objects if obj not in team_objects],
-    "CRLOD0",
-)
-team0_object = join_objects(team_objects, "CRTEAM0")
+mesh_specs = [
+    (dark_steel, "CRBODY", 0.35),
+    (off_white, "CRARMOR", 0.35),
+    (rubber, "CRTREAD", 0.30),
+    (cyan, "CRGLOW", 0.45),
+    (cable_red, "CRCABLE", 0.40),
+    # Generals recolours vertex materials only when the render-mesh name begins
+    # HOUSECOLOR. Shader-material recolour metadata is not consumed by its loader.
+    (amber, "HouseColor", 0.50),
+]
+lod0_objects = [
+    join_objects(material_objects[mat.name], f"{prefix}0")
+    for mat, prefix, _ratio in mesh_specs
+]
 
 # The HLOD exporter treats root-scene meshes as the highest-detail level and each
 # child collection as a successively cheaper level. Keep the collision box at the
@@ -285,14 +283,14 @@ def create_lod1(source, object_name, ratio):
     return lod
 
 
-lod1_object = create_lod1(lod0_object, "CRLOD1", 0.35)
-team1_object = create_lod1(team0_object, "CRTEAM1", 0.50)
+lod1_objects = [
+    create_lod1(lod0, f"{prefix}1", ratio)
+    for lod0, (_mat, prefix, ratio) in zip(lod0_objects, mesh_specs)
+]
 
 runtime_identifiers = [
-    lod0_object.name,
-    team0_object.name,
-    lod1_object.name,
-    team1_object.name,
+    *(obj.name for obj in lod0_objects),
+    *(obj.name for obj in lod1_objects),
     collision_object.name,
 ]
 if any(len(identifier) > 16 for identifier in runtime_identifiers):
@@ -302,8 +300,8 @@ if any(len(identifier) > 16 for identifier in runtime_identifiers):
 # remains the non-destructive source for regenerating its constituent parts.
 bpy.ops.wm.save_as_mainfile(filepath=blend_path)
 
-lod0_vertex_count = len(lod0_object.data.vertices) + len(team0_object.data.vertices)
-lod1_vertex_count = len(lod1_object.data.vertices) + len(team1_object.data.vertices)
+lod0_vertex_count = sum(len(obj.data.vertices) for obj in lod0_objects)
+lod1_vertex_count = sum(len(obj.data.vertices) for obj in lod1_objects)
 if lod1_vertex_count <= 0 or lod1_vertex_count >= lod0_vertex_count:
     fail(
         f"LOD1 simplification failed: lod0={lod0_vertex_count}, "
@@ -322,23 +320,18 @@ imported_meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH
 imported_boxes = [obj for obj in imported_meshes if obj.data.object_type == "BOX"]
 imported_render_meshes = [obj for obj in imported_meshes if obj.data.object_type != "BOX"]
 imported_render_names = sorted(obj.name for obj in imported_render_meshes)
-imported_materials = {
-    material.name: material
+expected_render_names = sorted(
+    [f"{prefix}0" for _mat, prefix, _ratio in mesh_specs]
+    + [f"{prefix}1" for _mat, prefix, _ratio in mesh_specs]
+)
+imported_house_color_meshes = sorted(
+    obj.name for obj in imported_render_meshes if obj.name.casefold().startswith("housecolor")
+)
+invalid_material_counts = {
+    obj.name: len(obj.data.materials)
     for obj in imported_render_meshes
-    for material in obj.data.materials
-    if material is not None
+    if len(obj.data.materials) != 1
 }
-imported_recolor_materials = sorted(
-    name for name, material in imported_materials.items() if material.use_recolor
-)
-expected_recolor_materials = [
-    "CRTEAM0.DefaultW3D.fx",
-    "CRTEAM1.DefaultW3D.fx",
-]
-imported_material_debug = sorted(
-    f"{name}:{material.material_type}:recolor={material.use_recolor}"
-    for name, material in imported_materials.items()
-)
 imported_collision_flags = (
     set(imported_boxes[0].data.box_collision_types) - {"DEFAULT"}
     if len(imported_boxes) == 1
@@ -352,18 +345,19 @@ imported_lod_collections = [
 ]
 if (
     import_result != {"FINISHED"}
-    or imported_render_names != ["CRLOD0", "CRLOD1", "CRTEAM0", "CRTEAM1"]
+    or imported_render_names != expected_render_names
     or len(imported_boxes) != 1
     or imported_collision_flags != expected_collision_flags
-    or imported_recolor_materials != expected_recolor_materials
+    or imported_house_color_meshes != ["HouseColor0", "HouseColor1"]
+    or invalid_material_counts
     or imported_vertex_count == 0
 ):
     fail(
         f"W3D re-import failed: result={import_result}, meshes={len(imported_meshes)}, "
         f"render_meshes={imported_render_names}, boxes={len(imported_boxes)}, "
         f"collision_flags={sorted(imported_collision_flags)}, "
-        f"recolor_materials={imported_recolor_materials}, "
-        f"materials={imported_material_debug}, "
+        f"house_color_meshes={imported_house_color_meshes}, "
+        f"invalid_material_counts={invalid_material_counts}, "
         f"vertices={imported_vertex_count}"
     )
 
@@ -384,7 +378,10 @@ result = {
     "imported_lod_collections": sorted(imported_lod_collections),
     "imported_mesh_count": len(imported_meshes),
     "imported_render_mesh_count": len(imported_render_meshes),
-    "imported_recolor_materials": imported_recolor_materials,
+    "imported_house_color_meshes": imported_house_color_meshes,
+    "max_material_passes_per_render_mesh": max(
+        len(obj.data.materials) for obj in imported_render_meshes
+    ),
     "imported_vertex_count": imported_vertex_count,
     "lod0_vertex_count": lod0_vertex_count,
     "lod1_vertex_count": lod1_vertex_count,
