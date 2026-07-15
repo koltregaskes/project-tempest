@@ -13,7 +13,10 @@ constexpr std::array<Action, InterfaceState::RemappableActionCount> RemappableAc
     Action::MoveLeft,
     Action::MoveRight,
     Action::BuildRelay,
+    Action::ProduceFabricator,
     Action::ProduceCourier,
+    Action::ProduceLancer,
+    Action::ProduceCoilCarrier,
     Action::ArcPulse,
     Action::Pause,
     Action::OpenSettings,
@@ -28,7 +31,10 @@ constexpr std::array<const char *, static_cast<std::size_t>(Action::Count)> Acti
     "MoveLeft",
     "MoveRight",
     "BuildRelay",
+    "ProduceFabricator",
     "ProduceCourier",
+    "ProduceLancer",
+    "ProduceCoilCarrier",
     "ArcPulse",
     "Pause",
     "OpenSettings",
@@ -104,7 +110,10 @@ InterfaceState::InterfaceState()
     m_bindings[ToIndex(Action::MoveLeft)] = Keyboard('A');
     m_bindings[ToIndex(Action::MoveRight)] = Keyboard('D');
     m_bindings[ToIndex(Action::BuildRelay)] = Keyboard('B');
+    m_bindings[ToIndex(Action::ProduceFabricator)] = Keyboard('G');
     m_bindings[ToIndex(Action::ProduceCourier)] = Keyboard('U');
+    m_bindings[ToIndex(Action::ProduceLancer)] = Keyboard('I');
+    m_bindings[ToIndex(Action::ProduceCoilCarrier)] = Keyboard('P');
     m_bindings[ToIndex(Action::ArcPulse)] = Keyboard('F');
     m_bindings[ToIndex(Action::Pause)] = Keyboard(KeySpace);
     m_bindings[ToIndex(Action::OpenSettings)] = Keyboard('O');
@@ -348,7 +357,7 @@ bool InterfaceState::HasAction(InputBinding input) const
 std::string InterfaceState::SerializeConfiguration() const
 {
     std::ostringstream output;
-    output << "project_tempest_settings=1\n"
+    output << "project_tempest_settings=2\n"
            << "camera_speed_percent=" << m_settings.cameraSpeedPercent << '\n'
            << "ui_scale_percent=" << m_settings.uiScalePercent << '\n'
            << "master_volume=" << m_settings.masterVolume << '\n'
@@ -370,10 +379,11 @@ std::string InterfaceState::SerializeConfiguration() const
 bool InterfaceState::LoadConfiguration(std::string_view content)
 {
     Settings settings;
-    std::array<InputBinding, static_cast<std::size_t>(Action::Count)> bindings {};
+    std::array<InputBinding, static_cast<std::size_t>(Action::Count)> bindings = m_bindings;
     std::array<bool, AdjustableSettingCount> settingSeen {};
     std::array<bool, static_cast<std::size_t>(Action::Count)> bindingSeen {};
     bool versionSeen = false;
+    bool legacyVersion = false;
 
     std::size_t lineStart = 0;
     while (lineStart <= content.size()) {
@@ -396,10 +406,11 @@ bool InterfaceState::LoadConfiguration(std::string_view content)
         const std::string_view key = line.substr(0, separator);
         const std::string_view value = line.substr(separator + 1);
         if (key == "project_tempest_settings") {
-            if (versionSeen || value != "1") {
+            if (versionSeen || (value != "1" && value != "2")) {
                 return false;
             }
             versionSeen = true;
+            legacyVersion = value == "1";
             continue;
         }
 
@@ -487,6 +498,43 @@ bool InterfaceState::LoadConfiguration(std::string_view content)
         bindingSeen[actionIndex] = true;
     }
 
+    if (legacyVersion) {
+        constexpr std::array<std::uint16_t, 15> MigrationFallbackKeys {
+            'G', 'I', 'P', 'J', 'L', 'Y', 'H', 'N', 'M', '1', '2', '3', '4', '5', '6'
+        };
+        const auto migrateBinding = [&](Action action) {
+            const std::size_t actionIndex = ToIndex(action);
+            const auto isUsed = [&](InputBinding candidate) {
+                for (std::size_t index = 0; index < bindings.size(); ++index) {
+                    if (index != actionIndex && bindingSeen[index] && bindings[index] == candidate) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            if (isUsed(bindings[actionIndex])) {
+                bool assigned = false;
+                for (const std::uint16_t key : MigrationFallbackKeys) {
+                    const InputBinding candidate = Keyboard(key);
+                    if (!isUsed(candidate)) {
+                        bindings[actionIndex] = candidate;
+                        assigned = true;
+                        break;
+                    }
+                }
+                if (!assigned) {
+                    return false;
+                }
+            }
+            bindingSeen[actionIndex] = true;
+            return true;
+        };
+        if (!migrateBinding(Action::ProduceFabricator) ||
+            !migrateBinding(Action::ProduceLancer) ||
+            !migrateBinding(Action::ProduceCoilCarrier)) {
+            return false;
+        }
+    }
     if (!versionSeen || std::find(settingSeen.begin(), settingSeen.end(), false) != settingSeen.end() ||
         std::find(bindingSeen.begin(), bindingSeen.end(), false) != bindingSeen.end()) {
         return false;
@@ -512,7 +560,10 @@ const char *InterfaceState::ActionName(Action action)
         case Action::MoveLeft: return "Pan camera left";
         case Action::MoveRight: return "Pan camera right";
         case Action::BuildRelay: return "Restore grid relay";
+        case Action::ProduceFabricator: return "Produce Fabricator rig";
         case Action::ProduceCourier: return "Produce Courier scout";
+        case Action::ProduceLancer: return "Produce Lancer crew";
+        case Action::ProduceCoilCarrier: return "Produce Coil carrier";
         case Action::ArcPulse: return "Arc Pulse";
         case Action::Pause: return "Pause";
         case Action::OpenSettings: return "Settings";

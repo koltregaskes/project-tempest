@@ -9,22 +9,24 @@
 namespace Tempest {
 namespace {
 
-constexpr std::int32_t MoveDistancePerTick = 120;
 constexpr std::int32_t CaptureRange = 700;
 constexpr std::int32_t CaptureTicksRequired = TicksPerSecond * 4;
-constexpr std::int32_t AttackRange = 2200;
+constexpr std::int32_t RepairRange = 900;
+constexpr std::int32_t RepairHitPoints = 20;
+constexpr std::int32_t RepairCooldownTicks = TicksPerSecond / 2;
+constexpr std::int32_t RepairHitPointsPerSalvage = 4;
 constexpr std::int32_t ArcPulseRange = 3200;
 constexpr std::int32_t ArcPulseAbilityChargeCost = 25;
 constexpr std::int32_t ArcPulseCooldownTicks = TicksPerSecond * 12;
 
 constexpr std::array<UnitDefinition, static_cast<std::size_t>(UnitKind::Count)> UnitDefinitions {{
-    { "Fabricator rig", Faction::Freegrid, 240, 250, TicksPerSecond * 5, 2, 8, 12 },
-    { "Courier scout", Faction::Freegrid, 180, 150, TicksPerSecond * 3, 1, 20, 9 },
-    { "Lancer crew", Faction::Freegrid, 260, 240, TicksPerSecond * 6, 2, 28, 10 },
-    { "Coil carrier", Faction::Freegrid, 520, 450, TicksPerSecond * 10, 4, 55, 18 },
-    { "Skitter", Faction::Chorus, 110, 0, 0, 0, 11, 12 },
-    { "Warden", Faction::Chorus, 280, 0, 0, 0, 24, 14 },
-    { "Harrower", Faction::Chorus, 650, 0, 0, 0, 48, 20 },
+    { "Fabricator rig", Faction::Freegrid, 240, 250, TicksPerSecond * 5, 2, 80, 8, 12, 1200 },
+    { "Courier scout", Faction::Freegrid, 180, 150, TicksPerSecond * 3, 1, 150, 20, 9, 1800 },
+    { "Lancer crew", Faction::Freegrid, 260, 240, TicksPerSecond * 6, 2, 110, 28, 10, 2600 },
+    { "Coil carrier", Faction::Freegrid, 520, 450, TicksPerSecond * 10, 4, 70, 55, 18, 3200 },
+    { "Skitter", Faction::Chorus, 110, 0, 0, 0, 160, 11, 12, 1000 },
+    { "Warden", Faction::Chorus, 280, 0, 0, 0, 95, 24, 14, 2200 },
+    { "Harrower", Faction::Chorus, 650, 0, 0, 0, 60, 48, 20, 3000 },
 }};
 
 constexpr std::array<BuildingDefinition, static_cast<std::size_t>(BuildingKind::Count)> BuildingDefinitions {{
@@ -64,19 +66,19 @@ bool IsWithin(Point left, Point right, std::int32_t range)
     return DistanceSquared(left, right) <= static_cast<std::int64_t>(range) * range;
 }
 
-void MoveTowards(Point &position, Point destination)
+void MoveTowards(Point &position, Point destination, std::int32_t moveDistancePerTick)
 {
     const std::int64_t dx = static_cast<std::int64_t>(destination.x) - position.x;
     const std::int64_t dy = static_cast<std::int64_t>(destination.y) - position.y;
     const std::int64_t distance = std::abs(dx) + std::abs(dy);
-    if (distance <= MoveDistancePerTick) {
+    if (distance <= moveDistancePerTick) {
         position = destination;
         return;
     }
     position.x += static_cast<std::int32_t>(
-        (static_cast<std::int64_t>(MoveDistancePerTick) * dx) / distance);
+        (static_cast<std::int64_t>(moveDistancePerTick) * dx) / distance);
     position.y += static_cast<std::int32_t>(
-        (static_cast<std::int64_t>(MoveDistancePerTick) * dy) / distance);
+        (static_cast<std::int64_t>(moveDistancePerTick) * dy) / distance);
 }
 
 template <typename Value>
@@ -163,6 +165,7 @@ void Simulation::Step()
 
     UpdateConstructionAndProduction();
     UpdateMovementAndCapture();
+    UpdateRepairs();
     UpdateCombat();
     UpdateEconomyAndAi();
     UpdateOutcome();
@@ -278,6 +281,9 @@ std::int32_t Simulation::UsedFreegridCapacity() const
 
 bool Simulation::CanProduceUnit(std::uint32_t producerId, UnitKind kind) const
 {
+    if (static_cast<std::size_t>(kind) >= static_cast<std::size_t>(UnitKind::Count)) {
+        return false;
+    }
     const Building *producer = FindBuilding(producerId);
     const UnitDefinition &unit = GetUnitDefinition(kind);
     return producer && producer->faction == Faction::Freegrid && producer->complete && producer->hitPoints > 0 &&
@@ -313,7 +319,9 @@ void Simulation::Execute(const Command &command)
     if (command.kind == CommandKind::BuildRelay) {
         const BuildingDefinition &dynamo = GetBuildingDefinition(BuildingKind::Dynamo);
         ControlNode *node = FindNode(command.targetId);
-        if (!node || node->owner != Faction::Freegrid || m_state.salvage < dynamo.salvageCost) {
+        if (!actor || !actor->alive || actor->faction != Faction::Freegrid ||
+            actor->kind != UnitKind::FabricatorRig || !node || node->owner != Faction::Freegrid ||
+            m_state.salvage < dynamo.salvageCost) {
             return;
         }
         const bool alreadyBuilt = std::any_of(
@@ -328,13 +336,13 @@ void Simulation::Execute(const Command &command)
         return;
     }
 
-    if (command.kind == CommandKind::ProduceCourier) {
-        const UnitDefinition &courier = GetUnitDefinition(UnitKind::CourierScout);
-        if (!CanProduceUnit(command.actorId, UnitKind::CourierScout)) {
+    if (command.kind == CommandKind::ProduceUnit) {
+        if (!CanProduceUnit(command.actorId, command.unitKind)) {
             return;
         }
-        m_state.salvage -= courier.salvageCost;
-        m_state.production.push_back({ command.actorId, UnitKind::CourierScout, courier.buildTicks });
+        const UnitDefinition &unit = GetUnitDefinition(command.unitKind);
+        m_state.salvage -= unit.salvageCost;
+        m_state.production.push_back({ command.actorId, command.unitKind, unit.buildTicks });
         return;
     }
 
@@ -367,6 +375,23 @@ void Simulation::Execute(const Command &command)
                 actor->targetId = command.targetId;
             }
             break;
+        case CommandKind::Repair: {
+            if (actor->kind != UnitKind::FabricatorRig) {
+                break;
+            }
+            const Unit *unitTarget = FindUnit(command.targetId);
+            const Building *buildingTarget = FindBuilding(command.targetId);
+            const bool validUnit = unitTarget && unitTarget->alive && unitTarget->faction == Faction::Freegrid &&
+                unitTarget->hitPoints < unitTarget->maximumHitPoints;
+            const bool validBuilding = buildingTarget && buildingTarget->hitPoints > 0 &&
+                buildingTarget->faction == Faction::Freegrid &&
+                buildingTarget->hitPoints < buildingTarget->maximumHitPoints;
+            if (validUnit || validBuilding) {
+                actor->order = OrderKind::Repair;
+                actor->targetId = command.targetId;
+            }
+            break;
+        }
         case CommandKind::ArcPulse:
             if (actor->abilityCooldownTicks == 0 && m_state.abilityCharge >= ArcPulseAbilityChargeCost &&
                 IsWithin(actor->position, command.point, ArcPulseRange)) {
@@ -426,9 +451,12 @@ void Simulation::UpdateMovementAndCapture()
         if (unit.abilityCooldownTicks > 0) {
             --unit.abilityCooldownTicks;
         }
+        if (unit.repairCooldownTicks > 0) {
+            --unit.repairCooldownTicks;
+        }
 
         Point destination = unit.destination;
-        if (unit.order == OrderKind::Attack) {
+        if (unit.order == OrderKind::Attack || unit.order == OrderKind::Repair) {
             if (const Unit *targetUnit = FindUnit(unit.targetId); targetUnit && targetUnit->alive) {
                 destination = targetUnit->position;
             } else if (const Building *targetBuilding = FindBuilding(unit.targetId);
@@ -440,10 +468,14 @@ void Simulation::UpdateMovementAndCapture()
             }
         }
 
+        const std::int32_t interactionRange = unit.order == OrderKind::Repair
+            ? RepairRange
+            : GetUnitDefinition(unit.kind).attackRange;
         const bool shouldMove = unit.order == OrderKind::Move || unit.order == OrderKind::Capture ||
-            (unit.order == OrderKind::Attack && !IsWithin(unit.position, destination, AttackRange));
+            ((unit.order == OrderKind::Attack || unit.order == OrderKind::Repair) &&
+                !IsWithin(unit.position, destination, interactionRange));
         if (shouldMove) {
-            MoveTowards(unit.position, destination);
+            MoveTowards(unit.position, destination, GetUnitDefinition(unit.kind).moveDistancePerTick);
             if (unit.order == OrderKind::Move && unit.position.x == destination.x && unit.position.y == destination.y) {
                 unit.order = OrderKind::Idle;
             }
@@ -480,6 +512,55 @@ void Simulation::UpdateMovementAndCapture()
     }
 }
 
+void Simulation::UpdateRepairs()
+{
+    for (Unit &repairer : m_state.units) {
+        if (!repairer.alive || repairer.faction != Faction::Freegrid ||
+            repairer.kind != UnitKind::FabricatorRig || repairer.order != OrderKind::Repair ||
+            repairer.repairCooldownTicks > 0) {
+            continue;
+        }
+
+        Point targetPosition;
+        std::int32_t *targetHitPoints = nullptr;
+        std::int32_t targetMaximumHitPoints = 0;
+        if (Unit *targetUnit = FindUnit(repairer.targetId);
+            targetUnit && targetUnit->alive && targetUnit->faction == Faction::Freegrid) {
+            targetPosition = targetUnit->position;
+            targetHitPoints = &targetUnit->hitPoints;
+            targetMaximumHitPoints = targetUnit->maximumHitPoints;
+        } else if (Building *targetBuilding = FindBuilding(repairer.targetId);
+                   targetBuilding && targetBuilding->hitPoints > 0 &&
+                   targetBuilding->faction == Faction::Freegrid) {
+            targetPosition = targetBuilding->position;
+            targetHitPoints = &targetBuilding->hitPoints;
+            targetMaximumHitPoints = targetBuilding->maximumHitPoints;
+        }
+        if (!targetHitPoints || *targetHitPoints >= targetMaximumHitPoints) {
+            repairer.order = OrderKind::Idle;
+            repairer.targetId = 0;
+            continue;
+        }
+        if (!IsWithin(repairer.position, targetPosition, RepairRange)) {
+            continue;
+        }
+
+        const std::int32_t restored = std::min(RepairHitPoints, targetMaximumHitPoints - *targetHitPoints);
+        const std::int32_t salvageCost =
+            (restored + RepairHitPointsPerSalvage - 1) / RepairHitPointsPerSalvage;
+        if (m_state.salvage < salvageCost) {
+            continue;
+        }
+        m_state.salvage -= salvageCost;
+        *targetHitPoints += restored;
+        repairer.repairCooldownTicks = RepairCooldownTicks;
+        if (*targetHitPoints >= targetMaximumHitPoints) {
+            repairer.order = OrderKind::Idle;
+            repairer.targetId = 0;
+        }
+    }
+}
+
 void Simulation::UpdateCombat()
 {
     for (Unit &attacker : m_state.units) {
@@ -498,11 +579,11 @@ void Simulation::UpdateCombat()
             targetPosition = targetBuilding->position;
             targetHitPoints = &targetBuilding->hitPoints;
         }
-        if (!targetHitPoints || !IsWithin(attacker.position, targetPosition, AttackRange)) {
+        const UnitDefinition &definition = GetUnitDefinition(attacker.kind);
+        if (!targetHitPoints || !IsWithin(attacker.position, targetPosition, definition.attackRange)) {
             continue;
         }
 
-        const UnitDefinition &definition = GetUnitDefinition(attacker.kind);
         *targetHitPoints -= definition.attackDamage;
         attacker.attackCooldownTicks = definition.attackCooldownTicks;
     }
@@ -540,7 +621,11 @@ void Simulation::UpdateEconomyAndAi()
     }
     if (machineNest && ++m_state.chorusSpawnTicks >= TicksPerSecond * 15) {
         m_state.chorusSpawnTicks = 0;
-        AddUnit(Faction::Chorus, UnitKind::Skitter, { machineNest->position.x - 900, machineNest->position.y - 500 });
+        ++m_state.chorusWave;
+        const UnitKind reinforcement = m_state.chorusWave % 3U == 0U
+            ? UnitKind::Harrower
+            : (m_state.chorusWave % 3U == 2U ? UnitKind::Warden : UnitKind::Skitter);
+        AddUnit(Faction::Chorus, reinforcement, { machineNest->position.x - 900, machineNest->position.y - 500 });
     }
 
     for (Unit &drone : m_state.units) {
@@ -649,6 +734,7 @@ std::uint64_t Simulation::Checksum() const
     HashValue(hash, m_state.abilityCharge);
     HashValue(hash, m_state.incomeRemainderTicks);
     HashValue(hash, m_state.chorusSpawnTicks);
+    HashValue(hash, m_state.chorusWave);
     HashValue(hash, m_state.nextEntityId);
     HashValue(hash, static_cast<std::uint64_t>(m_state.units.size()));
     for (const Unit &unit : m_state.units) {
@@ -663,6 +749,7 @@ std::uint64_t Simulation::Checksum() const
         HashValue(hash, unit.maximumHitPoints);
         HashValue(hash, unit.attackCooldownTicks);
         HashValue(hash, unit.abilityCooldownTicks);
+        HashValue(hash, unit.repairCooldownTicks);
         HashValue(hash, static_cast<std::uint8_t>(unit.alive));
         HashValue(hash, static_cast<std::uint8_t>(unit.order));
         HashValue(hash, unit.targetId);
@@ -702,6 +789,7 @@ std::uint64_t Simulation::Checksum() const
         HashValue(hash, command.targetId);
         HashValue(hash, command.point.x);
         HashValue(hash, command.point.y);
+        HashValue(hash, static_cast<std::uint8_t>(command.unitKind));
         HashValue(hash, command.sequence);
     }
     HashValue(hash, m_nextCommandSequence);
