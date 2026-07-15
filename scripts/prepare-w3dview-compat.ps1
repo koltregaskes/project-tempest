@@ -9,6 +9,9 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+# UNATTENDED-SAFE: this helper only verifies and copies dependencies. It must never
+# launch the target executable, probe a render device, or retry renderer execution.
+
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
 function Resolve-ProjectPath {
@@ -69,6 +72,9 @@ Copy-DependencyIfNeeded $resolvedMilesStubPath (Join-Path $resolvedViewerDirecto
 [pscustomobject]@{
     Executable = $viewerPath
     LaunchPolicy = "manual_only"
+    AutomaticRetry = $false
+    VerificationMode = "files_and_hashes_only"
+    RemoteDisplayRendererStatus = "blocked"
     D3D8To9Version = $d3d8To9Version
     D3D8To9Commit = $d3d8To9Commit
     D3D8To9License = "BSD-2-Clause"

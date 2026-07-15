@@ -40,9 +40,12 @@ deformed sensor housing, powered-off cyan elements, two LODs, and the same colli
 models are re-imported in an empty Blender scene; the test fails unless all expected render meshes and texture references
 survive. The current executable package includes both W3Ds and all seven textures beside the executable.
 
-The runtime W3D has a captured frame from the repository's native `W3DViewV.exe`. The viewer is unstable under Microsoft
-Remote Display: repeated Application Error event 1000 crashes occurred even with the compatibility bridge. Therefore
-the following command may prepare dependencies, but it does not launch the viewer:
+The runtime W3D has a captured frame from the repository's native `W3DViewV.exe`. The viewer is blocked under Microsoft
+Remote Display. On 15 July 2026, unattended launches from `build/ci-w3dview-fixed/W3DViewV.exe` caused repeated
+focus-stealing render-device dialogs and Application Error event 1000 crashes at 10:52:08, 10:55:30, 10:59:11, and
+10:59:45 (exception codes `0xc0000005` and `0xc000041d`). This is an unattended-execution safety incident first and a
+renderer-compatibility defect second. The following command may prepare dependencies, but it never launches or retries
+the viewer:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\prepare-w3dview-compat.ps1 `
@@ -63,7 +66,19 @@ and automated test scripts must never launch `W3DViewV.exe`, `ProjectTempestDemo
 Interactive renderer and gameplay checks are manual-only actions initiated by the user on a suitable non-RDP desktop.
 If that environment is unavailable, record visual/gameplay verification as blocked and continue with headless evidence;
 do not retry a visible GUI. `prepare-w3dview-compat.ps1` only verifies and copies dependencies and reports
-`LaunchPolicy=manual_only`.
+`LaunchPolicy=manual_only`, `AutomaticRetry=false`, and `VerificationMode=files_and_hashes_only`.
+
+No agent, automation, CI job, or scheduled task may perform these manual checks. The safe automated evidence set is:
+
+- compile and link results;
+- deterministic simulation and asset-contract tests;
+- W3D export/import round trips in Blender `--background --factory-startup` mode;
+- package contents, executable metadata, hashes, and CI logs;
+- offscreen/headless output from tools that are documented to support it without a visible window.
+
+If a renderer cannot execute through a documented headless/offscreen path, its runtime visual result remains blocked.
+Do not substitute a compatibility shim, remote-display retry, process loop, scheduled retry, or hidden launch of a GUI
+executable for that missing evidence.
 
 ## Standalone prototype
 
