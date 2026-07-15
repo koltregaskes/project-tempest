@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_EDITCONDITION_H__64465BA2_AD81_4EFD_BAB4_93F66C90ECD1__INCLUDED_)
-#define AFX_EDITCONDITION_H__64465BA2_AD81_4EFD_BAB4_93F66C90ECD1__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // EditCondition.h : header file
 //
 
@@ -32,7 +28,7 @@ class SidesList;
 class CMyTreeCtrl : public CTreeCtrl
 {
 public:
-	virtual LRESULT WindowProc( UINT message, WPARAM wParam, LPARAM lParam );
+	virtual LRESULT WindowProc( UINT message, WPARAM wParam, LPARAM lParam ) override;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -42,7 +38,7 @@ class EditCondition : public CDialog
 {
 // Construction
 public:
-	EditCondition(CWnd* pParent = NULL);   // standard constructor
+	EditCondition(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(EditCondition)
@@ -55,8 +51,8 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(EditCondition)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult);
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
+	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult) override;
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -78,7 +74,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(EditCondition)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnSelchangeConditionType();
 	afx_msg void OnTimer(UINT nIDEvent);
 	//}}AFX_MSG
@@ -87,5 +83,3 @@ protected:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_EDITCONDITION_H__64465BA2_AD81_4EFD_BAB4_93F66C90ECD1__INCLUDED_)

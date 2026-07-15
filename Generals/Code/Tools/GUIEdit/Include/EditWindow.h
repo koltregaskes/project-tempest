@@ -24,12 +24,12 @@
 
 // FILE: EditWindow.h /////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
-//                                                                          
-//                       Westwood Studios Pacific.                          
-//                                                                          
-//                       Confidential Information					         
-//                Copyright (C) 2001 - All Rights Reserved                  
-//                                                                          
+//
+//                       Westwood Studios Pacific.
+//
+//                       Confidential Information
+//                Copyright (C) 2001 - All Rights Reserved
+//
 //-----------------------------------------------------------------------------
 //
 // Project:    RTS3
@@ -45,9 +45,6 @@
 
 #pragma once
 
-#ifndef __EDITWINDOW_H_
-#define __EDITWINDOW_H_
-
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include <stdlib.h>
 #include <windows.h>
@@ -57,8 +54,8 @@
 #include "Lib/BaseType.h"
 #include "GameClient/Image.h"
 #include "GameClient/GameWindow.h"
-#include "WW3D2/AssetMgr.h"
-#include "WW3D2/Render2D.h"
+#include "WW3D2/assetmgr.h"
+#include "WW3D2/render2d.h"
 
 // FORWARD REFERENCES /////////////////////////////////////////////////////////
 
@@ -75,27 +72,27 @@ class EditWindow
 
 public:
 
-	EditWindow( void );
-	~EditWindow( void );
+	EditWindow();
+	~EditWindow();
 
-	/// initialize the edit window singleton 
+	/// initialize the edit window singleton
 	void init( UnsignedInt clientWidth, UnsignedInt clientHeight );
-	void shutdown( void );  ///< free all data 
-	void draw( void );  ///< draw the edit window
+	void shutdown();  ///< free all data
+	void draw();  ///< draw the edit window
 
-	void updatePulse( void );  ///< pulse message from timer
+	void updatePulse();  ///< pulse message from timer
 
-	HWND getWindowHandle( void );  ///< get window handle
+	HWND getWindowHandle();  ///< get window handle
 	void setSize( ICoord2D *size );  ///< set width and height for edit window
 	void getSize( ICoord2D *size );  ///< get width and height for edit window
 
-	RGBColorReal getBackgroundColor( void );  ///< return the background color
+	RGBColorReal getBackgroundColor();  ///< return the background color
 	void setBackgroundColor( RGBColorReal color );  ///< set background color
 
 	void setDragMoveOrigin( ICoord2D *pos );  ///< for drag moving
 	void setDragMoveDest( ICoord2D *pos );  ///< for drag moving
-	ICoord2D getDragMoveOrigin( void );  ///< for keybord moving
-	ICoord2D getDragMoveDest( void );  ///< for keyboard moving
+	ICoord2D getDragMoveOrigin();  ///< for keybord moving
+	ICoord2D getDragMoveDest();  ///< for keyboard moving
 
 	void notifyWindowDeleted( GameWindow *window );  ///< window has been deleted
 
@@ -108,7 +105,7 @@ public:
 	// **************************************************************************
 
 	/// draw a line on the display in screen coordinates
-	void drawLine( Int startX, Int startY, Int endX, Int endY, 
+	void drawLine( Int startX, Int startY, Int endX, Int endY,
 								 Real lineWidth, UnsignedInt lineColor );
 
 	/// draw a rect border on the display in pixel coordinates with the specified color
@@ -116,30 +113,30 @@ public:
 										 Real lineWidth, UnsignedInt lineColor );
 
 	/// draw a filled rect on the display in pixel coords with the specified color
-	void drawFillRect( Int startX, Int startY, Int width, Int height, 
+	void drawFillRect( Int startX, Int startY, Int width, Int height,
 										 UnsignedInt color );
 
 	/// draw an image fit within the screen coordinates
-	void drawImage( const Image *image, Int startX, Int startY, 
+	void drawImage( const Image *image, Int startX, Int startY,
 									Int endX, Int endY, Color color = 0xFFFFFFFF );
 
 	/// image clipping support
 	void setClipRegion( IRegion2D *region ) {m_clipRegion = *region; m_isClippedEnabled = TRUE;}
-	Bool isClippingEnabled( void )	{ return m_isClippedEnabled; }
+	Bool isClippingEnabled()	{ return m_isClippedEnabled; }
 	void enableClipping( Bool onoff )	{ m_isClippedEnabled = onoff; }
 
 protected:
 
-	void registerEditWindowClass( void );  ///< register class with OS
+	void registerEditWindowClass();  ///< register class with OS
 
 	/// callback from windows, NOTE that it's static and has no this pointer
-	static LRESULT CALLBACK editProc( HWND hWnd, UINT message, 
+	static LRESULT CALLBACK editProc( HWND hWnd, UINT message,
 																		WPARAM wParam, LPARAM lParam );
 
-	void drawGrid( void );  ///< draw the grid
+	void drawGrid();  ///< draw the grid
 	void drawSeeThruOutlines( GameWindow *windowList, Color c );
 	void drawHiddenOutlines( GameWindow *windowList, Color c );
-	void drawUIFeedback( void );  ///< draw UI visual feedback
+	void drawUIFeedback();  ///< draw UI visual feedback
 
 	/// if mouse is close to selected window allow resize
 	void handleResizeAvailable( Int mouseX, Int mouseY );
@@ -155,9 +152,9 @@ protected:
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	static Bool m_classRegistered;  ///< TRUE when we've register with OS
-	static char *m_className;  ///< name for windows class
+	static const char *m_className;  ///< name for windows class
 
-	ICoord2D m_size;  ///< width and height of edit window	
+	ICoord2D m_size;  ///< width and height of edit window
 	UnsignedByte m_bitDepth;  ///< bit depth for edit window
 	HWND m_editWindowHWnd;  ///< edit window handle
 
@@ -186,23 +183,20 @@ protected:
 	IRegion2D m_clipRegion;		///< the clipping region for images
 	Bool m_isClippedEnabled;	///<used by 2D drawing operations to define clip re
 
-};  // end EditWindow
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 // INLINING ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-inline HWND EditWindow::getWindowHandle( void ) { return m_editWindowHWnd; }
+inline HWND EditWindow::getWindowHandle() { return m_editWindowHWnd; }
 inline void EditWindow::getSize( ICoord2D *size ) { *size = m_size; }
 inline void EditWindow::getPopupMenuClickPos( ICoord2D *pos ) { *pos = m_popupMenuClickPos; }
 inline void EditWindow::setDragMoveDest( ICoord2D *pos ) { if( pos ) m_dragMoveDest = *pos; }
 inline void EditWindow::setDragMoveOrigin( ICoord2D *pos ) { if( pos ) m_dragMoveOrigin = *pos; }
-inline ICoord2D EditWindow::getDragMoveDest( void ) { return m_dragMoveDest; }
-inline ICoord2D EditWindow::getDragMoveOrigin( void ) { return m_dragMoveOrigin; }
+inline ICoord2D EditWindow::getDragMoveDest() { return m_dragMoveDest; }
+inline ICoord2D EditWindow::getDragMoveOrigin() { return m_dragMoveOrigin; }
 
 ///////////////////////////////////////////////////////////////////////////////
 // EXTERNALS //////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 extern EditWindow *TheEditWindow;  ///< edit window singleton extern
-
-#endif // __EDITWINDOW_H_
-

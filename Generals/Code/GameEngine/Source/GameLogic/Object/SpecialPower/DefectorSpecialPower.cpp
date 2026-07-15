@@ -24,14 +24,14 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// FILE: DefectorSpecialPower.cpp 
+// FILE: DefectorSpecialPower.cpp
 // Author: Mark Lorenzen, JULY 2002
 // Desc:   General can click command cursor on any enemy, and it becomes his
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
-#include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
+#include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
 #include "Common/Player.h"
 #include "Common/SpecialPower.h"
@@ -43,12 +43,12 @@
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
-DefectorSpecialPowerModuleData::DefectorSpecialPowerModuleData( void )
+DefectorSpecialPowerModuleData::DefectorSpecialPowerModuleData()
 {
 
 	m_fatCursorRadius = 0.0f;
 
-}  // end DefectorSpecialPowerModuleData
+}
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
@@ -58,15 +58,15 @@ DefectorSpecialPowerModuleData::DefectorSpecialPowerModuleData( void )
  void DefectorSpecialPowerModuleData::buildFieldParse(MultiIniFieldParse& p)
 {
 	SpecialPowerModuleData::buildFieldParse( p );
-	
-	static const FieldParse dataFieldParse[] = 
+
+	static const FieldParse dataFieldParse[] =
 	{
-		{ "FatCursorRadius", INI::parseReal, NULL, offsetof( DefectorSpecialPowerModuleData, m_fatCursorRadius ) },
-		{ 0, 0, 0, 0 }
+		{ "FatCursorRadius", INI::parseReal, nullptr, offsetof( DefectorSpecialPowerModuleData, m_fatCursorRadius ) },
+		{ nullptr, nullptr, nullptr, 0 }
 	};
 	p.add(dataFieldParse);
-	
-}  // end buildFieldParse
+
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -78,25 +78,24 @@ DefectorSpecialPower::DefectorSpecialPower( Thing *thing, const ModuleData *modu
 												: SpecialPowerModule( thing, moduleData )
 {
 
-}  // end DefectorSpecialPower
+}
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
-DefectorSpecialPower::~DefectorSpecialPower( void )
+DefectorSpecialPower::~DefectorSpecialPower()
 {
 
-}  // end ~DefectorSpecialPower
+}
 
- 
+
 // ------------------------------------------------------------------------------------------------
 
-void DefectorSpecialPower::doSpecialPowerAtLocation( const Coord3D *loc, UnsignedInt commandOptions )
+void DefectorSpecialPower::doSpecialPowerAtLocation( const Coord3D *loc, Real angle, UnsignedInt commandOptions )
 {
 	if (getObject()->isDisabled())
 		return;
 
 	// only allowed at objects
-	return;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -123,7 +122,7 @@ void DefectorSpecialPower::doSpecialPowerAtObject( Object *objectToMakeDefector,
 
 	//AIUpdateInterface *hisAI = objectToMakeDefector->getAIUpdateInterface();
 	//if (hisAI)
-	//{			
+	//{
 		// how do I get at SpecialPowerTemplate::getDetectionTime() from here?
 		const SpecialPowerTemplate *specPowTemp = getSpecialPowerTemplate();
 		UnsignedInt time = specPowTemp->getDetectionTime();
@@ -132,7 +131,7 @@ void DefectorSpecialPower::doSpecialPowerAtObject( Object *objectToMakeDefector,
 		objectToMakeDefector->defect(self->getControllingPlayer()->getDefaultTeam(), time );// @todo lorenzen hook into the new AIUpdateI methods
 	//}
 
-}  
+}
 
 // ------------------------------------------------------------------------------------------------
 /** CRC */
@@ -143,7 +142,7 @@ void DefectorSpecialPower::crc( Xfer *xfer )
 	// extend base class
 	SpecialPowerModule::crc( xfer );
 
-}  // end crc
+}
 
 // ------------------------------------------------------------------------------------------------
 /** Xfer method
@@ -161,15 +160,15 @@ void DefectorSpecialPower::xfer( Xfer *xfer )
 	// extend base class
 	SpecialPowerModule::xfer( xfer );
 
-}  // end xfer
+}
 
 // ------------------------------------------------------------------------------------------------
 /** Load post process */
 // ------------------------------------------------------------------------------------------------
-void DefectorSpecialPower::loadPostProcess( void )
+void DefectorSpecialPower::loadPostProcess()
 {
 
 	// extend base class
 	SpecialPowerModule::loadPostProcess();
 
-}  // end loadPostProcess
+}

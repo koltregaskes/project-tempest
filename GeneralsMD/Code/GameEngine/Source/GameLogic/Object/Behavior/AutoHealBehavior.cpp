@@ -24,12 +24,12 @@
 
 // FILE: AutoHealBehavior.cpp ///////////////////////////////////////////////////////////////////////
 // Author:
-// Desc:  
+// Desc:
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
-#include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
+#include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 #include "Common/Thing.h"
 #include "Common/ThingTemplate.h"
 #include "Common/INI.h"
@@ -44,11 +44,6 @@
 #include "GameLogic/Object.h"
 #include "GameLogic/PartitionManager.h"
 
-#ifdef _INTERNAL
-// for occasional debugging...
-//#pragma optimize("", off)
-//#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
-#endif
 
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
@@ -57,7 +52,7 @@ struct AutoHealPlayerScanHelper
 	KindOfMaskType m_kindOfToTest;
 	KindOfMaskType m_forbiddenKindOf;
 	Object *m_theHealer;
-	ObjectPointerList *m_objectList;	
+	ObjectPointerList *m_objectList;
 	Bool m_skipSelfForHealing;
 };
 
@@ -99,21 +94,6 @@ AutoHealBehavior::AutoHealBehavior( Thing *thing, const ModuleData* moduleData )
 	m_radiusParticleSystemID = INVALID_PARTICLE_SYSTEM_ID;
 	m_soonestHealFrame = 0;
 	m_stopped = false;
-	Object *obj = getObject();
-
-	{
-		if( d->m_radiusParticleSystemTmpl )
-		{
-			ParticleSystem *particleSystem;
-
-			particleSystem = TheParticleSystemManager->createParticleSystem( d->m_radiusParticleSystemTmpl );
-			if( particleSystem )
-			{
-				particleSystem->setPosition( obj->getPosition() );
-				m_radiusParticleSystemID = particleSystem->getSystemID();
-			}
-		}
-	}
 
 	if (d->m_initiallyActive)
 	{
@@ -131,7 +111,7 @@ AutoHealBehavior::AutoHealBehavior( Thing *thing, const ModuleData* moduleData )
 
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
-AutoHealBehavior::~AutoHealBehavior( void )
+AutoHealBehavior::~AutoHealBehavior()
 {
 
 	if( m_radiusParticleSystemID != INVALID_PARTICLE_SYSTEM_ID )
@@ -183,7 +163,7 @@ void AutoHealBehavior::onDamage( DamageInfo *damageInfo )
 //-------------------------------------------------------------------------------------------------
 /** The update callback. */
 //-------------------------------------------------------------------------------------------------
-UpdateSleepTime AutoHealBehavior::update( void )
+UpdateSleepTime AutoHealBehavior::update()
 {
 	if (m_stopped)
 		return UPDATE_SLEEP_FOREVER;
@@ -199,7 +179,11 @@ UpdateSleepTime AutoHealBehavior::update( void )
 		return UPDATE_SLEEP_FOREVER;
 	}
 
-//DEBUG_LOG(("doing auto heal %d\n",TheGameLogic->getFrame()));
+	// TheSuperHackers @bugfix stephanmeesters 18/04/2026 Delay emitter creation until update, to ensure that the particle
+	// systems are not created before ParticleManager has xfer-loaded.
+	createEmitters();
+
+//DEBUG_LOG(("doing auto heal %d",TheGameLogic->getFrame()));
 
 	if( d->m_affectsWholePlayer )
 	{
@@ -245,12 +229,12 @@ UpdateSleepTime AutoHealBehavior::update( void )
 	}
 	else
 	{
-		//EXPANDED SYSTEM -- HEAL FRIENDLIES IN RADIUS 
+		//EXPANDED SYSTEM -- HEAL FRIENDLIES IN RADIUS
 		// setup scan filters
 		PartitionFilterRelationship relationship( obj, PartitionFilterRelationship::ALLOW_ALLIES );
 		PartitionFilterSameMapStatus filterMapStatus(obj);
 		PartitionFilterAlive filterAlive;
-		PartitionFilter *filters[] = { &relationship, &filterAlive, &filterMapStatus, NULL };
+		PartitionFilter *filters[] = { &relationship, &filterAlive, &filterMapStatus, nullptr };
 
 		// scan objects in our region
 		ObjectIterator *iter = ThePartitionManager->iterateObjectsInRange( obj->getPosition(), d->m_radius, FROM_CENTER_2D, filters );
@@ -276,8 +260,8 @@ UpdateSleepTime AutoHealBehavior::update( void )
 								if ( animTemplate )
 								{
 									Coord3D iconPosition;
-									iconPosition.set(obj->getPosition()->x, 
-																	 obj->getPosition()->y, 
+									iconPosition.set(obj->getPosition()->x,
+																	 obj->getPosition()->y,
 																	 obj->getPosition()->z + obj->getGeometryInfo().getMaxHeightAbovePosition() );
 									TheInGameUI->addWorldAnimation( animTemplate,	&iconPosition, WORLD_ANIM_FADE_ON_EXPIRE,
 																									TheGlobalData->m_getHealedAnimationDisplayTimeInSeconds,
@@ -288,12 +272,12 @@ UpdateSleepTime AutoHealBehavior::update( void )
 					}
 				}
 			}
-		}  // end for obj
+		}
 
 		return UPDATE_SLEEP( d->m_singleBurst ? UPDATE_SLEEP_FOREVER : d->m_healingDelay );
 	}
 }
- 
+
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
 void AutoHealBehavior::pulseHealObject( Object *obj )
@@ -303,22 +287,19 @@ void AutoHealBehavior::pulseHealObject( Object *obj )
 
 	const AutoHealBehaviorModuleData *data = getAutoHealBehaviorModuleData();
 
-	
+
 	if ( data->m_radius == 0.0f )
 		obj->attemptHealing(data->m_healingAmount, getObject());
 	else
 		obj->attemptHealingFromSoleBenefactor( data->m_healingAmount, getObject(), data->m_healingDelay );
 
 
-	if( data->m_unitHealPulseParticleSystemTmpl )
+	ParticleSystem *system = TheParticleSystemManager->createParticleSystem( data->m_unitHealPulseParticleSystemTmpl );
+	if( system )
 	{
-		ParticleSystem *system = TheParticleSystemManager->createParticleSystem( data->m_unitHealPulseParticleSystemTmpl );
-		if( system )
-		{
-			system->setPosition( obj->getPosition() );
-		}
+		system->setPosition( obj->getPosition() );
 	}
-	
+
 	m_soonestHealFrame = TheGameLogic->getFrame() + data->m_healingDelay;// In case onDamage tries to wake us up early
 }
 
@@ -334,7 +315,7 @@ void AutoHealBehavior::crc( Xfer *xfer )
 	// extend base class
 	UpgradeMux::upgradeMuxCRC( xfer );
 
-}  // end crc
+}
 
 // ------------------------------------------------------------------------------------------------
 /** Xfer method
@@ -364,12 +345,12 @@ void AutoHealBehavior::xfer( Xfer *xfer )
 	// stopped
 	xfer->xferBool( &m_stopped );
 
-}  // end xfer
+}
 
 // ------------------------------------------------------------------------------------------------
 /** Load post process */
 // ------------------------------------------------------------------------------------------------
-void AutoHealBehavior::loadPostProcess( void )
+void AutoHealBehavior::loadPostProcess()
 {
 
 	// extend base class
@@ -378,4 +359,20 @@ void AutoHealBehavior::loadPostProcess( void )
 	// extend base class
 	UpgradeMux::upgradeMuxLoadPostProcess();
 
-}  // end loadPostProcess
+}
+
+// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
+void AutoHealBehavior::createEmitters()
+{
+	if( m_radiusParticleSystemID == INVALID_PARTICLE_SYSTEM_ID )
+	{
+		const AutoHealBehaviorModuleData *d = getAutoHealBehaviorModuleData();
+		ParticleSystem *particleSystem = TheParticleSystemManager->createParticleSystem(d->m_radiusParticleSystemTmpl);
+		if( particleSystem )
+		{
+			particleSystem->setPosition( getObject()->getPosition() );
+			m_radiusParticleSystemID = particleSystem->getSystemID();
+		}
+	}
+}

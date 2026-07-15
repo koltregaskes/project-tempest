@@ -16,12 +16,7 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_WBVIEW_H__875234A1_8815_11D5_8CE0_00010297BBAC__INCLUDED_)
-#define AFX_WBVIEW_H__875234A1_8815_11D5_8CE0_00010297BBAC__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #include "Lib/BaseType.h"
 #include "Tool.h"
@@ -109,7 +104,7 @@ public:
 
 	virtual Bool viewToDocCoords(CPoint curPt, Coord3D *newPt, Bool constrained=true) { DEBUG_CRASH(("should not call")); newPt->zero(); return false; }
 	virtual Bool docToViewCoords(Coord3D curPt, CPoint* newPt) { DEBUG_CRASH(("should not call")); return false; }
- 
+
 	virtual Bool viewToDocCoordZ(CPoint curPt, Coord3D *newPt, Real Z) { return viewToDocCoords(curPt, newPt, false); }
 
 	/// Set the center for display.
@@ -124,7 +119,7 @@ public:
 	/// Scrolls the window by this amount.
 	virtual void scrollInView(Real x, Real y, Bool end) { DEBUG_CRASH(("should not call"));  }
 
-	/// Invalidates an object. Pass NULL to inval all objects.
+	/// Invalidates an object. Pass null to inval all objects.
 	virtual void invalObjectInView(MapObject *pObj) { }
 
 	/// Invalidates the area of one height map cell in the 2d view.
@@ -134,8 +129,8 @@ public:
 	virtual void rotateCamera(Real delta) { }
 	virtual void pitchCamera(Real delta) { }
 
-	virtual Int getPickPixels(void) {return 4;}
-	virtual EditorSortingType GetPickConstraint(void) {return m_pickConstraint;}
+	virtual Int getPickPixels() {return 4;}
+	virtual EditorSortingType GetPickConstraint() {return m_pickConstraint;}
 
 public:
 	CWorldBuilderDoc *WbDoc() { return ((CWorldBuilderDoc*)GetDocument()); }
@@ -143,20 +138,20 @@ public:
 	void snapPoint(Coord3D *thePt) {if (m_snapToGrid || m_lockAngle) {thePt->x = MAP_XY_FACTOR*floor(thePt->x/MAP_XY_FACTOR+0.5); thePt->y = MAP_XY_FACTOR*floor(thePt->y/MAP_XY_FACTOR+0.5);};};
 
 	virtual TPickedStatus picked(MapObject *pObj, Coord3D docPt);
-	virtual MapObject *picked3dObjectInView(CPoint viewPt) {return NULL;};
-	virtual BuildListInfo *pickedBuildObjectInView(CPoint viewPt) {return NULL;};
+	virtual MapObject *picked3dObjectInView(CPoint viewPt) {return nullptr;};
+	virtual BuildListInfo *pickedBuildObjectInView(CPoint viewPt) {return nullptr;};
 
-	Bool isPolygonTriggerVisible(void) {return m_showPolygonTriggers;};
-	Bool isWaypointVisible(void) {return m_showWaypoints;};
-	Bool isNamesVisible(void) {return m_showNames;};
+	Bool isPolygonTriggerVisible() {return m_showPolygonTriggers;};
+	Bool isWaypointVisible() {return m_showWaypoints;};
+	Bool isNamesVisible() {return m_showNames;};
 	void setShowModels(Bool show) {m_showModels = show;}
-	Bool getShowModels(void) { return m_showModels;}
-	Bool getShowTerrain(void) { return m_showTerrain;}
+	Bool getShowModels() { return m_showModels;}
+	Bool getShowTerrain() { return m_showTerrain;}
 
 	void setShowGarrisoned(Bool show) {m_showGarrisoned = show;}
-	Bool getShowGarrisoned(void) { return m_showGarrisoned;}
+	Bool getShowGarrisoned() { return m_showGarrisoned;}
 
-	virtual Bool isDoingPitch( void ) { return false; }
+	virtual Bool isDoingPitch() { return false; }
 
 // Operations
 public:
@@ -165,15 +160,15 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(WbView)
 	protected:
-	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
+	virtual void OnDraw(CDC* pDC) override;      // overridden to draw this view
 	//}}AFX_VIRTUAL
 
 // Implementation
 protected:
-	virtual ~WbView();
-#ifdef _DEBUG
-	virtual void AssertValid() const;
-	virtual void Dump(CDumpContext& dc) const;
+	virtual ~WbView() override;
+#ifdef RTS_DEBUG
+	virtual void AssertValid() const override;
+	virtual void Dump(CDumpContext& dc) const override;
 #endif
 
 	// Generated message map functions
@@ -256,5 +251,3 @@ protected:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_WBVIEW_H__875234A1_8815_11D5_8CE0_00010297BBAC__INCLUDED_)

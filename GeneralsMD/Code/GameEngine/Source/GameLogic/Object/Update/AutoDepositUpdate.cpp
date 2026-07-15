@@ -24,12 +24,12 @@
 
 // FILE: AutoDepositUpdate.cpp /////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
-//                                                                          
-//                       Electronic Arts Pacific.                          
-//                                                                          
-//                       Confidential Information                           
-//                Copyright (C) 2002 - All Rights Reserved                  
-//                                                                          
+//
+//                       Electronic Arts Pacific.
+//
+//                       Confidential Information
+//                Copyright (C) 2002 - All Rights Reserved
+//
 //-----------------------------------------------------------------------------
 //
 //	created:	Aug 2002
@@ -37,7 +37,7 @@
 //	Filename: 	AutoDepositUpdate.cpp
 //
 //	author:		Chris Huybregts
-//	
+//
 //	purpose:	The meat of the auto deposit update module
 //
 //-----------------------------------------------------------------------------
@@ -50,7 +50,7 @@
 //-----------------------------------------------------------------------------
 // USER INCLUDES //////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
-#include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
+#include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
 #include "Common/BuildAssistant.h"
 #include "Common/Thing.h"
@@ -63,6 +63,7 @@
 #include "GameLogic/Module/AutoDepositUpdate.h"
 #include "GameLogic/Module/AIUpdate.h"
 #include "GameLogic/Object.h"
+#include "GameClient/Drawable.h"
 #include "GameClient/InGameUI.h"
 #include "GameClient/Color.h"
 #include "GameClient/GameText.h"
@@ -71,23 +72,19 @@
 void parseUpgradePair( INI *ini, void *instance, void *store, const void *userData )
 {
 	upgradePair info;
-	info.type = "";
 	info.amount = 0;
 
 	const char *token = ini->getNextToken( ini->getSepsColon() );
-
 	if ( stricmp(token, "UpgradeType") == 0 )
 	{
-		token = ini->getNextTokenOrNull( ini->getSepsColon() );
-		if (!token)	throw INI_INVALID_DATA;
-
+		token = ini->getNextToken( ini->getSepsColon() );
 		info.type = token;
 	}
 	else
 		throw INI_INVALID_DATA;
 
 
-	token = ini->getNextTokenOrNull( ini->getSepsColon() );
+	token = ini->getNextToken( ini->getSepsColon() );
 	if ( stricmp(token, "Boost") == 0 )
 		info.amount = INI::scanInt(ini->getNextToken( ini->getSepsColon() ));
 	else
@@ -96,8 +93,8 @@ void parseUpgradePair( INI *ini, void *instance, void *store, const void *userDa
 	// Insert the info into the upgrade list
 	std::list<upgradePair> * theList = (std::list<upgradePair>*)store;
 	theList->push_back(info);
-	
-}  // end parseFactionObjectCreationList
+
+}
 
 //-----------------------------------------------------------------------------
 // PUBLIC FUNCTIONS ///////////////////////////////////////////////////////////
@@ -110,7 +107,7 @@ AutoDepositUpdate::AutoDepositUpdate( Thing *thing, const ModuleData* moduleData
 }
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
-AutoDepositUpdate::~AutoDepositUpdate( void )
+AutoDepositUpdate::~AutoDepositUpdate()
 {
 
 }
@@ -132,7 +129,7 @@ void AutoDepositUpdate::awardInitialCaptureBonus( Player *player )
 		UnicodeString moneyString;
 		moneyString.format( TheGameText->fetch( "GUI:AddCash" ), getAutoDepositUpdateModuleData()->m_initialCaptureBonus );
 		Coord3D pos;
-		pos.set( getObject()->getPosition() );
+		pos.set( *getObject()->getPosition() );
 		pos.z += 10.0f; //add a little z to make it show up above the unit.
 		Color color = player->getPlayerColor() | GameMakeColor( 0, 0, 0, 230 );
 		TheInGameUI->addFloatingText( moneyString, &pos, color );
@@ -143,27 +140,27 @@ void AutoDepositUpdate::awardInitialCaptureBonus( Player *player )
 
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
-UpdateSleepTime AutoDepositUpdate::update( void )
+UpdateSleepTime AutoDepositUpdate::update()
 {
 	const AutoDepositUpdateModuleData *modData = getAutoDepositUpdateModuleData();
 /// @todo srj use SLEEPY_UPDATE here
 	if( TheGameLogic->getFrame() >= m_depositOnFrame)
 	{
 		if (!m_initialized) {
-			// Note - we have to set these in update, because during load the team is set, 
+			// Note - we have to set these in update, because during load the team is set,
 			// and we don't want to award initial bonus on load.  jba :)
 			m_awardInitialCaptureBonus = TRUE;
 			m_initialized = TRUE;
 		}
 		m_depositOnFrame = TheGameLogic->getFrame() + modData->m_depositFrame;
-		
+
 		if(getObject()->isNeutralControlled() || modData->m_depositAmount <= 0 )
 			return UPDATE_SLEEP_NONE;
 
 		// makes sure that buildings under construction do not get a bonus CCB
 		if( getObject()->getConstructionPercent() != CONSTRUCTION_COMPLETE )
 			return UPDATE_SLEEP_NONE;
-		
+
 		int moneyAmount = modData->m_depositAmount + getUpgradedSupplyBoost();
 
 		if( modData->m_isActualMoney )
@@ -171,19 +168,8 @@ UpdateSleepTime AutoDepositUpdate::update( void )
 			getObject()->getControllingPlayer()->getMoney()->deposit( moneyAmount );
 			getObject()->getControllingPlayer()->getScoreKeeper()->addMoneyEarned( modData->m_depositAmount);
 		}
-		
-		Bool displayMoney = moneyAmount > 0 ? TRUE : FALSE;
-		if( getObject()->testStatus(OBJECT_STATUS_STEALTHED) )
-		{
-			// OY LOOK!  I AM USING LOCAL PLAYER.  Do not put anything other than TheInGameUI->addFloatingText in the block this controls!!!
-			if( !getObject()->isLocallyControlled() && !getObject()->testStatus(OBJECT_STATUS_DETECTED) )
-			{
-				displayMoney = FALSE;
-			}
 
-		}
-		
-		if( displayMoney )
+		if (moneyAmount > 0 && getObject()->isLogicallyVisible())
 		{
 
       const Object *owner = getObject();
@@ -194,9 +180,9 @@ UpdateSleepTime AutoDepositUpdate::update( void )
 			  UnicodeString moneyString;
 			  moneyString.format( TheGameText->fetch( "GUI:AddCash" ), moneyAmount );
 			  Coord3D pos;
-			  pos.set( getObject()->getPosition() );
+			  pos.set( *getObject()->getPosition() );
 			  pos.z += 10.0f; //add a little z to make it show up above the unit.
-		  
+
         if ( owner->isKindOf( KINDOF_STRUCTURE ) )
         {
           Real width = owner->getGeometryInfo().getMajorRadius() * 0.3f;
@@ -204,12 +190,12 @@ UpdateSleepTime AutoDepositUpdate::update( void )
           pos.x += GameClientRandomValue(-width,width);
           pos.y += GameClientRandomValue(-depth,depth);
         }
-      
-      
+
+
         Color color = getObject()->getControllingPlayer()->getPlayerColor() | GameMakeColor( 0, 0, 0, 230 );
 			  TheInGameUI->addFloatingText( moneyString, &pos, color );
       }
-		}		
+		}
 	}
 
 	return UPDATE_SLEEP_NONE;
@@ -250,7 +236,7 @@ void AutoDepositUpdate::crc( Xfer *xfer )
 	// extend base class
 	UpdateModule::crc( xfer );
 
-}  // end crc
+}
 
 // ------------------------------------------------------------------------------------------------
 /** Xfer method
@@ -277,15 +263,15 @@ void AutoDepositUpdate::xfer( Xfer *xfer )
 		xfer->xferBool(&m_initialized);
 	}
 
-}  // end xfer
+}
 
 // ------------------------------------------------------------------------------------------------
 /** Load post process */
 // ------------------------------------------------------------------------------------------------
-void AutoDepositUpdate::loadPostProcess( void )
+void AutoDepositUpdate::loadPostProcess()
 {
 
 	// extend base class
 	UpdateModule::loadPostProcess();
 
-}  // end loadPostProcess
+}

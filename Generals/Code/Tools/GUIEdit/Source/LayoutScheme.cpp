@@ -24,12 +24,12 @@
 
 // FILE: LayoutScheme.cpp /////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
-//                                                                          
-//                       Westwood Studios Pacific.                          
-//                                                                          
-//                       Confidential Information                           
-//                Copyright (C) 2001 - All Rights Reserved                  
-//                                                                          
+//
+//                       Westwood Studios Pacific.
+//
+//                       Confidential Information
+//                Copyright (C) 2001 - All Rights Reserved
+//
 //-----------------------------------------------------------------------------
 //
 // Project:    GUIEdit
@@ -46,7 +46,6 @@
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include <stdlib.h>
 #include <assert.h>
-#include <stdio.h>
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
 #include "Common/Debug.h"
@@ -57,7 +56,7 @@
 #include "GameClient/GadgetRadioButton.h"
 #include "GameClient/GadgetProgressBar.h"
 #include "GameClient/GadgetSlider.h"
-#include "GameClient/GadgetListbox.h"
+#include "GameClient/GadgetListBox.h"
 #include "GameClient/GadgetComboBox.h"
 #include "GameClient/GadgetTabControl.h"
 #include "GameClient/GadgetTextEntry.h"
@@ -65,7 +64,7 @@
 #include "GUIEdit.h"
 #include "EditWindow.h"
 #include "GUIEditWindowManager.h"
-#include "Resource.h"
+#include "resource.h"
 #include "Properties.h"
 #include "LayoutScheme.h"
 
@@ -79,12 +78,12 @@
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE DATA ///////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-static LayoutScheme *theScheme = NULL;
+static LayoutScheme *theScheme = nullptr;
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC DATA ////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-LayoutScheme *TheDefaultScheme = NULL;
+LayoutScheme *TheDefaultScheme = nullptr;
 
 // PRIVATE PROTOTYPES /////////////////////////////////////////////////////////
 
@@ -99,7 +98,7 @@ static void loadSchemeDataToDialog( HWND hWndDialog )
 {
 
 	// load the name of the current scheme
-	SetDlgItemText( hWndDialog, STATIC_CURRENT_SCHEME, 
+	SetDlgItemText( hWndDialog, STATIC_CURRENT_SCHEME,
 									theScheme->getSchemeFilename() );
 
 	// load the state combo box with every option available
@@ -112,7 +111,7 @@ static void loadSchemeDataToDialog( HWND hWndDialog )
 									GWS_HORZ_SLIDER |
 									GWS_VERT_SLIDER |
 									GWS_STATIC_TEXT |
-									GWS_ENTRY_FIELD | 
+									GWS_ENTRY_FIELD |
 									GWS_USER_WINDOW |
 									GWS_COMBO_BOX,
 									GetDlgItem( hWndDialog, COMBO_STATE ) );
@@ -122,7 +121,7 @@ static void loadSchemeDataToDialog( HWND hWndDialog )
 	LoadImageListComboBox( GetDlgItem( hWndDialog, COMBO_IMAGE ) );
 
 	//
-	// load our own internal table of images and colors to the 
+	// load our own internal table of images and colors to the
 	// property dialog tables
 	//
 	Int i;
@@ -137,7 +136,7 @@ static void loadSchemeDataToDialog( HWND hWndDialog )
 												info->color,
 												info->borderColor );
 
-	}  // end for i
+	}
 
 	// switch to the generic state
 	SwitchToState( GENERIC_ENABLED, hWndDialog );
@@ -156,7 +155,7 @@ static void loadSchemeDataToDialog( HWND hWndDialog )
 	SendDlgItemMessage( hWndDialog, COMBO_FONT, CB_RESETCONTENT, 0, 0 );
 	LoadFontCombo( GetDlgItem( hWndDialog, COMBO_FONT ), theScheme->getFont() );
 
-}  // end loadSchemeDataToDialog
+}
 
 // saveData ===================================================================
 //=============================================================================
@@ -179,7 +178,7 @@ static void saveData( HWND hWndDialog )
 																 info->color,
 																 info->borderColor );
 
-	}  // end for i
+	}
 
 	// save default text colors
 	theScheme->setEnabledTextColor( GetPropsEnabledTextColor() );
@@ -192,13 +191,13 @@ static void saveData( HWND hWndDialog )
 	// save the font
 	theScheme->setFont( GetSelectedFontFromCombo( GetDlgItem( hWndDialog, COMBO_FONT ) ) );
 
-}  // end saveData
+}
 
 // saveAsDialog ===============================================================
 /** Bring up the standard windows browser save as dialog and return
 	* filename selected */
 //=============================================================================
-char *saveAsDialog( void )
+char *saveAsDialog()
 {
 	static char filename[ _MAX_PATH ];
   OPENFILENAME ofn;
@@ -208,39 +207,39 @@ char *saveAsDialog( void )
 
   ofn.lStructSize       = sizeof( OPENFILENAME );
   ofn.hwndOwner         = TheEditor->getWindowHandle();
-  ofn.hInstance         = NULL;
+  ofn.hInstance         = nullptr;
   ofn.lpstrFilter       = filter;
-  ofn.lpstrCustomFilter = NULL;
+  ofn.lpstrCustomFilter = nullptr;
   ofn.nMaxCustFilter    = 0;
   ofn.nFilterIndex      = 0;
   ofn.lpstrFile         = filename;
   ofn.nMaxFile          = _MAX_PATH;
-  ofn.lpstrFileTitle    = NULL;
+  ofn.lpstrFileTitle    = nullptr;
   ofn.nMaxFileTitle     = 0;
-  ofn.lpstrInitialDir   = NULL;
-  ofn.lpstrTitle        = NULL;
+  ofn.lpstrInitialDir   = nullptr;
+  ofn.lpstrTitle        = nullptr;
   ofn.Flags             = OFN_NOREADONLYRETURN | OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
   ofn.nFileOffset       = 0;
   ofn.nFileExtension    = 0;
   ofn.lpstrDefExt       = "ls";
   ofn.lCustData         = 0L ;
-  ofn.lpfnHook          = NULL ;
-  ofn.lpTemplateName    = NULL ;
+  ofn.lpfnHook          = nullptr ;
+  ofn.lpTemplateName    = nullptr ;
 
   returnCode = GetSaveFileName( &ofn );
 
   if( returnCode )
 		return filename;
 	else
-		return NULL;
+		return nullptr;
 
-}  // end saveAsDialog
+}
 
 // openDialog =================================================================
 /** Bring up the standard windows browser open dialog and return
 	* filename selected */
 //=============================================================================
-char *openDialog( void )
+char *openDialog()
 {
 	static char filename[ _MAX_PATH ];
   OPENFILENAME ofn;
@@ -250,33 +249,33 @@ char *openDialog( void )
 
   ofn.lStructSize       = sizeof( OPENFILENAME );
   ofn.hwndOwner         = TheEditor->getWindowHandle();
-  ofn.hInstance         = NULL;
+  ofn.hInstance         = nullptr;
   ofn.lpstrFilter       = filter;
-  ofn.lpstrCustomFilter = NULL;
+  ofn.lpstrCustomFilter = nullptr;
   ofn.nMaxCustFilter    = 0;
   ofn.nFilterIndex      = 0;
   ofn.lpstrFile         = filename;
   ofn.nMaxFile          = _MAX_PATH;
-  ofn.lpstrFileTitle    = NULL;
+  ofn.lpstrFileTitle    = nullptr;
   ofn.nMaxFileTitle     = 0;
-  ofn.lpstrInitialDir   = NULL;
-  ofn.lpstrTitle        = NULL;
+  ofn.lpstrInitialDir   = nullptr;
+  ofn.lpstrTitle        = nullptr;
   ofn.Flags             = OFN_NOREADONLYRETURN | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
   ofn.nFileOffset       = 0;
   ofn.nFileExtension    = 0;
   ofn.lpstrDefExt       = "ls";
   ofn.lCustData         = 0L ;
-  ofn.lpfnHook          = NULL ;
-  ofn.lpTemplateName    = NULL ;
+  ofn.lpfnHook          = nullptr ;
+  ofn.lpTemplateName    = nullptr ;
 
   returnCode = GetOpenFileName( &ofn );
 
   if( returnCode )
 		return filename;
 	else
-		return NULL;
+		return nullptr;
 
-}  // end openDialog
+}
 
 // layoutSchemeCallback =======================================================
 /** Dialog callback for layout scheme dialog */
@@ -292,7 +291,7 @@ static LRESULT CALLBACK layoutSchemeCallback( HWND hWndDialog,
 	// this is largely based on the property dialog code so lets just
 	// let the default handle code work here too
 	//
-	if( HandleCommonDialogMessages( hWndDialog, message, 
+	if( HandleCommonDialogMessages( hWndDialog, message,
 																	wParam, lParam, &returnCode ) == TRUE )
 		return returnCode;
 
@@ -307,7 +306,7 @@ static LRESULT CALLBACK layoutSchemeCallback( HWND hWndDialog,
 			loadSchemeDataToDialog( hWndDialog );
 			break;
 
-		}  // end init dialog
+		}
 
 		// ------------------------------------------------------------------------
     case WM_COMMAND:
@@ -315,7 +314,7 @@ static LRESULT CALLBACK layoutSchemeCallback( HWND hWndDialog,
 //			Int notifyCode = HIWORD( wParam );  // notification code
 			Int controlID = LOWORD( wParam );  // control ID
 //			HWND hWndControl = (HWND)lParam;  // control window handle
-		
+
 			switch( controlID )
 			{
 
@@ -330,7 +329,7 @@ static LRESULT CALLBACK layoutSchemeCallback( HWND hWndDialog,
 					// layout, because this is such a large sweeping change we will
 					// ask them if they are sure
 					//
-					result = MessageBox( NULL, "This will apply these scheme color and image settings to ALL windows and gadgets currently loaded in the edit window.  Are you sure you want to proceed?",
+					result = MessageBox( nullptr, "This will apply these scheme color and image settings to ALL windows and gadgets currently loaded in the edit window.  Are you sure you want to proceed?",
 															 "Are You Sure?", MB_YESNO | MB_ICONWARNING );
 					if( result == IDNO )
 						break;
@@ -355,7 +354,7 @@ static LRESULT CALLBACK layoutSchemeCallback( HWND hWndDialog,
 
 					break;
 
-				}  // end apply scheme
+				}
 
 				// --------------------------------------------------------------------
 				case BUTTON_SAVE:
@@ -367,15 +366,15 @@ static LRESULT CALLBACK layoutSchemeCallback( HWND hWndDialog,
 
 						saveData( hWndDialog );
 						theScheme->saveScheme( filename );
-						SetDlgItemText( hWndDialog, STATIC_CURRENT_SCHEME, 
+						SetDlgItemText( hWndDialog, STATIC_CURRENT_SCHEME,
 														theScheme->getSchemeFilename() );
 
-					}  // end if
+					}
 
 					break;
 
-				}  // end save
-				
+				}
+
 				// --------------------------------------------------------------------
 				case BUTTON_LOAD:
 				{
@@ -387,25 +386,25 @@ static LRESULT CALLBACK layoutSchemeCallback( HWND hWndDialog,
 						// load the new data
 						if( theScheme->loadScheme( filename ) )
 						{
-										
+
 							// load the dialog engine and items with the current data of the scheme
 							loadSchemeDataToDialog( hWndDialog );
 
-						}  // end if
+						}
 						else
 						{
 
 							MessageBox( TheEditor->getWindowHandle(),
 													"Unable to open scheme file.", "Error", MB_OK );
 
-						}  // end else
+						}
 
-					}  // end if
+					}
 
 					break;
 
-				}  // end load
-							
+				}
+
 				// --------------------------------------------------------------------
 				case IDOK:
 
@@ -421,20 +420,20 @@ static LRESULT CALLBACK layoutSchemeCallback( HWND hWndDialog,
 					EndDialog( hWndDialog, FALSE );
 					break;
 
-			}  // end switch
-				
+			}
+
 			break;
 
-		}  // end command
+		}
 
-	}  // end switch, message
+	}
 
 	return 0;
 
-}  // end layoutSchemeCallback
+}
 
 // LayoutScheme::applyPropertyTablesToWindow ==================================
-/** apply the image and color info stored in the state identifer tables
+/** apply the image and color info stored in the state identifier tables
 used for "property editing" to all appropriate windows currently
 loaded in the editor */
 //=============================================================================
@@ -442,13 +441,13 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 {
 
 	// end recursion
-	if( root == NULL )
+	if( root == nullptr )
 		return;
 
 	// apply changes to this window
 	ImageAndColorInfo *info;
 
-	if( BitTest( root->winGetStyle(), GWS_PUSH_BUTTON ) )
+	if( BitIsSet( root->winGetStyle(), GWS_PUSH_BUTTON ) )
 	{
 
 		info = GetStateInfo( BUTTON_ENABLED );
@@ -478,8 +477,8 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 		GadgetButtonSetHiliteSelectedColor( root, info->color );
 		GadgetButtonSetHiliteSelectedBorderColor( root, info->borderColor );
 
-	}  // end if
-	else if( BitTest( root->winGetStyle(), GWS_RADIO_BUTTON ) )
+	}
+	else if( BitIsSet( root->winGetStyle(), GWS_RADIO_BUTTON ) )
 	{
 
 		info = GetStateInfo( RADIO_ENABLED );
@@ -521,8 +520,8 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 		GadgetRadioSetHiliteCheckedBoxColor( root, info->color );
 		GadgetRadioSetHiliteCheckedBoxBorderColor( root, info->borderColor );
 
-	}  // end else if
-	else if( BitTest( root->winGetStyle(), GWS_CHECK_BOX ) )
+	}
+	else if( BitIsSet( root->winGetStyle(), GWS_CHECK_BOX ) )
 	{
 
 		info = GetStateInfo( CHECK_BOX_ENABLED );
@@ -564,8 +563,8 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 		GadgetCheckBoxSetHiliteCheckedBoxColor( root, info->color );
 		GadgetCheckBoxSetHiliteCheckedBoxBorderColor( root, info->borderColor );
 
-	}  // end else if
-	else if( BitTest( root->winGetStyle(), GWS_VERT_SLIDER ) )
+	}
+	else if( BitIsSet( root->winGetStyle(), GWS_VERT_SLIDER ) )
 	{
 
 		info = GetStateInfo( VSLIDER_ENABLED_TOP );
@@ -628,8 +627,8 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 		GadgetSliderSetHiliteSelectedThumbColor( root, info->color );
 		GadgetSliderSetHiliteSelectedThumbBorderColor( root, info->borderColor );
 
-	}  // end else if
-	else if( BitTest( root->winGetStyle(), GWS_HORZ_SLIDER ) )
+	}
+	else if( BitIsSet( root->winGetStyle(), GWS_HORZ_SLIDER ) )
 	{
 
 		info = GetStateInfo( HSLIDER_ENABLED_LEFT );
@@ -692,8 +691,8 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 		GadgetSliderSetHiliteSelectedThumbColor( root, info->color );
 		GadgetSliderSetHiliteSelectedThumbBorderColor( root, info->borderColor );
 
-	}  // end else if
-	else if( BitTest( root->winGetStyle(), GWS_SCROLL_LISTBOX ) )
+	}
+	else if( BitIsSet( root->winGetStyle(), GWS_SCROLL_LISTBOX ) )
 	{
 
 		info = GetStateInfo( LISTBOX_ENABLED );
@@ -772,7 +771,7 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 			GadgetButtonSetHiliteSelectedColor( upButton, info->color );
 			GadgetButtonSetHiliteSelectedBorderColor( upButton, info->borderColor );
 
-		}  // end if
+		}
 
 		GameWindow *downButton = GadgetListBoxGetDownButton( root );
 		if( downButton )
@@ -805,7 +804,7 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 			GadgetButtonSetHiliteSelectedColor( downButton, info->color );
 			GadgetButtonSetHiliteSelectedBorderColor( downButton, info->borderColor );
 
-		}  // end if
+		}
 
 		GameWindow *slider = GadgetListBoxGetSlider( root );
 		if( slider )
@@ -871,10 +870,10 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 			GadgetSliderSetHiliteSelectedThumbColor( slider, info->color );
 			GadgetSliderSetHiliteSelectedThumbBorderColor( slider, info->borderColor );
 
-		}  // end if
+		}
 
-	}  // end else if
-	else if( BitTest( root->winGetStyle(), GWS_COMBO_BOX ) )
+	}
+	else if( BitIsSet( root->winGetStyle(), GWS_COMBO_BOX ) )
 	{
 		info = GetStateInfo( COMBOBOX_ENABLED );
 		GadgetListBoxSetEnabledImage( root, info->image );
@@ -950,8 +949,8 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 			GadgetButtonSetHiliteSelectedImage( dropDownButton, info->image );
 			GadgetButtonSetHiliteSelectedColor( dropDownButton, info->color );
 			GadgetButtonSetHiliteSelectedBorderColor( dropDownButton, info->borderColor );
-		}// end if
-		
+		}
+
 		GameWindow *editBox = GadgetComboBoxGetEditBox( root );
 		if ( editBox )
 		{
@@ -987,7 +986,7 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 			GadgetTextEntrySetHiliteImageCenter( editBox, info->image );
 			info = GetStateInfo( COMBOBOX_EDIT_BOX_HILITE_SMALL_CENTER );
 			GadgetTextEntrySetHiliteImageSmallCenter( editBox, info->image );
-		} // end if
+		}
 
 		GameWindow *listBox = GadgetComboBoxGetListBox( root );
 		if( listBox )
@@ -1068,7 +1067,7 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 				GadgetButtonSetHiliteSelectedColor( upButton, info->color );
 				GadgetButtonSetHiliteSelectedBorderColor( upButton, info->borderColor );
 
-			}  // end if
+			}
 
 			GameWindow *downButton = GadgetListBoxGetDownButton( listBox );
 			if( downButton )
@@ -1101,7 +1100,7 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 				GadgetButtonSetHiliteSelectedColor( downButton, info->color );
 				GadgetButtonSetHiliteSelectedBorderColor( downButton, info->borderColor );
 
-			}  // end if
+			}
 
 			GameWindow *slider = GadgetListBoxGetSlider( listBox );
 			if( slider )
@@ -1167,10 +1166,10 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 				GadgetSliderSetHiliteSelectedThumbColor( slider, info->color );
 				GadgetSliderSetHiliteSelectedThumbBorderColor( slider, info->borderColor );
 
-			}  // end if
-		}// end if (combo listbox)
-	}// end if
-	else if( BitTest( root->winGetStyle(), GWS_ENTRY_FIELD ) )
+			}
+		}
+	}
+	else if( BitIsSet( root->winGetStyle(), GWS_ENTRY_FIELD ) )
 	{
 
 		info = GetStateInfo( TEXT_ENTRY_ENABLED_LEFT );
@@ -1206,8 +1205,8 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 		info = GetStateInfo( TEXT_ENTRY_HILITE_SMALL_CENTER );
 		GadgetTextEntrySetHiliteImageSmallCenter( root, info->image );
 
-	}  // end else if
-	else if( BitTest( root->winGetStyle(), GWS_STATIC_TEXT ) )
+	}
+	else if( BitIsSet( root->winGetStyle(), GWS_STATIC_TEXT ) )
 	{
 
 		info = GetStateInfo( STATIC_TEXT_ENABLED );
@@ -1225,8 +1224,8 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 		GadgetStaticTextSetHiliteColor( root, info->color );
 		GadgetStaticTextSetHiliteBorderColor( root, info->borderColor );
 
-	}  // end else if
-	else if( BitTest( root->winGetStyle(), GWS_PROGRESS_BAR ) )
+	}
+	else if( BitIsSet( root->winGetStyle(), GWS_PROGRESS_BAR ) )
 	{
 
 		info = GetStateInfo( PROGRESS_BAR_ENABLED_LEFT );
@@ -1292,8 +1291,8 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 		info = GetStateInfo( PROGRESS_BAR_HILITE_BAR_SMALL_CENTER );
 		GadgetProgressBarSetHiliteBarImageSmallCenter( root, info->image );
 
-	}  // end else if
-	else if( BitTest( root->winGetStyle(), GWS_TAB_CONTROL ) )
+	}
+	else if( BitIsSet( root->winGetStyle(), GWS_TAB_CONTROL ) )
 	{
 		info = GetStateInfo( TC_TAB_0_ENABLED );
 		GadgetTabControlSetEnabledImageTabZero( root, info->image );
@@ -1341,7 +1340,7 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 		GadgetTabControlSetEnabledBorderColorBackground( root, info->borderColor );
 
 
-	
+
 		info = GetStateInfo( TC_TAB_0_DISABLED );
 		GadgetTabControlSetDisabledImageTabZero( root, info->image );
 		GadgetTabControlSetDisabledColorTabZero( root, info->color );
@@ -1388,7 +1387,7 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 		GadgetTabControlSetDisabledBorderColorBackground( root, info->borderColor );
 
 
-		
+
 
 		info = GetStateInfo( TC_TAB_0_HILITE );
 		GadgetTabControlSetHiliteImageTabZero( root, info->image );
@@ -1454,10 +1453,10 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 		root->winSetHiliteColor( 0, info->color );
 		root->winSetHiliteBorderColor( 0, info->borderColor );
 
-	}  // end else
+	}
 
 	//
-	// apply changes to children of this window, unless this 
+	// apply changes to children of this window, unless this
 	// window is a gadget itself, those are "atomic" units remember ;)
 	//
 	if( TheEditor->windowIsGadget( root ) == FALSE )
@@ -1469,7 +1468,7 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 	// force an update of the edit window
 	TheEditWindow->draw();
 
-}  // end applyPropertyTablesToWindow
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS ///////////////////////////////////////////////////////////
@@ -1478,7 +1477,7 @@ void LayoutScheme::applyPropertyTablesToWindow( GameWindow *root )
 // LayoutScheme::LayoutScheme =================================================
 /** */
 //=============================================================================
-LayoutScheme::LayoutScheme( void )
+LayoutScheme::LayoutScheme()
 {
 
 	strcpy( m_schemeFilename, "Default.ls" );
@@ -1489,14 +1488,14 @@ LayoutScheme::LayoutScheme( void )
 	m_disabledText.borderColor = GAME_COLOR_UNDEFINED;
 	m_hiliteText.color = GAME_COLOR_UNDEFINED;
 	m_hiliteText.borderColor = GAME_COLOR_UNDEFINED;
-	m_font = NULL;
+	m_font = nullptr;
 
-}  // end LayoutScheme
+}
 
 // LayoutScheme::~LayoutScheme ================================================
 /** */
 //=============================================================================
-LayoutScheme::~LayoutScheme( void )
+LayoutScheme::~LayoutScheme()
 {
 	Int i;
 
@@ -1504,22 +1503,23 @@ LayoutScheme::~LayoutScheme( void )
 	for( i = 0; i < NUM_STATE_IDENTIFIERS; i++ )
 	{
 
-		if( m_imageAndColorTable[ i ].stateName )
+		if( m_imageAndColorTable[ i ].stateNameBuffer )
 		{
-			
-			delete [] m_imageAndColorTable[ i ].stateName;
-			m_imageAndColorTable[ i ].stateName = NULL;
 
-		}  // end if
+			delete [] m_imageAndColorTable[ i ].stateNameBuffer;
+			m_imageAndColorTable[ i ].stateNameBuffer = nullptr;
+			m_imageAndColorTable[ i ].stateName = nullptr;
 
-	}  // end for i
+		}
 
-}  // end ~LayoutScheme
+	}
+
+}
 
 // LayoutScheme::init =========================================================
 /** Init */
 //=============================================================================
-void LayoutScheme::init( void )
+void LayoutScheme::init()
 {
 	Int i;
 	ImageAndColorInfo *info;
@@ -1527,19 +1527,20 @@ void LayoutScheme::init( void )
 	// just up the default state values
 	for( i = FIRST_VALID_IDENTIFIER; i < NUM_STATE_IDENTIFIERS; i++ )
 	{
-	
+
 		// get info from the static table created for property editing
 		info = GetStateInfo( (StateIdentifier)i );
-		assert( info );	
+		assert( info );
 		m_imageAndColorTable[ i ].windowType = info->windowType;
 		m_imageAndColorTable[ i ].stateID = info->stateID;
 		m_imageAndColorTable[ i ].image = info->image;
 		m_imageAndColorTable[ i ].color = info->color;
 		m_imageAndColorTable[ i ].borderColor = info->borderColor;
-		m_imageAndColorTable[ i ].stateName = new char[strlen( info->stateName ) + 1];
-		strcpy(m_imageAndColorTable[ i ].stateName, info->stateName );
+		m_imageAndColorTable[ i ].stateNameBuffer = new char[strlen( info->stateName ) + 1];
+		m_imageAndColorTable[ i ].stateName = m_imageAndColorTable[ i ].stateNameBuffer;
+		strcpy(m_imageAndColorTable[ i ].stateNameBuffer, info->stateName );
 
-	}  // end for i
+	}
 
 	// assign a default set of colors
 	UnsignedByte alpha = 255;
@@ -1569,573 +1570,573 @@ void LayoutScheme::init( void )
 	const Image *image;
 
 	// push button
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "PushButtonEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "PushButtonEnabled" );
 	storeImageAndColor( BUTTON_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "PushButtonEnabledSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "PushButtonEnabledSelected" );
 	storeImageAndColor( BUTTON_ENABLED_PUSHED, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "PushButtonDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "PushButtonDisabled" );
 	storeImageAndColor( BUTTON_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "PushButtonDisabledSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "PushButtonDisabledSelected" );
 	storeImageAndColor( BUTTON_DISABLED_PUSHED, image, lightGray, gray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "PushButtonHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "PushButtonHilite" );
 	storeImageAndColor( BUTTON_HILITE, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "PushButtonHiliteSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "PushButtonHiliteSelected" );
 	storeImageAndColor( BUTTON_HILITE_PUSHED, image, yellow, white );
 
 	// radio button
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "RadioButtonEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "RadioButtonEnabled" );
 	storeImageAndColor( RADIO_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "RadioButtonEnabledBoxUnselected" ) );
+	image = TheMappedImageCollection->findImageByName( "RadioButtonEnabledBoxUnselected" );
 	storeImageAndColor( RADIO_ENABLED_UNCHECKED_BOX, image, darkRed, black );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "RadioButtonEnabledBoxSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "RadioButtonEnabledBoxSelected" );
 	storeImageAndColor( RADIO_ENABLED_CHECKED_BOX, image, blue, lightBlue );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "RadioButtonDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "RadioButtonDisabled" );
 	storeImageAndColor( RADIO_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "RadioButtonDisabledBoxUnselected" ) );
+	image = TheMappedImageCollection->findImageByName( "RadioButtonDisabledBoxUnselected" );
 	storeImageAndColor( RADIO_DISABLED_UNCHECKED_BOX, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "RadioButtonDisabledBoxSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "RadioButtonDisabledBoxSelected" );
 	storeImageAndColor( RADIO_DISABLED_CHECKED_BOX, image, darkGray, white );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "RadioButtonHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "RadioButtonHilite" );
 	storeImageAndColor( RADIO_HILITE, image, green, lightGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "RadioButtonHiliteBoxUnselected" ) );
+	image = TheMappedImageCollection->findImageByName( "RadioButtonHiliteBoxUnselected" );
 	storeImageAndColor( RADIO_HILITE_UNCHECKED_BOX, image, darkGreen, lightGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "RadioButtonHiliteBoxSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "RadioButtonHiliteBoxSelected" );
 	storeImageAndColor( RADIO_HILITE_CHECKED_BOX, image, yellow, white );
 
 	// check box
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "CheckBoxEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "CheckBoxEnabled" );
 	storeImageAndColor( CHECK_BOX_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "CheckBoxEnabledBoxUnselected" ) );
+	image = TheMappedImageCollection->findImageByName( "CheckBoxEnabledBoxUnselected" );
 	storeImageAndColor( CHECK_BOX_ENABLED_UNCHECKED_BOX, image, WIN_COLOR_UNDEFINED, lightBlue );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "CheckBoxEnabledBoxSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "CheckBoxEnabledBoxSelected" );
 	storeImageAndColor( CHECK_BOX_ENABLED_CHECKED_BOX, image, blue, lightBlue );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "CheckBoxDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "CheckBoxDisabled" );
 	storeImageAndColor( CHECK_BOX_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "CheckBoxDisabledBoxUnselected" ) );
+	image = TheMappedImageCollection->findImageByName( "CheckBoxDisabledBoxUnselected" );
 	storeImageAndColor( CHECK_BOX_DISABLED_UNCHECKED_BOX, image, WIN_COLOR_UNDEFINED, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "CheckBoxDisabledBoxSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "CheckBoxDisabledBoxSelected" );
 	storeImageAndColor( CHECK_BOX_DISABLED_CHECKED_BOX, image, darkGray, white );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "CheckBoxHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "CheckBoxHilite" );
 	storeImageAndColor( CHECK_BOX_HILITE, image, green, lightGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "CheckBoxHiliteBoxUnselected" ) );
+	image = TheMappedImageCollection->findImageByName( "CheckBoxHiliteBoxUnselected" );
 	storeImageAndColor( CHECK_BOX_HILITE_UNCHECKED_BOX, image, WIN_COLOR_UNDEFINED, lightBlue );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "CheckBoxHiliteBoxSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "CheckBoxHiliteBoxSelected" );
 	storeImageAndColor( CHECK_BOX_HILITE_CHECKED_BOX, image, yellow, white );
 
 	// horz slider
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderEnabledLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderEnabledLeftEnd" );
 	storeImageAndColor( HSLIDER_ENABLED_LEFT, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderEnabledRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderEnabledRightEnd" );
 	storeImageAndColor( HSLIDER_ENABLED_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderEnabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderEnabledRepeatingCenter" );
 	storeImageAndColor( HSLIDER_ENABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderEnabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderEnabledSmallRepeatingCenter" );
 	storeImageAndColor( HSLIDER_ENABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderDisabledLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderDisabledLeftEnd" );
 	storeImageAndColor( HSLIDER_DISABLED_LEFT, image, gray, darkGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderDisabledRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderDisabledRightEnd" );
 	storeImageAndColor( HSLIDER_DISABLED_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderDisabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderDisabledRepeatingCenter" );
 	storeImageAndColor( HSLIDER_DISABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderDisabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderDisabledSmallRepeatingCenter" );
 	storeImageAndColor( HSLIDER_DISABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderHiliteLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderHiliteLeftEnd" );
 	storeImageAndColor( HSLIDER_HILITE_LEFT, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderHiliteRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderHiliteRightEnd" );
 	storeImageAndColor( HSLIDER_HILITE_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderHiliteRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderHiliteRepeatingCenter" );
 	storeImageAndColor( HSLIDER_HILITE_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderHiliteSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderHiliteSmallRepeatingCenter" );
 	storeImageAndColor( HSLIDER_HILITE_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderThumbEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderThumbEnabled" );
 	storeImageAndColor( HSLIDER_THUMB_ENABLED, image, lightRed, red );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderThumbEnabledSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderThumbEnabledSelected" );
 	storeImageAndColor( HSLIDER_THUMB_ENABLED_PUSHED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderThumbDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderThumbDisabled" );
 	storeImageAndColor( HSLIDER_THUMB_DISABLED, image, darkGray, gray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderThumbDisabledSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderThumbDisabledSelected" );
 	storeImageAndColor( HSLIDER_THUMB_DISABLED_PUSHED, image, black, darkGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderThumbHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderThumbHilite" );
 	storeImageAndColor( HSLIDER_THUMB_HILITE, image, green, lightGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "HSliderThumbHiliteSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "HSliderThumbHiliteSelected" );
 	storeImageAndColor( HSLIDER_THUMB_HILITE_PUSHED, image, blue, lightBlue );
 
 	// vert slider
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderEnabledTopEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderEnabledTopEnd" );
 	storeImageAndColor( VSLIDER_ENABLED_TOP, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderEnabledBottomEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderEnabledBottomEnd" );
 	storeImageAndColor( VSLIDER_ENABLED_BOTTOM, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderEnabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderEnabledRepeatingCenter" );
 	storeImageAndColor( VSLIDER_ENABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderEnabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderEnabledSmallRepeatingCenter" );
 	storeImageAndColor( VSLIDER_ENABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderDisabledTopEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderDisabledTopEnd" );
 	storeImageAndColor( VSLIDER_DISABLED_TOP, image, gray, darkGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderDisabledBottomEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderDisabledBottomEnd" );
 	storeImageAndColor( VSLIDER_DISABLED_BOTTOM, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderDisabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderDisabledRepeatingCenter" );
 	storeImageAndColor( VSLIDER_DISABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderDisabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderDisabledSmallRepeatingCenter" );
 	storeImageAndColor( VSLIDER_DISABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderHiliteTopEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderHiliteTopEnd" );
 	storeImageAndColor( VSLIDER_HILITE_TOP, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderHiliteBottomEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderHiliteBottomEnd" );
 	storeImageAndColor( VSLIDER_HILITE_BOTTOM, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderHiliteRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderHiliteRepeatingCenter" );
 	storeImageAndColor( VSLIDER_HILITE_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderHiliteSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderHiliteSmallRepeatingCenter" );
 	storeImageAndColor( VSLIDER_HILITE_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderThumbEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderThumbEnabled" );
 	storeImageAndColor( VSLIDER_THUMB_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderThumbEnabledSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderThumbEnabledSelected" );
 	storeImageAndColor( VSLIDER_THUMB_ENABLED_PUSHED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderThumbDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderThumbDisabled" );
 	storeImageAndColor( VSLIDER_THUMB_DISABLED, image, darkGray, gray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderThumbDisabledSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderThumbDisabledSelected" );
 	storeImageAndColor( VSLIDER_THUMB_DISABLED_PUSHED, image, black, darkGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderThumbHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderThumbHilite" );
 	storeImageAndColor( VSLIDER_THUMB_HILITE, image, green, lightGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderThumbHiliteSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderThumbHiliteSelected" );
 	storeImageAndColor( VSLIDER_THUMB_HILITE_PUSHED, image, blue, lightBlue );
 
 	// listbox
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabled" );
 	storeImageAndColor( LISTBOX_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxEnabledSelectedItemLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabledSelectedItemLeftEnd" );
 	storeImageAndColor( LISTBOX_ENABLED_SELECTED_ITEM_LEFT, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxEnabledSelectedItemRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabledSelectedItemRightEnd" );
 	storeImageAndColor( LISTBOX_ENABLED_SELECTED_ITEM_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxEnabledSelectedItemRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabledSelectedItemRepeatingCenter" );
 	storeImageAndColor( LISTBOX_ENABLED_SELECTED_ITEM_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxEnabledSelectedItemSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabledSelectedItemSmallRepeatingCenter" );
 	storeImageAndColor( LISTBOX_ENABLED_SELECTED_ITEM_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabled" );
 	storeImageAndColor( LISTBOX_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxDisabledSelectedItemLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabledSelectedItemLeftEnd" );
 	storeImageAndColor( LISTBOX_DISABLED_SELECTED_ITEM_LEFT, image, lightGray, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxDisabledSelectedItemRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabledSelectedItemRightEnd" );
 	storeImageAndColor( LISTBOX_DISABLED_SELECTED_ITEM_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxDisabledSelectedItemRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabledSelectedItemRepeatingCenter" );
 	storeImageAndColor( LISTBOX_DISABLED_SELECTED_ITEM_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxDisabledSelectedItemSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabledSelectedItemSmallRepeatingCenter" );
 	storeImageAndColor( LISTBOX_DISABLED_SELECTED_ITEM_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHilite" );
 	storeImageAndColor( LISTBOX_HILITE, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxHiliteSelectedItemLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHiliteSelectedItemLeftEnd" );
 	storeImageAndColor( LISTBOX_HILITE_SELECTED_ITEM_LEFT, image, white, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxHiliteSelectedItemRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHiliteSelectedItemRightEnd" );
 	storeImageAndColor( LISTBOX_HILITE_SELECTED_ITEM_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxHiliteSelectedItemRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHiliteSelectedItemRepeatingCenter" );
 	storeImageAndColor( LISTBOX_HILITE_SELECTED_ITEM_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxHiliteSelectedItemSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHiliteSelectedItemSmallRepeatingCenter" );
 	storeImageAndColor( LISTBOX_HILITE_SELECTED_ITEM_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeUpButtonEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeUpButtonEnabled" );
 	storeImageAndColor( LISTBOX_UP_BUTTON_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeUpButtonEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeUpButtonEnabled" );
 	storeImageAndColor( LISTBOX_UP_BUTTON_ENABLED_PUSHED, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeUpButtonDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeUpButtonDisabled" );
 	storeImageAndColor( LISTBOX_UP_BUTTON_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeUpButtonDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeUpButtonDisabled" );
 	storeImageAndColor( LISTBOX_UP_BUTTON_DISABLED_PUSHED, image, lightGray, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeUpButtonHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeUpButtonHilite" );
 	storeImageAndColor( LISTBOX_UP_BUTTON_HILITE, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeUpButtonHiliteSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeUpButtonHiliteSelected" );
 	storeImageAndColor( LISTBOX_UP_BUTTON_HILITE_PUSHED, image, white, darkGreen );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeDownButtonEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonEnabled" );
 	storeImageAndColor( LISTBOX_DOWN_BUTTON_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeDownButtonEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonEnabled" );
 	storeImageAndColor( LISTBOX_DOWN_BUTTON_ENABLED_PUSHED, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeDownButtonDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonDisabled" );
 	storeImageAndColor( LISTBOX_DOWN_BUTTON_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeDownButtonDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonDisabled" );
 	storeImageAndColor( LISTBOX_DOWN_BUTTON_DISABLED_PUSHED, image, lightGray, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeDownButtonHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonHilite" );
 	storeImageAndColor( LISTBOX_DOWN_BUTTON_HILITE, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeDownButtonHiliteSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonHiliteSelected" );
 	storeImageAndColor( LISTBOX_DOWN_BUTTON_HILITE_PUSHED, image, white, darkGreen );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeEnabledTopEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeEnabledTopEnd" );
 	storeImageAndColor( LISTBOX_SLIDER_ENABLED_TOP, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeEnabledBottomEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeEnabledBottomEnd" );
 	storeImageAndColor( LISTBOX_SLIDER_ENABLED_BOTTOM, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeEnabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeEnabledRepeatingCenter" );
 	storeImageAndColor( LISTBOX_SLIDER_ENABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeEnabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeEnabledSmallRepeatingCenter" );
 	storeImageAndColor( LISTBOX_SLIDER_ENABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeDisabledTopEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDisabledTopEnd" );
 	storeImageAndColor( LISTBOX_SLIDER_DISABLED_TOP, image, gray, darkGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeDisabledBottomEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDisabledBottomEnd" );
 	storeImageAndColor( LISTBOX_SLIDER_DISABLED_BOTTOM, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeDisabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDisabledRepeatingCenter" );
 	storeImageAndColor( LISTBOX_SLIDER_DISABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeDisabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDisabledSmallRepeatingCenter" );
 	storeImageAndColor( LISTBOX_SLIDER_DISABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeHiliteTopEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeHiliteTopEnd" );
 	storeImageAndColor( LISTBOX_SLIDER_HILITE_TOP, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeHiliteBottomEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeHiliteBottomEnd" );
 	storeImageAndColor( LISTBOX_SLIDER_HILITE_BOTTOM, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeHiliteRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeHiliteRepeatingCenter" );
 	storeImageAndColor( LISTBOX_SLIDER_HILITE_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeHiliteSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeHiliteSmallRepeatingCenter" );
 	storeImageAndColor( LISTBOX_SLIDER_HILITE_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeThumbEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeThumbEnabled" );
 	storeImageAndColor( LISTBOX_SLIDER_THUMB_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeThumbEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeThumbEnabled" );
 	storeImageAndColor( LISTBOX_SLIDER_THUMB_ENABLED_PUSHED, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeThumbDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeThumbDisabled" );
 	storeImageAndColor( LISTBOX_SLIDER_THUMB_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeThumbDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeThumbDisabled" );
 	storeImageAndColor( LISTBOX_SLIDER_THUMB_DISABLED_PUSHED, image, lightGray, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeThumbHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeThumbHilite" );
 	storeImageAndColor( LISTBOX_SLIDER_THUMB_HILITE, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "VSliderLargeThumbHiliteSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeThumbHiliteSelected" );
 	storeImageAndColor( LISTBOX_SLIDER_THUMB_HILITE_PUSHED, image, white, darkGreen );
 
-	// Combo Box 
+	// Combo Box
 	//---------------------------------------------------------------------------
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabled" );
 	storeImageAndColor( COMBOBOX_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ListBoxEnabledSelectedItemLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabledSelectedItemLeftEnd" );
 	storeImageAndColor( COMBOBOX_ENABLED_SELECTED_ITEM_LEFT, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxEnabledSelectedItemRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabledSelectedItemRightEnd" );
 	storeImageAndColor( COMBOBOX_ENABLED_SELECTED_ITEM_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxEnabledSelectedItemRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabledSelectedItemRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_ENABLED_SELECTED_ITEM_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxEnabledSelectedItemSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabledSelectedItemSmallRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_ENABLED_SELECTED_ITEM_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabled" );
 	storeImageAndColor( COMBOBOX_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxDisabledSelectedItemLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabledSelectedItemLeftEnd" );
 	storeImageAndColor( COMBOBOX_DISABLED_SELECTED_ITEM_LEFT, image, lightGray, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxDisabledSelectedItemRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabledSelectedItemRightEnd" );
 	storeImageAndColor( COMBOBOX_DISABLED_SELECTED_ITEM_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxDisabledSelectedItemRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabledSelectedItemRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_DISABLED_SELECTED_ITEM_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxDisabledSelectedItemSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabledSelectedItemSmallRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_DISABLED_SELECTED_ITEM_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHilite" );
 	storeImageAndColor( COMBOBOX_HILITE, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxHiliteSelectedItemLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHiliteSelectedItemLeftEnd" );
 	storeImageAndColor( COMBOBOX_HILITE_SELECTED_ITEM_LEFT, image, white, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxHiliteSelectedItemRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHiliteSelectedItemRightEnd" );
 	storeImageAndColor( COMBOBOX_HILITE_SELECTED_ITEM_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxHiliteSelectedItemRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHiliteSelectedItemRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_HILITE_SELECTED_ITEM_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxHiliteSelectedItemSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHiliteSelectedItemSmallRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_HILITE_SELECTED_ITEM_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDownButtonEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonEnabled" );
 	storeImageAndColor( COMBOBOX_DROP_DOWN_BUTTON_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDownButtonEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonEnabled" );
 	storeImageAndColor( COMBOBOX_DROP_DOWN_BUTTON_ENABLED_PUSHED, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDownButtonDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonDisabled" );
 	storeImageAndColor( COMBOBOX_DROP_DOWN_BUTTON_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDownButtonDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonDisabled" );
 	storeImageAndColor( COMBOBOX_DROP_DOWN_BUTTON_DISABLED_PUSHED, image, lightGray, gray );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDownButtonHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonHilite" );
 	storeImageAndColor( COMBOBOX_DROP_DOWN_BUTTON_HILITE, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDownButtonHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonHilite" );
 	storeImageAndColor( COMBOBOX_DROP_DOWN_BUTTON_HILITE_PUSHED, image, yellow, white );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString( "TextEntryEnabledLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryEnabledLeftEnd" );
 	storeImageAndColor( COMBOBOX_EDIT_BOX_ENABLED_LEFT, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "TextEntryEnabledRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryEnabledRightEnd" );
 	storeImageAndColor( COMBOBOX_EDIT_BOX_ENABLED_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "TextEntryEnabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryEnabledRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_EDIT_BOX_ENABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "TextEntryEnabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryEnabledSmallRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_EDIT_BOX_ENABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "TextEntryDisabledLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryDisabledLeftEnd" );
 	storeImageAndColor( COMBOBOX_EDIT_BOX_DISABLED_LEFT, image, gray, black );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "TextEntryDisabledRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryDisabledRightEnd" );
 	storeImageAndColor( COMBOBOX_EDIT_BOX_DISABLED_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "TextEntryDisabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryDisabledRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_EDIT_BOX_DISABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "TextEntryDisabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryDisabledSmallRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_EDIT_BOX_DISABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "TextEntryHiliteLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryHiliteLeftEnd" );
 	storeImageAndColor( COMBOBOX_EDIT_BOX_HILITE_LEFT, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "TextEntryHiliteRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryHiliteRightEnd" );
 	storeImageAndColor( COMBOBOX_EDIT_BOX_HILITE_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "TextEntryHiliteRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryHiliteRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_EDIT_BOX_HILITE_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "TextEntryHiliteSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryHiliteSmallRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_EDIT_BOX_HILITE_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxEnabled" ) );
+
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxEnabledSelectedItemLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabledSelectedItemLeftEnd" );
 	storeImageAndColor( COMBOBOX_LISTBOX_ENABLED_SELECTED_ITEM_LEFT, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxEnabledSelectedItemRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabledSelectedItemRightEnd" );
 	storeImageAndColor( COMBOBOX_LISTBOX_ENABLED_SELECTED_ITEM_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxEnabledSelectedItemRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabledSelectedItemRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_LISTBOX_ENABLED_SELECTED_ITEM_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxEnabledSelectedItemSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxEnabledSelectedItemSmallRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_LISTBOX_ENABLED_SELECTED_ITEM_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxDisabledSelectedItemLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabledSelectedItemLeftEnd" );
 	storeImageAndColor( COMBOBOX_LISTBOX_DISABLED_SELECTED_ITEM_LEFT, image, lightGray, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxDisabledSelectedItemRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabledSelectedItemRightEnd" );
 	storeImageAndColor( COMBOBOX_LISTBOX_DISABLED_SELECTED_ITEM_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxDisabledSelectedItemRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabledSelectedItemRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_LISTBOX_DISABLED_SELECTED_ITEM_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxDisabledSelectedItemSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxDisabledSelectedItemSmallRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_LISTBOX_DISABLED_SELECTED_ITEM_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHilite" );
 	storeImageAndColor( COMBOBOX_LISTBOX_HILITE, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxHiliteSelectedItemLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHiliteSelectedItemLeftEnd" );
 	storeImageAndColor( COMBOBOX_LISTBOX_HILITE_SELECTED_ITEM_LEFT, image, white, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxHiliteSelectedItemRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHiliteSelectedItemRightEnd" );
 	storeImageAndColor( COMBOBOX_LISTBOX_HILITE_SELECTED_ITEM_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxHiliteSelectedItemRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHiliteSelectedItemRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_LISTBOX_HILITE_SELECTED_ITEM_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "ListBoxHiliteSelectedItemSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ListBoxHiliteSelectedItemSmallRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_LISTBOX_HILITE_SELECTED_ITEM_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeUpButtonEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeUpButtonEnabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_UP_BUTTON_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeUpButtonEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeUpButtonEnabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_UP_BUTTON_ENABLED_PUSHED, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeUpButtonDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeUpButtonDisabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_UP_BUTTON_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeUpButtonDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeUpButtonDisabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_UP_BUTTON_DISABLED_PUSHED, image, lightGray, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeUpButtonHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeUpButtonHilite" );
 	storeImageAndColor( COMBOBOX_LISTBOX_UP_BUTTON_HILITE, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeUpButtonHiliteSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeUpButtonHiliteSelected" );
 	storeImageAndColor( COMBOBOX_LISTBOX_UP_BUTTON_HILITE_PUSHED, image, white, darkGreen );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDownButtonEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonEnabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_DOWN_BUTTON_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDownButtonEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonEnabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_DOWN_BUTTON_ENABLED_PUSHED, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDownButtonDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonDisabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_DOWN_BUTTON_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDownButtonDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonDisabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_DOWN_BUTTON_DISABLED_PUSHED, image, lightGray, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDownButtonHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonHilite" );
 	storeImageAndColor( COMBOBOX_LISTBOX_DOWN_BUTTON_HILITE, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDownButtonHiliteSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDownButtonHiliteSelected" );
 	storeImageAndColor( COMBOBOX_LISTBOX_DOWN_BUTTON_HILITE_PUSHED, image, white, darkGreen );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeEnabledTopEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeEnabledTopEnd" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_ENABLED_TOP, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeEnabledBottomEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeEnabledBottomEnd" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_ENABLED_BOTTOM, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeEnabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeEnabledRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_ENABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeEnabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeEnabledSmallRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_ENABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDisabledTopEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDisabledTopEnd" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_DISABLED_TOP, image, gray, darkGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDisabledBottomEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDisabledBottomEnd" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_DISABLED_BOTTOM, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDisabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDisabledRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_DISABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeDisabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeDisabledSmallRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_DISABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeHiliteTopEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeHiliteTopEnd" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_HILITE_TOP, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeHiliteBottomEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeHiliteBottomEnd" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_HILITE_BOTTOM, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeHiliteRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeHiliteRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_HILITE_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeHiliteSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeHiliteSmallRepeatingCenter" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_HILITE_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeThumbEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeThumbEnabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_THUMB_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeThumbEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeThumbEnabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_THUMB_ENABLED_PUSHED, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeThumbDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeThumbDisabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_THUMB_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeThumbDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeThumbDisabled" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_THUMB_DISABLED_PUSHED, image, lightGray, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeThumbHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeThumbHilite" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_THUMB_HILITE, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString( "VSliderLargeThumbHiliteSelected" ) );
+	image = TheMappedImageCollection->findImageByName( "VSliderLargeThumbHiliteSelected" );
 	storeImageAndColor( COMBOBOX_LISTBOX_SLIDER_THUMB_HILITE_PUSHED, image, white, darkGreen );
 
 
 	// progress bar
 	//---------------------------------------------------------------------------
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarEnabledLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarEnabledLeftEnd" );
 	storeImageAndColor( PROGRESS_BAR_ENABLED_LEFT, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarEnabledRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarEnabledRightEnd" );
 	storeImageAndColor( PROGRESS_BAR_ENABLED_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarEnabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarEnabledRepeatingCenter" );
 	storeImageAndColor( PROGRESS_BAR_ENABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarEnabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarEnabledSmallRepeatingCenter" );
 	storeImageAndColor( PROGRESS_BAR_ENABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarEnabledBarLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarEnabledBarLeftEnd" );
 	storeImageAndColor( PROGRESS_BAR_ENABLED_BAR_LEFT, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarEnabledBarRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarEnabledBarRightEnd" );
 	storeImageAndColor( PROGRESS_BAR_ENABLED_BAR_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarEnabledBarRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarEnabledBarRepeatingCenter" );
 	storeImageAndColor( PROGRESS_BAR_ENABLED_BAR_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarEnabledBarSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarEnabledBarSmallRepeatingCenter" );
 	storeImageAndColor( PROGRESS_BAR_ENABLED_BAR_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
 	//---------------------------------------------------------------------------
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarDisabledLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarDisabledLeftEnd" );
 	storeImageAndColor( PROGRESS_BAR_DISABLED_LEFT, image, darkGray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarDisabledRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarDisabledRightEnd" );
 	storeImageAndColor( PROGRESS_BAR_DISABLED_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarDisabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarDisabledRepeatingCenter" );
 	storeImageAndColor( PROGRESS_BAR_DISABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarDisabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarDisabledSmallRepeatingCenter" );
 	storeImageAndColor( PROGRESS_BAR_DISABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarDisabledBarLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarDisabledBarLeftEnd" );
 	storeImageAndColor( PROGRESS_BAR_DISABLED_BAR_LEFT, image, lightGray, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarDisabledBarRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarDisabledBarRightEnd" );
 	storeImageAndColor( PROGRESS_BAR_DISABLED_BAR_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarDisabledBarRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarDisabledBarRepeatingCenter" );
 	storeImageAndColor( PROGRESS_BAR_DISABLED_BAR_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarDisabledBarSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarDisabledBarSmallRepeatingCenter" );
 	storeImageAndColor( PROGRESS_BAR_DISABLED_BAR_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
 	//---------------------------------------------------------------------------
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarHiliteLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarHiliteLeftEnd" );
 	storeImageAndColor( PROGRESS_BAR_HILITE_LEFT, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarHiliteRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarHiliteRightEnd" );
 	storeImageAndColor( PROGRESS_BAR_HILITE_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarHiliteRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarHiliteRepeatingCenter" );
 	storeImageAndColor( PROGRESS_BAR_HILITE_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarHiliteSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarHiliteSmallRepeatingCenter" );
 	storeImageAndColor( PROGRESS_BAR_HILITE_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarHiliteBarLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarHiliteBarLeftEnd" );
 	storeImageAndColor( PROGRESS_BAR_HILITE_BAR_LEFT, image, yellow, white );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarHiliteBarRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarHiliteBarRightEnd" );
 	storeImageAndColor( PROGRESS_BAR_HILITE_BAR_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarHiliteBarRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarHiliteBarRepeatingCenter" );
 	storeImageAndColor( PROGRESS_BAR_HILITE_BAR_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "ProgressBarHiliteBarSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "ProgressBarHiliteBarSmallRepeatingCenter" );
 	storeImageAndColor( PROGRESS_BAR_HILITE_BAR_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
 	// static text
 	//---------------------------------------------------------------------------
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "StaticTextEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "StaticTextEnabled" );
 	storeImageAndColor( STATIC_TEXT_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "StaticTextDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "StaticTextDisabled" );
 	storeImageAndColor( STATIC_TEXT_DISABLED, image, darkGray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "StaticTextHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "StaticTextHilite" );
 	storeImageAndColor( STATIC_TEXT_HILITE, image, darkGreen, lightGreen );
 
 	// text entry
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TextEntryEnabledLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryEnabledLeftEnd" );
 	storeImageAndColor( TEXT_ENTRY_ENABLED_LEFT, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TextEntryEnabledRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryEnabledRightEnd" );
 	storeImageAndColor( TEXT_ENTRY_ENABLED_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TextEntryEnabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryEnabledRepeatingCenter" );
 	storeImageAndColor( TEXT_ENTRY_ENABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TextEntryEnabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryEnabledSmallRepeatingCenter" );
 	storeImageAndColor( TEXT_ENTRY_ENABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TextEntryDisabledLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryDisabledLeftEnd" );
 	storeImageAndColor( TEXT_ENTRY_DISABLED_LEFT, image, gray, black );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TextEntryDisabledRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryDisabledRightEnd" );
 	storeImageAndColor( TEXT_ENTRY_DISABLED_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TextEntryDisabledRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryDisabledRepeatingCenter" );
 	storeImageAndColor( TEXT_ENTRY_DISABLED_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TextEntryDisabledSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryDisabledSmallRepeatingCenter" );
 	storeImageAndColor( TEXT_ENTRY_DISABLED_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TextEntryHiliteLeftEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryHiliteLeftEnd" );
 	storeImageAndColor( TEXT_ENTRY_HILITE_LEFT, image, green, darkGreen );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TextEntryHiliteRightEnd" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryHiliteRightEnd" );
 	storeImageAndColor( TEXT_ENTRY_HILITE_RIGHT, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TextEntryHiliteRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryHiliteRepeatingCenter" );
 	storeImageAndColor( TEXT_ENTRY_HILITE_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TextEntryHiliteSmallRepeatingCenter" ) );
+	image = TheMappedImageCollection->findImageByName( "TextEntryHiliteSmallRepeatingCenter" );
 	storeImageAndColor( TEXT_ENTRY_HILITE_SMALL_CENTER, image, WIN_COLOR_UNDEFINED, WIN_COLOR_UNDEFINED );
 
 	// Tab Control
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlZeroEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlZeroEnabled" );
 	storeImageAndColor( TC_TAB_0_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlZeroDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlZeroDisabled" );
 	storeImageAndColor( TC_TAB_0_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlZeroHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlZeroHilite" );
 	storeImageAndColor( TC_TAB_0_HILITE, image, green, darkGreen );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlOneEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlOneEnabled" );
 	storeImageAndColor( TC_TAB_1_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlOneDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlOneDisabled" );
 	storeImageAndColor( TC_TAB_1_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlOneHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlOneHilite" );
 	storeImageAndColor( TC_TAB_1_HILITE, image, green, darkGreen );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlTwoEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlTwoEnabled" );
 	storeImageAndColor( TC_TAB_2_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlTwoDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlTwoDisabled" );
 	storeImageAndColor( TC_TAB_2_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlTwoHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlTwoHilite" );
 	storeImageAndColor( TC_TAB_2_HILITE, image, green, darkGreen );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlThreeEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlThreeEnabled" );
 	storeImageAndColor( TC_TAB_3_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlThreeDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlThreeDisabled" );
 	storeImageAndColor( TC_TAB_3_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlThreeHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlThreeHilite" );
 	storeImageAndColor( TC_TAB_3_HILITE, image, green, darkGreen );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlFourEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlFourEnabled" );
 	storeImageAndColor( TC_TAB_4_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlFourDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlFourDisabled" );
 	storeImageAndColor( TC_TAB_4_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlFourHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlFourHilite" );
 	storeImageAndColor( TC_TAB_4_HILITE, image, green, darkGreen );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlFiveEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlFiveEnabled" );
 	storeImageAndColor( TC_TAB_5_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlFiveDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlFiveDisabled" );
 	storeImageAndColor( TC_TAB_5_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlFiveHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlFiveHilite" );
 	storeImageAndColor( TC_TAB_5_HILITE, image, green, darkGreen );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlSixEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlSixEnabled" );
 	storeImageAndColor( TC_TAB_6_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlSixDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlSixDisabled" );
 	storeImageAndColor( TC_TAB_6_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlSixHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlSixHilite" );
 	storeImageAndColor( TC_TAB_6_HILITE, image, green, darkGreen );
 
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlSevenEnabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlSevenEnabled" );
 	storeImageAndColor( TC_TAB_7_ENABLED, image, red, lightRed );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlSevenDisabled" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlSevenDisabled" );
 	storeImageAndColor( TC_TAB_7_DISABLED, image, gray, lightGray );
-	image = TheMappedImageCollection->findImageByName( AsciiString(  "TabControlSevenHilite" ) );
+	image = TheMappedImageCollection->findImageByName( "TabControlSevenHilite" );
 	storeImageAndColor( TC_TAB_7_HILITE, image, green, darkGreen );
 
-	storeImageAndColor( TAB_CONTROL_ENABLED, NULL, black, white );
-	storeImageAndColor( TAB_CONTROL_DISABLED, NULL, darkGray, white );
-	storeImageAndColor( TAB_CONTROL_HILITE, NULL, black, white );	
+	storeImageAndColor( TAB_CONTROL_ENABLED, nullptr, black, white );
+	storeImageAndColor( TAB_CONTROL_DISABLED, nullptr, darkGray, white );
+	storeImageAndColor( TAB_CONTROL_HILITE, nullptr, black, white );
 
 	// generic
-	storeImageAndColor( GENERIC_ENABLED, NULL, darkBlue, white );
-	storeImageAndColor( GENERIC_DISABLED, NULL, darkGray, white );
-	storeImageAndColor( GENERIC_HILITE, NULL, lightBlue, white );	
+	storeImageAndColor( GENERIC_ENABLED, nullptr, darkBlue, white );
+	storeImageAndColor( GENERIC_DISABLED, nullptr, darkGray, white );
+	storeImageAndColor( GENERIC_HILITE, nullptr, lightBlue, white );
 
 	// default text colors
 	m_enabledText.color = white;
@@ -2146,13 +2147,13 @@ void LayoutScheme::init( void )
 	m_hiliteText.borderColor = darkBlue;
 
 	// default font
-	m_font = TheWindowManager->winFindFont( AsciiString("Times New Roman"), 14, FALSE );
-}  // end init
+	m_font = TheWindowManager->winFindFont( "Times New Roman", 14, FALSE );
+}
 
 // LayoutScheme::openDialog ===================================================
 /** Bring up the layout scheme dialog box */
 //=============================================================================
-void LayoutScheme::openDialog( void )
+void LayoutScheme::openDialog()
 {
 
 	// save the scheme instance we're going to open the dialog on
@@ -2162,9 +2163,9 @@ void LayoutScheme::openDialog( void )
 	DialogBox( TheEditor->getInstance(), (LPCTSTR)LAYOUT_SCHEME_DIALOG,
 						 TheEditor->getWindowHandle(), (DLGPROC)layoutSchemeCallback );
 
-	theScheme = NULL;
+	theScheme = nullptr;
 
-}  // end openDialog
+}
 
 // LayoutScheme::findEntry ====================================================
 /** Find the entry for the state */
@@ -2172,15 +2173,15 @@ void LayoutScheme::openDialog( void )
 ImageAndColorInfo *LayoutScheme::findEntry( StateIdentifier id )
 {
 
-	// santiy
+	// sanity
 	if( id < 0 || id >= NUM_STATE_IDENTIFIERS )
 	{
 
-		DEBUG_LOG(( "Illegal state to to layout 'findEntry' '%d'\n", id ));
+		DEBUG_LOG(( "Illegal state to to layout 'findEntry' '%d'", id ));
 		assert( 0 );
-		return NULL;
+		return nullptr;
 
-	}  // end if
+	}
 
 	// search the state table
 	for( Int i = 0; i < NUM_STATE_IDENTIFIERS; i++ )
@@ -2189,11 +2190,11 @@ ImageAndColorInfo *LayoutScheme::findEntry( StateIdentifier id )
 		if( m_imageAndColorTable[ i ].stateID == id )
 			return &m_imageAndColorTable[ i ];
 
-	}  // end for i
+	}
 
-	return NULL;  // not found
+	return nullptr;  // not found
 
-}  // end findEntry
+}
 
 // LayoutScheme::getImageAndColor =============================================
 /** Get the color and color info for the state */
@@ -2205,16 +2206,16 @@ ImageAndColorInfo *LayoutScheme::getImageAndColor( StateIdentifier id )
 	if( id < 0 || id >= NUM_STATE_IDENTIFIERS )
 	{
 
-		DEBUG_LOG(( "getImageAndColor: Illegal state '%d'\n", id ));
+		DEBUG_LOG(( "getImageAndColor: Illegal state '%d'", id ));
 		assert( 0 );
-		return NULL;
+		return nullptr;
 
-	}  // end if
+	}
 
 	// return the entry for the state
 	return findEntry( id );
 
-}  // end getImageAndColor
+}
 
 // LayoutScheme::storeImageAndColor ===========================================
 /** Store the image and colors of the specific state in our own data array */
@@ -2227,11 +2228,11 @@ void LayoutScheme::storeImageAndColor( StateIdentifier id, const Image *image,
 	if( id < 0 || id >= NUM_STATE_IDENTIFIERS )
 	{
 
-		DEBUG_LOG(( "Illegal state identifier in layout scheme store image and color '%d'\n", id ));
+		DEBUG_LOG(( "Illegal state identifier in layout scheme store image and color '%d'", id ));
 		assert( 0 );
 		return;
 
-	}  // end if
+	}
 
 	// store the info
 	ImageAndColorInfo *entry = findEntry( id );
@@ -2242,9 +2243,9 @@ void LayoutScheme::storeImageAndColor( StateIdentifier id, const Image *image,
 		entry->color = color;
 		entry->borderColor = borderColor;
 
-	}  // en dif
+	}
 
-}  // end storeImageAndColor
+}
 
 // LayoutScheme::saveScheme ===================================================
 /** Save the scheme to the filename provided */
@@ -2257,15 +2258,15 @@ Bool LayoutScheme::saveScheme( char *filename )
 
 	// open the file
 	fp = fopen( filename, "w" );
-	if( fp == NULL )
+	if( fp == nullptr )
 	{
 
-		DEBUG_LOG(( "saveScheme: Unable to open file '%s'\n", filename ));
+		DEBUG_LOG(( "saveScheme: Unable to open file '%s'", filename ));
 		MessageBox( TheEditor->getWindowHandle(),
 								"Unable to open scheme for for saving.  Read only?", "Save Error", MB_OK );
 		return FALSE;
 
-	}  // end if
+	}
 
 	// save the filename we're using now
 	setSchemeFilename( filename );
@@ -2309,9 +2310,9 @@ Bool LayoutScheme::saveScheme( char *filename )
 		assert( info );
 
 		// get the color data in more RGB friendly output
-		GameGetColorComponents( info->color, &colorR, &colorG, 
+		GameGetColorComponents( info->color, &colorR, &colorG,
 														&colorB, &colorA );
-		GameGetColorComponents( info->borderColor, &bColorR, &bColorG, 
+		GameGetColorComponents( info->borderColor, &bColorR, &bColorG,
 														&bColorB, &bColorA );
 
 		// output it
@@ -2319,14 +2320,14 @@ Bool LayoutScheme::saveScheme( char *filename )
 						 i, info->image ? info->image->getName().str() : "NONE", colorR, colorG, colorB, colorA,
 						 bColorR, bColorG, bColorB, bColorA );
 
-	}  // end for i
+	}
 
 	// close the file
 	fclose( fp );
 
 	return TRUE;
 
-}  // end saveScheme
+}
 
 // LayoutScheme::loadScheme ===================================================
 /** Load the layout scheme into this class instance */
@@ -2339,7 +2340,7 @@ Bool LayoutScheme::loadScheme( char *filename )
 
 	// open the file
 	fp = fopen( filename, "r" );
-	if( fp == NULL )
+	if( fp == nullptr )
 		return FALSE;
 
 	// save the filename we're using now
@@ -2347,32 +2348,43 @@ Bool LayoutScheme::loadScheme( char *filename )
 
 	// write header
 	Int version;
-	fscanf( fp, "Window Layout Scheme: Version '%d'\n", &version );
-	if( version != SCHEME_VERSION )
+	if (fscanf( fp, "Window Layout Scheme: Version '%d'\n", &version ) == 1)
 	{
+		if( version != SCHEME_VERSION )
+		{
 
-		DEBUG_LOG(( "loadScheme: Old layout file version '%d'\n", version ));
-		MessageBox( TheEditor->getWindowHandle(),
-								"Old layout version, cannot open.", "Old File", MB_OK );
-		return FALSE;
+			DEBUG_LOG(( "loadScheme: Old layout file version '%d'", version ));
+			MessageBox( TheEditor->getWindowHandle(),
+									"Old layout version, cannot open.", "Old File", MB_OK );
+			return FALSE;
 
-	}  // end if
-
+		}
+	}
 	// default text colors
-	fscanf( fp, "Enabled Text: (%d,%d,%d,%d)\n", &colorR, &colorG, &colorB, &colorA );
-	m_enabledText.color = GameMakeColor( colorR, colorG, colorB, colorA );
-	fscanf( fp, "Enabled Text Border: (%d,%d,%d,%d)\n", &colorR, &colorG, &colorB, &colorA );
-	m_enabledText.borderColor = GameMakeColor( colorR, colorG, colorB, colorA );
-
-	fscanf( fp, "Disabled Text: (%d,%d,%d,%d)\n", &colorR, &colorG, &colorB, &colorA );
-	m_disabledText.color = GameMakeColor( colorR, colorG, colorB, colorA );
-	fscanf( fp, "Disabled Text Border: (%d,%d,%d,%d)\n", &colorR, &colorG, &colorB, &colorA );
-	m_disabledText.borderColor = GameMakeColor( colorR, colorG, colorB, colorA );
-
-	fscanf( fp, "Hilite Text: (%d,%d,%d,%d)\n", &colorR, &colorG, &colorB, &colorA );
-	m_hiliteText.color = GameMakeColor( colorR, colorG, colorB, colorA );
-	fscanf( fp, "Hilite Text Border: (%d,%d,%d,%d)\n", &colorR, &colorG, &colorB, &colorA );
-	m_hiliteText.borderColor = GameMakeColor( colorR, colorG, colorB, colorA );
+	if (fscanf( fp, "Enabled Text: (%hhu,%hhu,%hhu,%hhu)\n", &colorR, &colorG, &colorB, &colorA ) == 4)
+	{
+		m_enabledText.color = GameMakeColor( colorR, colorG, colorB, colorA );
+	}
+	if (fscanf( fp, "Enabled Text Border: (%hhu,%hhu,%hhu,%hhu)\n", &colorR, &colorG, &colorB, &colorA ) == 4)
+	{
+		m_enabledText.borderColor = GameMakeColor( colorR, colorG, colorB, colorA );
+	}
+	if (fscanf( fp, "Disabled Text: (%hhu,%hhu,%hhu,%hhu)\n", &colorR, &colorG, &colorB, &colorA ) == 4)
+	{
+		m_disabledText.color = GameMakeColor( colorR, colorG, colorB, colorA );
+	}
+	if (fscanf( fp, "Disabled Text Border: (%hhu,%hhu,%hhu,%hhu)\n", &colorR, &colorG, &colorB, &colorA ) == 4)
+	{
+		m_disabledText.borderColor = GameMakeColor( colorR, colorG, colorB, colorA );
+	}
+	if (fscanf( fp, "Hilite Text: (%hhu,%hhu,%hhu,%hhu)\n", &colorR, &colorG, &colorB, &colorA ) == 4)
+	{
+		m_hiliteText.color = GameMakeColor( colorR, colorG, colorB, colorA );
+	}
+	if (fscanf( fp, "Hilite Text Border: (%hhu,%hhu,%hhu,%hhu)\n", &colorR, &colorG, &colorB, &colorA ) == 4)
+	{
+		m_hiliteText.borderColor = GameMakeColor( colorR, colorG, colorB, colorA );
+	}
 
 	// default font
 	char fontBuffer[ 256 ];
@@ -2392,43 +2404,45 @@ Bool LayoutScheme::loadScheme( char *filename )
 		fontBuffer[ index++ ] = c;
 		c = fgetc( fp );
 
-	}  // end while
+	}
 	fontBuffer[ index ] = '\0';
 	c = fgetc( fp );  // the end quite itself
 
 	// read the size and bold data elements
-	fscanf( fp, " Size: %d Bold: %d\n", &size, &bold );
-
-	// set the font
-	m_font = TheFontLibrary->getFont( AsciiString(fontBuffer), size, bold );
+	if(fscanf( fp, " Size: %i Bold: %i\n", &size, &bold ) == 2)
+	{
+		// set the font
+		m_font = TheFontLibrary->getFont( AsciiString(fontBuffer), size, bold );
+	}
 
 	// all the data for all the states
 	Int numStates, state;
 	char imageBuffer[ 128 ];
-	fscanf( fp, "Number of states: %d\n", &numStates );
-	for( Int i = 0; i < numStates; i++ )
+	if (fscanf( fp, "Number of states: %i\n", &numStates ) == 1)
 	{
+		for( Int i = 0; i < numStates; i++ )
+		{
 
-		// read all the data
-		fscanf( fp, "%d: Image: %s Color: (%d,%d,%d,%d) Border: (%d,%d,%d,%d)\n",
-						&state, imageBuffer, &colorR, &colorG, &colorB, &colorA,
-						&bColorR, &bColorG, &bColorB, &bColorA );
+			// read all the data
+			if( fscanf( fp, "%d: Image: %s Color: (%hhu,%hhu,%hhu,%hhu) Border: (%hhu,%hhu,%hhu,%hhu)\n",
+							&state, imageBuffer, &colorR, &colorG, &colorB, &colorA,
+							&bColorR, &bColorG, &bColorB, &bColorA ) == 10)
+			{
+				// sanity
+				assert( state == i );
 
-		// sanity
-		assert( state == i );
-
-		// store the info
-		storeImageAndColor( (StateIdentifier)state,
-												TheMappedImageCollection->findImageByName( AsciiString(  imageBuffer ) ),
-												GameMakeColor( colorR, colorG, colorB, colorA ),
-												GameMakeColor( bColorR, bColorG, bColorB, bColorA ) );
-
-	}  // end for i
-
+				// store the info
+				storeImageAndColor( (StateIdentifier)state,
+														TheMappedImageCollection->findImageByName( imageBuffer ),
+														GameMakeColor( colorR, colorG, colorB, colorA ),
+														GameMakeColor( bColorR, bColorG, bColorB, bColorA ) );
+			}
+		}
+	}
 	// close the file
 	fclose( fp );
 
 	return TRUE;
 
-}  // end loadScheme
+}
 

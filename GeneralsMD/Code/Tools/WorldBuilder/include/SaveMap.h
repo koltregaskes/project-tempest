@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_SAVEMAP_H__BCE93FF1_DA04_4F63_A483_D89BF1F49E32__INCLUDED_)
-#define AFX_SAVEMAP_H__BCE93FF1_DA04_4F63_A483_D89BF1F49E32__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // SaveMap.h : header file
 //
 
@@ -40,7 +36,7 @@ class SaveMap : public CDialog
 {
 // Construction
 public:
-	SaveMap(TSaveMapInfo *pInfo, CWnd* pParent = NULL);   // standard constructor
+	SaveMap(TSaveMapInfo *pInfo, CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(SaveMap)
@@ -53,7 +49,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(SaveMap)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -65,18 +61,16 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(SaveMap)
-	virtual void OnOK();
-	virtual void OnCancel();
+	virtual void OnOK() override;
+	virtual void OnCancel() override;
 	afx_msg void OnBrowse();
 	afx_msg void OnSystemMaps();
 	afx_msg void OnUserMaps();
 	afx_msg void OnSelchangeSaveList();
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_SAVEMAP_H__BCE93FF1_DA04_4F63_A483_D89BF1F49E32__INCLUDED_)

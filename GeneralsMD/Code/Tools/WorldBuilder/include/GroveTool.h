@@ -21,20 +21,17 @@
 
 #pragma once
 
-#ifndef GroveTool_H
-#define GroveTool_H
-
-#include "lib/Basetype.h"
+#include "Lib/BaseType.h"
 #include "Tool.h"
-#include "common/MapObject.h"
+#include "Common/MapObject.h"
 class WorldHeightMapEdit;
 
 /*************************************************************************/
 /**                             GroveTool
-	 Does the add a grove of trees tool operation. 
+	 Does the add a grove of trees tool operation.
 ***************************************************************************/
 ///  Add a grove of trees tool.
-class GroveTool : public Tool 
+class GroveTool : public Tool
 {
 protected:
 	enum {HYSTERESIS = 3};
@@ -49,18 +46,15 @@ protected:
 	void _plantGroveInBox(CPoint tl, CPoint br, WbView* pView);
 
 	void addObj(Coord3D *pos, AsciiString name);
-	void activate();
+	virtual void activate() override;
 
 public:
-	GroveTool(void);
-	~GroveTool(void);
+	GroveTool();
+	virtual ~GroveTool() override;
 
 public:
 	/// Perform tool on mouse down.
-	virtual void mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc);
-	virtual void mouseUp(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc);
-	virtual void mouseMoved(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc);
+	virtual void mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) override;
+	virtual void mouseUp(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) override;
+	virtual void mouseMoved(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) override;
 };
-
-
-#endif //TOOL_H

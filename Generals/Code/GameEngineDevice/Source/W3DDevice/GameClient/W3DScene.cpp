@@ -36,6 +36,7 @@
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
 #include "Lib/BaseType.h"
+#include "Common/GameUtility.h"
 #include "Common/GlobalData.h"
 #include "Common/PerfTimer.h"
 #include "Common/Player.h"
@@ -49,7 +50,6 @@
 #include "W3DDevice/GameClient/HeightMap.h"
 #include "W3DDevice/GameClient/W3DScene.h"
 #include "W3DDevice/GameClient/W3DDynamicLight.h"
-#include "W3DDevice/GameClient/W3DGranny.h"
 #include "W3DDevice/GameClient/W3DShadow.h"
 #include "W3DDevice/GameClient/W3DStatusCircle.h"
 #include "W3DDevice/GameClient/W3DCustomScene.h"
@@ -58,22 +58,18 @@
 #include "WW3D2/dx8renderer.h"
 #include "WW3D2/sortingrenderer.h"
 #include "WW3D2/dx8wrapper.h"
-#include "WW3D2/Light.h"
+#include "WW3D2/light.h"
 #include "WW3D2/matpass.h"
 #include "WW3D2/shader.h"
-#include "WW3D2/DX8Caps.h"
+#include "WW3D2/dx8caps.h"
 #include "WW3D2/colorspace.h"
 
-#ifdef _INTERNAL
-// for occasional debugging...
-//#pragma optimize("", off)
-//#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // DEFINITIONS ////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///@todo: Remove these globals since we no longer need W3D to call them for us.
+extern void PrepareShadows();
 extern void DoTrees(RenderInfoClass & rinfo);
 extern void DoShadows(RenderInfoClass & rinfo, Bool stencilPass);
 extern void DoParticles(RenderInfoClass & rinfo);
@@ -96,19 +92,21 @@ RTS3DScene::RTS3DScene()
 	setName("RTS3DScene");
 	m_drawTerrainOnly = false;
 	m_numGlobalLights=0;
-	for (Int i=0; i<LightEnvironmentClass::MAX_LIGHTS; i++)
-	{	m_globalLight[i]=NULL;
+	Int i=0;
+	for (; i<LightEnvironmentClass::MAX_LIGHTS; i++)
+	{
+		m_globalLight[i]=nullptr;
 		m_infantryLight[i]=NEW_REF( LightClass, (LightClass::DIRECTIONAL) );
 	}
 
 	m_scratchLight = NEW_REF( LightClass, (LightClass::DIRECTIONAL) );
 //	REF_PTR_SET(m_globalLight[lightIndex], pLight);
 
-#if defined(_DEBUG) || defined(_INTERNAL)
+#if ENABLE_CONFIGURABLE_SHROUD
 	if (TheGlobalData->m_shroudOn)
 		m_shroudMaterialPass = NEW_REF(W3DShroudMaterialPassClass,());
 	else
-		m_shroudMaterialPass = NULL;
+		m_shroudMaterialPass = nullptr;
 #else
 	m_shroudMaterialPass = NEW_REF(W3DShroudMaterialPassClass,());
 #endif
@@ -133,34 +131,43 @@ RTS3DScene::RTS3DScene()
 	m_heatVisionOnlyPass->Set_Material(heatVisionMtl);
 	m_heatVisionOnlyPass->Set_Shader(heatVisionShader);
 
-	//Allocate memory to hold queue of visible renderobjects that need to be drawn last
+	//Allocate memory to hold queue of visible render objects that need to be drawn last
 	//because they are forced translucent.
 	m_translucentObjectsCount = 0;
-	if (TheGlobalData && TheGlobalData->m_maxVisibleTranslucentObjects)
+	if (TheGlobalData->m_maxVisibleTranslucentObjects > 0)
 		m_translucentObjectsBuffer = NEW RenderObjClass* [TheGlobalData->m_maxVisibleTranslucentObjects];
 	else
-		m_translucentObjectsBuffer = NULL;
+		m_translucentObjectsBuffer = nullptr;
 
 	m_numPotentialOccluders=0;
 	m_numPotentialOccludees=0;
 	m_numNonOccluderOrOccludee=0;
 	m_occludedObjectsCount=0;
 
-	m_potentialOccluders=NULL;
-	m_potentialOccludees=NULL;
-	m_nonOccludersOrOccludees=NULL;
+	if (TheGlobalData->m_maxVisibleOccluderObjects > 0)
+		m_potentialOccluders = NEW RenderObjClass* [TheGlobalData->m_maxVisibleOccluderObjects];
+	else
+		m_potentialOccluders = nullptr;
+
+	if (TheGlobalData->m_maxVisibleOccludeeObjects > 0)
+		m_potentialOccludees = NEW RenderObjClass* [TheGlobalData->m_maxVisibleOccludeeObjects];
+	else
+		m_potentialOccludees = nullptr;
+
+	if (TheGlobalData->m_maxVisibleNonOccluderOrOccludeeObjects > 0)
+		m_nonOccludersOrOccludees = NEW RenderObjClass* [TheGlobalData->m_maxVisibleNonOccluderOrOccludeeObjects];
+	else
+		m_nonOccludersOrOccludees = nullptr;
 
 	//Modify the shader to make occlusion transparent
 	ShaderClass shader = PlayerColorShader;
 	shader.Set_Src_Blend_Func(ShaderClass::SRCBLEND_SRC_ALPHA);
 	shader.Set_Dst_Blend_Func(ShaderClass::DSTBLEND_ONE_MINUS_SRC_ALPHA);
 
-    m_potentialOccluders = NEW RenderObjClass* [TheGlobalData->m_maxVisibleOccluderObjects];
-	m_potentialOccludees = NEW RenderObjClass* [TheGlobalData->m_maxVisibleOccludeeObjects];
-	m_nonOccludersOrOccludees = NEW RenderObjClass* [TheGlobalData->m_maxVisibleNonOccluderOrOccludeeObjects];
-#ifdef USE_NON_STENCIL_OCCLUSION	
+#ifdef USE_NON_STENCIL_OCCLUSION
 		for (i=0; i<MAX_PLAYER_COUNT; i++)
-		{	m_occludedMaterialPass[i]=NEW_REF(MaterialPassClass,());
+		{
+			m_occludedMaterialPass[i]=NEW_REF(MaterialPassClass,());
 			VertexMaterialClass * vmtl = NEW_REF(VertexMaterialClass,());
 			vmtl->Set_Lighting(true);
 			vmtl->Set_Ambient(0,0,0);	//we're only using emissive so kill all other lights.
@@ -171,10 +178,10 @@ RTS3DScene::RTS3DScene()
 		}
 #else
 		for (i=0; i<MAX_PLAYER_COUNT; i++)
-			m_occludedMaterialPass[i]=NULL;
+			m_occludedMaterialPass[i]=nullptr;
 #endif
 
-}  // end RTS3DScene
+}
 
 //=============================================================================
 // RTS3DScene::~RTS3DScene
@@ -183,7 +190,8 @@ RTS3DScene::RTS3DScene()
 //=============================================================================
 RTS3DScene::~RTS3DScene()
 {
-	for (Int i=0; i<LightEnvironmentClass::MAX_LIGHTS; i++)
+	Int i=0;
+	for (; i<LightEnvironmentClass::MAX_LIGHTS; i++)
 	{
 		REF_PTR_RELEASE(m_globalLight[i]);
 		REF_PTR_RELEASE(m_infantryLight[i]);
@@ -199,23 +207,16 @@ RTS3DScene::~RTS3DScene()
 
 	REF_PTR_RELEASE(m_heatVisionOnlyPass);
 
-	if (m_translucentObjectsBuffer)
-		delete [] m_translucentObjectsBuffer;
-
-	if (m_nonOccludersOrOccludees)
-		delete [] m_nonOccludersOrOccludees;
-
-	if (m_potentialOccludees)
-		delete [] m_potentialOccludees;
-
-	if (m_potentialOccluders)
-		delete [] m_potentialOccluders;
+	delete [] m_translucentObjectsBuffer;
+	delete [] m_nonOccludersOrOccludees;
+	delete [] m_potentialOccludees;
+	delete [] m_potentialOccluders;
 
 	for (i=0; i<MAX_PLAYER_COUNT; i++)
-	{	REF_PTR_RELEASE(m_occludedMaterialPass[i]);
+	{
+		REF_PTR_RELEASE(m_occludedMaterialPass[i]);
 	}
-
-}  // end ~RTS3DScene
+}
 
 
 void	RTS3DScene::setGlobalLight(LightClass *pLight, Int lightIndex)
@@ -241,13 +242,13 @@ void RTS3DScene::flagOccludedObjects(CameraClass * camera)
 	Bool hit=FALSE;
 	Vector3 newEndPoint;
 	result.ComputeContactPoint=false;
-	RayCollisionTestClass raytest(lineseg,&result,COLLISION_TYPE_ALL,false,false);
-	raytest.CollisionType=COLLISION_TYPE_ALL;
+	RayCollisionTestClass raytest(lineseg,&result,COLL_TYPE_ALL,false,false);
+	raytest.CollisionType=COLL_TYPE_ALL;
 
 	m_occludedObjectsCount=0;
 
 	for (Int i=0; i<m_numPotentialOccludees; i++,occludee++)
-	{	
+	{
 		raytest.Ray.Set(camPosition,(*occludee)->Get_Position());
 
 		RenderObjClass **occluder=m_potentialOccluders;
@@ -262,7 +263,7 @@ void RTS3DScene::flagOccludedObjects(CameraClass * camera)
 
 			// make a vector from the ray origin to the sphere center
 			Vector3 sphere_vector(sphere->Center - raytest.Ray.Get_P0());
-			
+
 			// get the dot product between the sphere_vector and the ray vector
 			Real Alpha = Vector3::Dot_Product(sphere_vector, raytest.Ray.Get_Dir());
 
@@ -270,7 +271,7 @@ void RTS3DScene::flagOccludedObjects(CameraClass * camera)
 
 			if(Beta < 0.0f)
 				continue;	//no intersection
-				
+
 			//Do a more accurate test against object geometry
 			if (robj->Cast_Ray(raytest))
 			{
@@ -279,12 +280,14 @@ void RTS3DScene::flagOccludedObjects(CameraClass * camera)
 				raytest.CollidedRenderObj = robj;
 				hit=TRUE;
 				//reset the result space for next test
-				result.StartBad = false; result.Fraction = 1.0f;
+				result.StartBad = false;
+				result.Fraction = 1.0f;
 				break;
 			}
 		}
 		if (hit)
-		{	//ocludee was blocked by something so flag it for custom rendering
+		{
+			//occludee was blocked by something so flag it for custom rendering
 			DrawableInfo *drawInfo=(DrawableInfo *)(*occludee)->Get_User_Data();
 			drawInfo->m_flags |= DrawableInfo::ERF_IS_OCCLUDED;
 			m_potentialOccludees[m_occludedObjectsCount++] = *occludee;
@@ -315,7 +318,7 @@ Bool RTS3DScene::castRay(RayCollisionTestClass & raytest, Bool testAll, Int coll
 	Vector3 newEndPoint;
 	Bool hit=FALSE;
 
-	tempRayTest.CollisionType = COLLISION_TYPE_ALL;
+	tempRayTest.CollisionType = COLL_TYPE_ALL;
 	//check if a mesh is translucent before colliding with it. Skips headlights, etc.
 	tempRayTest.CheckTranslucent = true;
 
@@ -338,7 +341,7 @@ Bool RTS3DScene::castRay(RayCollisionTestClass & raytest, Bool testAll, Int coll
 
 			// make a vector from the ray origin to the sphere center
 			Vector3 sphere_vector(sphere->Center - tempRayTest.Ray.Get_P0());
-		
+
 			// get the dot product between the sphere_vector and the ray vector
 			Real Alpha = Vector3::Dot_Product(sphere_vector, tempRayTest.Ray.Get_Dir());
 
@@ -346,7 +349,7 @@ Bool RTS3DScene::castRay(RayCollisionTestClass & raytest, Bool testAll, Int coll
 
 			if(Beta < 0.0f)
 				continue;	//no intersection
-			
+
 			//Do a more accurate test against object geometry
 			if (robj->Cast_Ray(tempRayTest))
 			{
@@ -381,8 +384,8 @@ void RTS3DScene::Visibility_Check(CameraClass * camera)
 #endif
 
 	RefRenderObjListIterator it(&RenderList);
-	DrawableInfo *drawInfo = NULL;
-	Drawable	*draw = NULL;
+	DrawableInfo *drawInfo = nullptr;
+	Drawable	*draw = nullptr;
 	RenderObjClass * robj;
 
 	m_numPotentialOccluders=0;
@@ -390,14 +393,13 @@ void RTS3DScene::Visibility_Check(CameraClass * camera)
 	m_translucentObjectsCount=0;
 	m_numNonOccluderOrOccludee=0;
 
-	Int currentFrame=0;
-	if (TheGameLogic) currentFrame = TheGameLogic->getFrame();
+	Int currentFrame = TheGameLogic ? TheGameLogic->getFrame() : 0;
 	if (currentFrame <= TheGlobalData->m_defaultOcclusionDelay)
 		currentFrame = TheGlobalData->m_defaultOcclusionDelay+1;	//make sure occlusion is enabled when game starts (frame 0).
 
-
-	if (ShaderClass::Is_Backface_Culling_Inverted()) 
-	{	//we are rendering reflections
+	if (ShaderClass::Is_Backface_Culling_Inverted())
+	{
+		//we are rendering reflections
 		///@todo: Have better flag to detect reflection pass
 
 		// Loop over all top-level RenderObjects in this scene. If the bounding sphere is not in front
@@ -406,7 +408,7 @@ void RTS3DScene::Visibility_Check(CameraClass * camera)
 
 			robj = it.Peek_Obj();
 
-			draw=NULL;
+			draw=nullptr;
 			drawInfo = (DrawableInfo *)robj->Get_User_Data();
 			if (drawInfo)
 				draw=drawInfo->m_drawable;
@@ -420,7 +422,8 @@ void RTS3DScene::Visibility_Check(CameraClass * camera)
 				}
 			}
 			else
-			{	//perform normal culling on non-drawables
+			{
+				//perform normal culling on non-drawables
 				if (robj->Is_Force_Visible()) {
 					robj->Set_Visible(true);
 				} else {
@@ -447,9 +450,10 @@ void RTS3DScene::Visibility_Check(CameraClass * camera)
 				bool isVisible=!camera->Cull_Sphere(robj->Get_Bounding_Sphere());
 
 				if (isVisible)
-				{	//need to keep track of occluders and ocludees for subsequent code.
+				{
+					//need to keep track of occluders and occludees for subsequent code.
 					drawInfo = (DrawableInfo *)robj->Get_User_Data();
-					if (drawInfo && (draw=drawInfo->m_drawable) != NULL)
+					if (drawInfo && (draw=drawInfo->m_drawable) != nullptr)
 					{
 						if (draw->isDrawableEffectivelyHidden() || draw->getFullyObscuredByShroud())
 						{	robj->Set_Visible(false);
@@ -459,29 +463,30 @@ void RTS3DScene::Visibility_Check(CameraClass * camera)
 						drawInfo->m_flags = DrawableInfo::ERF_IS_NORMAL;	//clear any rendering flags that may be in effect.
 
 						if (draw->getEffectiveOpacity() != 1.0f && m_translucentObjectsCount < TheGlobalData->m_maxVisibleTranslucentObjects)
-						{	drawInfo->m_flags = DrawableInfo::ERF_IS_TRANSLUCENT;	//object is translucent
+						{
+							drawInfo->m_flags = DrawableInfo::ERF_IS_TRANSLUCENT;
 							m_translucentObjectsBuffer[m_translucentObjectsCount++] = robj;
 						}
-						else
-						if (TheGlobalData->m_enableBehindBuildingMarkers && TheGameLogic->getShowBehindBuildingMarkers())
+						else if (TheGlobalData->m_enableBehindBuildingMarkers && TheGameLogic && TheGameLogic->getShowBehindBuildingMarkers())
 						{
 							//visible drawable. Check if it's either an occluder or occludee
 							if (draw->isKindOf(KINDOF_STRUCTURE) && m_numPotentialOccluders < TheGlobalData->m_maxVisibleOccluderObjects)
-							{	//object which could occlude other objects that need to be visible.
+							{
+								//object which could occlude other objects that need to be visible.
 								m_potentialOccluders[m_numPotentialOccluders++]=robj;
 								drawInfo->m_flags |= DrawableInfo::ERF_POTENTIAL_OCCLUDER;
 							}
-							else
-							if (draw->getObject() &&
+							else if (draw->getObject() &&
 									(draw->isKindOf(KINDOF_SCORE) || draw->isKindOf(KINDOF_SCORE_CREATE) || draw->isKindOf(KINDOF_SCORE_DESTROY) || draw->isKindOf(KINDOF_MP_COUNT_FOR_VICTORY)) &&
 									(draw->getObject()->getSafeOcclusionFrame()) <= currentFrame && m_numPotentialOccludees < TheGlobalData->m_maxVisibleOccludeeObjects)
-							{	//object which could be occluded but still needs to be visible.
+							{
+								//object which could be occluded but still needs to be visible.
 								m_potentialOccludees[m_numPotentialOccludees++]=robj;
 								drawInfo->m_flags |= DrawableInfo::ERF_POTENTIAL_OCCLUDEE;
 							}
-							else
-							if (drawInfo->m_flags == DrawableInfo::ERF_IS_NORMAL && m_numNonOccluderOrOccludee < TheGlobalData->m_maxVisibleNonOccluderOrOccludeeObjects)
-							{	//regular object with no custom effects but still needs to be delayed to get the occlusion feature to work correctly.
+							else if (drawInfo->m_flags == DrawableInfo::ERF_IS_NORMAL && m_numNonOccluderOrOccludee < TheGlobalData->m_maxVisibleNonOccluderOrOccludeeObjects)
+							{
+								//regular object with no custom effects but still needs to be delayed to get the occlusion feature to work correctly.
 								m_nonOccludersOrOccludees[m_numNonOccluderOrOccludee++]=robj;
 								drawInfo->m_flags |= DrawableInfo::ERF_IS_NON_OCCLUDER_OR_OCCLUDEE;
 							}
@@ -515,10 +520,10 @@ void RTS3DScene::renderSpecificDrawables(RenderInfoClass &rinfo, Int numDrawable
 #ifdef DIRTY_CONDITION_FLAGS
 	StDrawableDirtyStuffLocker lockDirtyStuff;
 #endif
-	Int localPlayerIndex = ThePlayerList ? ThePlayerList->getLocalPlayer()->getPlayerIndex() : 0;
-	RefRenderObjListIterator it(&UpdateList);	
+	const Int localPlayerIndex = rts::getObservedOrLocalPlayerIndex_Safe();
+	RefRenderObjListIterator it(&UpdateList);
 	// loop through all render objects in the list:
-	for (it.First(&RenderList); !it.Is_Done();) 
+	for (it.First(&RenderList); !it.Is_Done();)
 	{
 		RenderObjClass *robj;
 		// get the render object
@@ -527,7 +532,7 @@ void RTS3DScene::renderSpecificDrawables(RenderInfoClass &rinfo, Int numDrawable
 		it.Next();	//advance to next object in case this one gets deleted during renderOneObject().
 
 		DrawableInfo *drawInfo = (DrawableInfo *)robj->Get_User_Data();
-		Drawable *draw=NULL;
+		Drawable *draw=nullptr;
 		if (drawInfo)
 			draw = drawInfo->m_drawable;
 		if (!draw) continue;
@@ -551,18 +556,18 @@ void RTS3DScene::renderSpecificDrawables(RenderInfoClass &rinfo, Int numDrawable
 //=============================================================================
 void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, Int localPlayerIndex)
 {
-
-	Drawable *draw = NULL;
-	DrawableInfo *drawInfo = NULL;
+	Drawable *draw = nullptr;
+	DrawableInfo *drawInfo = nullptr;
 	Bool drawableHidden=FALSE;
-	Object* obj = NULL;
+	Object* obj = nullptr;
 	ObjectShroudStatus ss=OBJECTSHROUD_INVALID;
 	Bool doExtraMaterialPop=FALSE;
 	Bool doExtraFlagsPop=FALSE;
 	LightClass **sceneLights=m_globalLight;
 
 	if (robj->Class_ID() == RenderObjClass::CLASSID_IMAGE3D	)
-	{	robj->Render(rinfo);	//notify decals system that this track is visible
+	{
+		robj->Render(rinfo);	//notify decals system that this track is visible
 		return;	//decals are not lit by this system yet so skip rest of lighting
 	}
 
@@ -570,7 +575,8 @@ void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, I
 	SphereClass sph = robj->Get_Bounding_Sphere();
 	drawInfo = (DrawableInfo *)robj->Get_User_Data();
 	if (drawInfo)
-	{	draw = drawInfo->m_drawable;
+	{
+		draw = drawInfo->m_drawable;
 		//If we have a drawInfo but not drawable, we must be dealing with
 		//a ghost object which is always fogged.
 		if (!draw)
@@ -592,12 +598,12 @@ void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, I
 		obj = draw->getObject();
 		if (obj) {
 			ss = obj->getShroudedStatus(localPlayerIndex);
-			// For objects like planes, that pop out of the shroud, fire, then head back, 
-			// we keep drawing them for 2 seconds after they return to the fogged area, 
+			// For objects like planes, that pop out of the shroud, fire, then head back,
+			// we keep drawing them for 2 seconds after they return to the fogged area,
 			// so the player can see them and missiles chasing them.  jba.
 			if (ss == OBJECTSHROUD_CLEAR) {
 				draw->setShroudClearFrame(TheGameLogic->getFrame());
-			}	else if (ss >= OBJECTSHROUD_FOGGED && draw->getShroudClearFrame()!=0) {
+			}	else if (ss >= OBJECTSHROUD_FOGGED && draw->getShroudClearFrame() != InvalidShroudClearFrame) {
 				UnsignedInt limit = 2*LOGICFRAMES_PER_SECOND;
 				if (obj->isEffectivelyDead()) {
 					limit += 3*LOGICFRAMES_PER_SECOND;
@@ -611,19 +617,22 @@ void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, I
  				return;	//this object was removed by the getShroudedStatus() call.
 		}
 		else
-		{	//drawable with no object so no way to know if it's shrouded.
+		{
+			//drawable with no object so no way to know if it's shrouded.
 			ss = OBJECTSHROUD_CLEAR;	//assume not shrouded/fogged.
 			//Check to see if there is another unrelated object which controls the shroud status
 			//(Hack for prison camps which contain enemy prisoner drawables)
 			if (drawInfo->m_shroudStatusObjectID != INVALID_ID)
-			{	Object *shroudObject=TheGameLogic->findObjectByID(drawInfo->m_shroudStatusObjectID);
+			{
+				Object *shroudObject=TheGameLogic->findObjectByID(drawInfo->m_shroudStatusObjectID);
 				if (shroudObject && shroudObject->getShroudedStatus(localPlayerIndex) >= OBJECTSHROUD_FOGGED)
 					ss = OBJECTSHROUD_SHROUDED;	//we will assume that drawables without objects are 'particle' like and therefore don't need drawing if fogged/shrouded.
 			}
 		}
 
 		if (draw->isKindOf(KINDOF_INFANTRY))
-		{	ambient = m_infantryAmbient;
+		{
+			ambient = m_infantryAmbient;
 			sceneLights = m_infantryLight;
 		}
 
@@ -632,8 +641,8 @@ void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, I
 
 		// HANDLE THE SPECIAL DRAWABLE-LEVEL COLORING SETTINGS FIRST
 
-		const Vector3 *tintColor = NULL;
-		const Vector3 *selectionColor = NULL;
+		const Vector3 *tintColor = nullptr;
+		const Vector3 *selectionColor = nullptr;
 
 		tintColor			 = draw->getTintColor();
 		selectionColor = draw->getSelectionColor();
@@ -641,9 +650,9 @@ void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, I
 		if ( tintColor || selectionColor )
 		{
 			Vector3 sumTint, temp, restore;
-			
-			sumTint.Set(0,0,0); 
-			
+
+			sumTint.Set(0,0,0);
+
 			if (tintColor)
 				Vector3::Add(sumTint, *tintColor, &sumTint);
 			if (selectionColor)
@@ -660,8 +669,8 @@ void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, I
 				lightEnv.Add_Light(*sceneLights[globalLightIndex]);
 				sceneLights[globalLightIndex]->Set_Diffuse( restore );
 
-			} // next light
-			
+			}
+
 			temp = lightEnv.Get_Equivalent_Ambient();
 			Vector3::Add(sumTint, temp, &temp );
 
@@ -677,7 +686,7 @@ void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, I
 		}
 
 		//Apply custom render pass for any drawables with heatvision enabled
-		if (draw->getHeatVisionOpacity() != 0 ) 
+		if (draw->getHeatVisionOpacity() != 0 )
 		{
 			rinfo.materialPassEmissiveOverride = draw->getHeatVisionOpacity();
 			if (draw->getStealthLook() == STEALTHLOOK_VISIBLE_DETECTED )
@@ -696,21 +705,24 @@ void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, I
 		}
 	}
 	else
-	{	//either no drawable or it is hidden
+	{
+		//either no drawable or it is hidden
 		if (drawableHidden)
 			return;	//don't bother with anything else
 
 		//Render object without a drawable.  Must be either some fluff/debug object or a ghostObject.
 		if (ss == OBJECTSHROUD_FOGGED)
-		{	//Must be ghost object because we don't fog normal things.  Fogged objects always have a predefined
+		{
+			//Must be ghost object because we don't fog normal things.  Fogged objects always have a predefined
 			//lighting environment applied which emulates the look of fog.
 			rinfo.light_environment = &m_foggedLightEnv;
 			robj->Render(rinfo);
-			rinfo.light_environment = NULL;
+			rinfo.light_environment = nullptr;
 			return;
 		}
 		else
-		{	lightEnv.Reset(sph.Center, ambient);
+		{
+			lightEnv.Reset(sph.Center, ambient);
 			for (Int globalLightIndex = 0; globalLightIndex < m_numGlobalLights; globalLightIndex++)
 				lightEnv.Add_Light(*m_globalLight[globalLightIndex]);
 		}
@@ -719,9 +731,9 @@ void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, I
 	if (!drawableHidden)
 	{
 		//standard scene lights
-		RefRenderObjListIterator it2(&LightList);	
+		RefRenderObjListIterator it2(&LightList);
 		for (it2.First(); !it2.Is_Done(); it2.Next())
-		{	
+		{
 			LightClass *pLight = (LightClass*)it2.Peek_Obj();
 			SphereClass lSph = pLight->Get_Bounding_Sphere();
 			Bool cull = (pLight->Get_Type() == LightClass::POINT && !Spheres_Intersect(sph, lSph));
@@ -731,9 +743,9 @@ void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, I
 		}
 
 		// dynamic lights
-		RefRenderObjListIterator dynaLightIt(&m_dynamicLightList);	
+		RefRenderObjListIterator dynaLightIt(&m_dynamicLightList);
 		for (dynaLightIt.First(); !dynaLightIt.Is_Done(); dynaLightIt.Next())
-		{	
+		{
 			W3DDynamicLight* pDyna = (W3DDynamicLight*)dynaLightIt.Peek_Obj();
 			if (!pDyna->isEnabled()) {
 				continue;
@@ -744,44 +756,46 @@ void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, I
 			}
 			lightEnv.Add_Light(*(LightClass*)dynaLightIt.Peek_Obj());
 		}
-		
+
 		lightEnv.Pre_Render_Update(rinfo.Camera.Get_Transform());
 		rinfo.light_environment = &lightEnv;
 
 		if (drawInfo)
 		{
-#if defined(_DEBUG) || defined(_INTERNAL)
+#if ENABLE_CONFIGURABLE_SHROUD
 			if (!TheGlobalData->m_shroudOn)
 				ss = OBJECTSHROUD_CLEAR;
 #endif
-			
-			if (m_customPassMode == SCENE_PASS_DEFAULT)	
+
+			if (m_customPassMode == SCENE_PASS_DEFAULT)
 			{
 				if (ss <= OBJECTSHROUD_CLEAR)
+				{
 					robj->Render(rinfo);
+				}
 				else
-				{	
-						rinfo.Push_Material_Pass(m_shroudMaterialPass);
-						robj->Render(rinfo);
-						rinfo.Pop_Material_Pass();
+				{
+					rinfo.Push_Material_Pass(m_shroudMaterialPass);
+					robj->Render(rinfo);
+					rinfo.Pop_Material_Pass();
 				}
 			}
-			else
-			if (m_maskMaterialPass)
-			{	rinfo.Push_Material_Pass(m_maskMaterialPass);
+			else if (m_maskMaterialPass)
+			{
+				rinfo.Push_Material_Pass(m_maskMaterialPass);
 				rinfo.Push_Override_Flags(RenderInfoClass::RINFO_OVERRIDE_ADDITIONAL_PASSES_ONLY);
 				robj->Render(rinfo);
 				rinfo.Pop_Override_Flags();
 				rinfo.Pop_Material_Pass();
 			}
-		}//drawInfo exists so rendering a drawable.
+		}
 		else
 		{
 			robj->Render(rinfo);
 		}
-	}//drawable or robj is not hidden
+	}
 
-	rinfo.light_environment = NULL;
+	rinfo.light_environment = nullptr;
 	if (doExtraMaterialPop)	//check if there is an extra material on the stack from the heatvision effect.
 		rinfo.Pop_Material_Pass();
 	if (doExtraFlagsPop)
@@ -793,9 +807,14 @@ void RTS3DScene::renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, I
 /**Draw everything that was submitted from this scene*/
 void RTS3DScene::Flush(RenderInfoClass & rinfo)
 {
+	// TheSuperHackers @bugfix Now always prepares shadows to guarantee correct state before doing any
+	// shadow draw calls. Originally just drawing shadows for trees would not properly prepare shadows.
+	PrepareShadows();
+
 	//don't draw shadows in this mode because they interfere with destination alpha or are invisible (wireframe)
 	if (m_customPassMode == SCENE_PASS_DEFAULT && Get_Extra_Pass_Polygon_Mode() == EXTRA_PASS_DISABLE)
 		DoShadows(rinfo, false);	//draw all non-stencil shadows (decals) since they fall under other objects.
+
 	TheDX8MeshRenderer.Flush();	//draw all non-translucent objects.
 
 	//draw all non-translucent objects which were separated because they are hidden and need custom rendering.
@@ -811,10 +830,11 @@ void RTS3DScene::Flush(RenderInfoClass & rinfo)
 	//don't draw shadows in this mode because they interfere with destination alpha
 	if (m_customPassMode == SCENE_PASS_DEFAULT && Get_Extra_Pass_Polygon_Mode() == EXTRA_PASS_DISABLE)
 		DoShadows(rinfo, true);	//draw all stencil shadows
+
 	WW3D::Render_And_Clear_Static_Sort_Lists(rinfo);	//draws things like water
 
 	if (m_customPassMode == SCENE_PASS_DEFAULT && Get_Extra_Pass_Polygon_Mode() == EXTRA_PASS_DISABLE)
-		flushTranslucentObjects(rinfo);	//draw all translucent meshes which don't need per-poly sorting.
+		flushTranslucentObjects(rinfo);	//draw all translucent meshes which don't need per-polygon sorting.
 
 	{
 		//USE_PERF_TIMER(translucentRender)
@@ -823,13 +843,13 @@ void RTS3DScene::Flush(RenderInfoClass & rinfo)
 		if (m_customPassMode == SCENE_PASS_DEFAULT && Get_Extra_Pass_Polygon_Mode() == EXTRA_PASS_DISABLE)
 			DoParticles(rinfo);	//queue up particles for rendering.
 
-		SortingRendererClass::Flush();	//draw sorted translucent polys like particles.
+		SortingRendererClass::Flush();	//draw sorted translucent polygons like particles.
 	}
 	TheDX8MeshRenderer.Clear_Pending_Delete_Lists();
 }
 
 /**Generate a predefined light environment(s) that will be applied to many objects.  Useful for things like totally fogged
-objects and most generaic map objects that are not lit by dynamic lights.*/
+objects and most generic map objects that are not lit by dynamic lights.*/
 void RTS3DScene::updateFixedLightEnvironments(RenderInfoClass & rinfo)
 {
 	//Figure out how dimly lit fogged objects should be compared to fully lit.
@@ -840,13 +860,14 @@ void RTS3DScene::updateFixedLightEnvironments(RenderInfoClass & rinfo)
 		infantryLightScale = TheGlobalData->m_scriptOverrideInfantryLightScale;
 	else
 		infantryLightScale = TheGlobalData->m_infantryLightScale[TheGlobalData->m_timeOfDay];
-	
+
 	//Generate the default light environment
 	m_defaultLightEnv.Reset(Vector3(0,0,0), Get_Ambient_Light());
 	m_foggedLightEnv.Reset(Vector3(0,0,0), Get_Ambient_Light()*foggedLightFrac);
 
 	for (Int globalLightIndex = 0; globalLightIndex < m_numGlobalLights; globalLightIndex++)
-	{	m_defaultLightEnv.Add_Light(*m_globalLight[globalLightIndex]);
+	{
+		m_defaultLightEnv.Add_Light(*m_globalLight[globalLightIndex]);
 		//copy default lighting for infantry so we can tweak it.
 		*m_infantryLight[globalLightIndex]=*m_globalLight[globalLightIndex];
 		m_globalLight[globalLightIndex]->Get_Diffuse(&oldDiffuse);
@@ -873,7 +894,7 @@ void RTS3DScene::updateFixedLightEnvironments(RenderInfoClass & rinfo)
 
 /**Generate custom rendering passes for each potential player color.  This is currently only used
 to render occluded objects using the color of the player*/
-void RTS3DScene::updatePlayerColorPasses(void)
+void RTS3DScene::updatePlayerColorPasses()
 {
 #ifdef USE_NON_STENCIL_OCCLUSION
 	Vector3 hsv,rgb;
@@ -911,14 +932,14 @@ void RTS3DScene::Render(RenderInfoClass & rinfo)
 	if (Get_Extra_Pass_Polygon_Mode() == EXTRA_PASS_DISABLE)
 	{
 		if (m_customPassMode == SCENE_PASS_DEFAULT)
-		{	//Regular rendering pass with no effects
+		{
+			//Regular rendering pass with no effects
 			updatePlayerColorPasses();///@todo: this probably doesn't need to be done each frame.
 			updateFixedLightEnvironments(rinfo);
 			Customized_Render(rinfo);
 			Flush(rinfo);
 		}
-		else
-		if (m_customPassMode == SCENE_PASS_ALPHA_MASK)
+		else if (m_customPassMode == SCENE_PASS_ALPHA_MASK)
 		{
 			//a projected alpha texture which will later be used to determine where
 			//wireframe should be visible.
@@ -942,14 +963,15 @@ void RTS3DScene::Render(RenderInfoClass & rinfo)
 	{
 		Bool old_enable=WW3D::Is_Texturing_Enabled();
 		if (Get_Extra_Pass_Polygon_Mode() == EXTRA_PASS_CLEAR_LINE)
-		{	//render scene with solid black color but have destination alpha store
+		{
+			//render scene with solid black color but have destination alpha store
 			//a projected alpha texture which will later be used to determine where
 			//wireframe should be visible.
 			///@todo: Clearing to black may not be needed if the scene already did the clear.
 			DX8Wrapper::Clear(true, false, Vector3(0.0f,0.0f,0.0f),1.0f);	// Clear color but not z
 			DX8Wrapper::Set_DX8_Render_State(D3DRS_COLORWRITEENABLE,D3DCOLORWRITEENABLE_ALPHA);
 			DX8Wrapper::Set_DX8_Render_State (D3DRS_ZBIAS, 0);
-			
+
 			//We're only filling the z-buffer so ignore normal textures and state changes to speed things up.
 			m_customPassMode = SCENE_PASS_ALPHA_MASK;
 			m_maskMaterialPass->setAllowUninstall(FALSE);
@@ -959,7 +981,7 @@ void RTS3DScene::Render(RenderInfoClass & rinfo)
 
 			m_maskMaterialPass->setAllowUninstall(TRUE);
 			m_maskMaterialPass->UnInstall_Materials();
-			
+
 			DX8Wrapper::Set_DX8_Render_State(D3DRS_COLORWRITEENABLE,D3DCOLORWRITEENABLE_BLUE|D3DCOLORWRITEENABLE_GREEN|D3DCOLORWRITEENABLE_RED);
 			WW3D::Enable_Coloring(0xff008000);
 			WW3D::Enable_Texturing(false);
@@ -987,7 +1009,8 @@ void RTS3DScene::Render(RenderInfoClass & rinfo)
 			ShaderClass::Invalidate();
 		}
 		else
-		{	//old W3D custom rendering code.
+		{
+			//old W3D custom rendering code.
 
 			//Disable writes to color buffer to save memory bandwidth - we only need Z.
 			DX8Wrapper::Set_DX8_Render_State(D3DRS_COLORWRITEENABLE,0);
@@ -1035,11 +1058,11 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 	StDrawableDirtyStuffLocker lockDirtyStuff;
 #endif
 
-	RenderObjClass *terrainObject=NULL,*robj;
+	RenderObjClass *terrainObject=nullptr,*robj;
 	m_translucentObjectsCount = 0;	//start of new frame so no translucent objects
 	m_occludedObjectsCount = 0;
 
-	Int localPlayerIndex = ThePlayerList ? ThePlayerList->getLocalPlayer()->getPlayerIndex() : 0;
+	const Int localPlayerIndex = rts::getObservedOrLocalPlayerIndex_Safe();
 
 #define USE_LIGHT_ENV 1
 
@@ -1050,17 +1073,17 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 	   flagOccludedObjects(&rinfo.Camera);
 #endif
    }
-   Visibility_Checked = false;	
-	
+   Visibility_Checked = false;
 
-	RefRenderObjListIterator it(&UpdateList);	
+
+	RefRenderObjListIterator it(&UpdateList);
 	// allow all objects in the update list to do their "every frame" processing
 	for (it.First(); !it.Is_Done(); it.Next()) {
 		RenderObjClass * robj = it.Peek_Obj();
 		if (robj->Class_ID() == RenderObjClass::CLASSID_TILEMAP)
 			terrainObject=robj;	//found terrain object, store for later.
 		if (!ShaderClass::Is_Backface_Culling_Inverted()) {
-			// If we are doing water mirror, we draw with backface culling inverted.  In this case, 
+			// If we are doing water mirror, we draw with backface culling inverted.  In this case,
 			// we only want to call On_Frame_Update if we aren't drawing water, as otherwise
 			// we get 2 frame updates per frame, and it screws up the particle emitters.
 			it.Peek_Obj()->On_Frame_Update();
@@ -1069,9 +1092,9 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 
 	//terrain needs to be rendered first
 	if (terrainObject)	// Don't check visibility - terrain is always visible. jba.
-	{		
+	{
 		robj=terrainObject;
-		rinfo.light_environment = NULL;		// Terrain is self lit.
+		rinfo.light_environment = nullptr;		// Terrain is self lit.
 		rinfo.Camera.Set_User_Data(this);	//pass the scene to terrain via user data.
 		if (m_customPassMode == SCENE_PASS_DEFAULT && m_shroudMaterialPass)
 		{
@@ -1079,8 +1102,7 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 			robj->Render(rinfo);
 			rinfo.Pop_Material_Pass();
 		}
-		else
-		if (m_customPassMode == SCENE_PASS_ALPHA_MASK && m_maskMaterialPass)
+		else if (m_customPassMode == SCENE_PASS_ALPHA_MASK && m_maskMaterialPass)
 		{
 			rinfo.Push_Material_Pass(m_maskMaterialPass);
 			robj->Render(rinfo);
@@ -1094,15 +1116,14 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 		return;
 	}
 #ifdef EXTENDED_STATS
-	if (DX8Wrapper::stats.m_disableObjects) { 
+	if (DX8Wrapper::stats.m_disableObjects) {
 		return;
 	}
 #endif
 
 	// loop through all render objects in the list:
-	for (it.First(&RenderList); !it.Is_Done();) 
+	for (it.First(&RenderList); !it.Is_Done();)
 	{
-
 		// get the render object
 		robj = it.Peek_Obj();
  		it.Next();	//advance to next object in case this one gets deleted during renderOneObject().
@@ -1112,7 +1133,7 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 
 		if (robj->Is_Really_Visible()) {
 			DrawableInfo *drawInfo = (DrawableInfo *)robj->Get_User_Data();
-			Drawable *draw=NULL;
+			Drawable *draw=nullptr;
 			if (drawInfo)
 				draw = drawInfo->m_drawable;
 #ifdef USE_NON_STENCIL_OCCLUSION
@@ -1124,29 +1145,21 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 		}
 	}
 
-#ifdef	INCLUDE_GRANNY_IN_BUILD
-	if (TheGrannyRenderObjSystem)
-	{	//we only want to update granny animations once per frame, so only queue
-		//them up if this is not a mirror pass.
-		if (!ShaderClass::Is_Backface_Culling_Inverted())
-			TheGrannyRenderObjSystem->queueUpdate();
-		TheGrannyRenderObjSystem->Flush();
-	}
-#endif
-	
 	//Tell shadow manager to render shadows at the end of this frame
 	//Don't draw shadows if there is no terrain present.
 	if (TheW3DShadowManager && terrainObject && !ShaderClass::Is_Backface_Culling_Inverted() &&
 		Get_Extra_Pass_Polygon_Mode() == EXTRA_PASS_DISABLE)
+	{
 		TheW3DShadowManager->queueShadows(TRUE);
-
-	// only render particles once per frame
-	if (terrainObject != NULL && TheParticleSystemManager != NULL &&
-		Get_Extra_Pass_Polygon_Mode() == EXTRA_PASS_DISABLE)
-	{	TheParticleSystemManager->queueParticleRender();
 	}
 
-}  // end Customized_Renderer
+	// only render particles once per frame
+	if (terrainObject != nullptr && TheParticleSystemManager != nullptr &&
+		Get_Extra_Pass_Polygon_Mode() == EXTRA_PASS_DISABLE)
+	{
+		TheParticleSystemManager->queueParticleRender();
+	}
+}
 
 /**Convert a player index to a color index, we use this because color indices are
 assigned in left-right binary flipped fashion so as not to occupy lower bits unless
@@ -1165,11 +1178,13 @@ Int playerIndexToColorIndex(Int playerIndex)
 		flippedPosition = NUMBER_PLAYER_COLOR_BITS-1-i;	//correct position of bit after it's flipped left/right
 
 		if (flippedPosition > i)
-		{	//shifting left
+		{
+			//shifting left
 			result |= (tmp & (1<<i))<<(flippedPosition-i);
 		}
 		else
-		{	//shifting right
+		{
+			//shifting right
 			result |= (tmp & (1<<i))>>(i-flippedPosition);
 		}
 	}
@@ -1182,7 +1197,7 @@ void renderStenciledPlayerColor( UnsignedInt color, UnsignedInt stencilRef, Bool
 {
 	struct _TRANSLITVERTEX {
 	    Vector4 p;
-		DWORD color;   // diffuse color    
+		DWORD color;   // diffuse color
 	} v[4];
 
 	Int xpos, ypos, width, height;
@@ -1204,7 +1219,7 @@ void renderStenciledPlayerColor( UnsignedInt color, UnsignedInt stencilRef, Bool
 	VertexMaterialClass *vmat=VertexMaterialClass::Get_Preset(VertexMaterialClass::PRELIT_DIFFUSE);
 	DX8Wrapper::Set_Material(vmat);
 	REF_PTR_RELEASE(vmat);
-	DX8Wrapper::Apply_Render_State_Changes();	//force update all renderstates
+	DX8Wrapper::Apply_Render_State_Changes();	//force update all render states
 
 	LPDIRECT3DDEVICE8 m_pDev=DX8Wrapper::_Get_D3D_Device8();
 
@@ -1220,33 +1235,37 @@ void renderStenciledPlayerColor( UnsignedInt color, UnsignedInt stencilRef, Bool
 	DX8Wrapper::Set_DX8_Render_State(D3DRS_ZENABLE, TRUE );
 	DWORD	oldColorWriteEnable=0x12345678;
 	if (clear)
-	{	//we want to clear the stencil buffer to some known value whereever a player index is stored
+	{
+		//we want to clear the stencil buffer to some known value wherever a player index is stored
 		Int occludedMask=TheW3DShadowManager->getStencilShadowMask();
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILREF,      0x80808080 );
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILMASK,     occludedMask );	//isolate bits containing occluder|playerIndex
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILWRITEMASK,0xffffffff );
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILFUNC,  D3DCMP_LESS );	//only draw to pixels that match the reference value
-		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILZFAIL, D3DSTENCILOP_REPLACE );	
+		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILZFAIL, D3DSTENCILOP_REPLACE );
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILPASS,  D3DSTENCILOP_REPLACE );	//pixels which had occluded player colors, get MSB set.
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILFAIL,  D3DSTENCILOP_ZERO );	//pixels which had no occluded player colors are cleared.
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_ZFUNC, D3DCMP_NEVER  );	//fail all access to the frame buffer to improve memory bandwidth
 
 		//disable writes to color buffer
-		if (DX8Caps::Get_Default_Caps().PrimitiveMiscCaps & D3DPMISCCAPS_COLORWRITEENABLE)
-		{	DX8Wrapper::_Get_D3D_Device8()->GetRenderState(D3DRS_COLORWRITEENABLE, &oldColorWriteEnable);
+		if (DX8Wrapper::Get_Current_Caps()->Get_DX8_Caps().PrimitiveMiscCaps & D3DPMISCCAPS_COLORWRITEENABLE)
+		{
+			DX8Wrapper::_Get_D3D_Device8()->GetRenderState(D3DRS_COLORWRITEENABLE, &oldColorWriteEnable);
 			DX8Wrapper::Set_DX8_Render_State(D3DRS_COLORWRITEENABLE,0);
 		}
 		else
-		{	//device does not support disabling writes to color buffer so fake it through alpha blending
+		{
+			//device does not support disabling writes to color buffer so fake it through alpha blending
 			DX8Wrapper::Set_DX8_Render_State(D3DRS_ALPHABLENDENABLE, TRUE);
 			DX8Wrapper::Set_DX8_Render_State(D3DRS_SRCBLEND, D3DBLEND_ZERO );
 			DX8Wrapper::Set_DX8_Render_State(D3DRS_DESTBLEND, D3DBLEND_ONE );
 		}
 	}
 	else
-	{	DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILREF,      stencilRef );
+	{
+		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILREF,      stencilRef );
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILMASK,     0xffffffff );
-		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILWRITEMASK,0xffffffff );	
+		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILWRITEMASK,0xffffffff );
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILFUNC,  D3DCMP_EQUAL );
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILZFAIL, D3DSTENCILOP_KEEP );
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILPASS,  D3DSTENCILOP_KEEP );
@@ -1271,7 +1290,7 @@ void renderStenciledPlayerColor( UnsignedInt color, UnsignedInt stencilRef, Bool
 	if (oldColorWriteEnable != 0x12345678)
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_COLORWRITEENABLE,oldColorWriteEnable);
 
-}  // end renderStencilShadows
+}
 
 #define MAX_VISIBLE_OCCLUDED_PLAYER_OBJECTS	512 //maximum number of occluded objects permitted per player
 void RTS3DScene::flushOccludedObjectsIntoStencil(RenderInfoClass & rinfo)
@@ -1291,22 +1310,25 @@ void RTS3DScene::flushOccludedObjectsIntoStencil(RenderInfoClass & rinfo)
 	//Clear pointers into temporary arrays where each player's objects will be stored.
 	//We do this so that all objects are sorted by color which reduces the number of
 	//state changes needed when drawing them.
-	for (Int i=0; i<MAX_PLAYER_COUNT; i++)
-	{	lastPlayerObject[i]=&playerObjects[i][0];
+	Int i=0;
+	for (; i<MAX_PLAYER_COUNT; i++)
+	{
+		lastPlayerObject[i]=&playerObjects[i][0];
 		playerColorIndex[i]=-1;
 	}
 
 	//Assume no player colors are visible and all stencil bits are free for use by shadows.
 	TheW3DShadowManager->setStencilShadowMask(0);
 
-	Int localPlayerIndex = ThePlayerList ? ThePlayerList->getLocalPlayer()->getPlayerIndex() : 0;
+	const Int localPlayerIndex = rts::getObservedOrLocalPlayerIndex_Safe();
 
 	if (m_numPotentialOccludees && m_numPotentialOccluders)
 	{
 		//bucket sort all possibly occluded objects by player index/color.
-		for (Int i=0; i<m_numPotentialOccludees; i++)
+		Int k=0;
+		for (; k<m_numPotentialOccludees; k++)
 		{
-			robj=m_potentialOccludees[i];
+			robj=m_potentialOccludees[k];
 
 			draw = ((DrawableInfo *)robj->Get_User_Data())->m_drawable;
 			Object *object=draw->getObject();
@@ -1315,7 +1337,7 @@ void RTS3DScene::flushOccludedObjectsIntoStencil(RenderInfoClass & rinfo)
 
 			if ((lastPlayerObject[index]-&playerObjects[index][0]) >= MAX_VISIBLE_OCCLUDED_PLAYER_OBJECTS)
 			{
-				DEBUG_ASSERTCRASH(FALSE,("Exceeded Maximum Number of potentially occluded models"));
+				DEBUG_CRASH(("Exceeded Maximum Number of potentially occluded models"));
 				continue;
 			}
 
@@ -1338,17 +1360,18 @@ void RTS3DScene::flushOccludedObjectsIntoStencil(RenderInfoClass & rinfo)
 		//a color index.  Render all objects using the same color index at once.
 		//We render potential occludees first because this allows them to z-sort correctly
 		//when they are behind an occluder.
-		for (i=0; i<MAX_PLAYER_COUNT; i++)
+		for (k=0; k<MAX_PLAYER_COUNT; k++)
 		{
-			if ((numObjects=lastPlayerObject[i]-&playerObjects[i][0]) != 0)
-			{	
+			if ((numObjects=lastPlayerObject[k]-&playerObjects[k][0]) != 0)
+			{
 				//this player has some objects so draw them using his color index.
-				if (playerColorIndex[i]==-1)	//color index not assigned yet?
-				{	//assign a new color index to this player
-					playerColorIndex[i]=playerIndexToColorIndex(usedPlayerColorIndex++);
+				if (playerColorIndex[k]==-1)	//color index not assigned yet?
+				{
+					//assign a new color index to this player
+					playerColorIndex[k]=playerIndexToColorIndex(usedPlayerColorIndex++);
 					//assign a color to this index by copying it from the controlling player
 					//of all objects in this list.
-					draw = ((DrawableInfo *)playerObjects[i][0]->Get_User_Data())->m_drawable;
+					draw = ((DrawableInfo *)playerObjects[k][0]->Get_User_Data())->m_drawable;
 					Object *object=draw->getObject();
 
 					Int color=object->getControllingPlayer()->getPlayerColor();
@@ -1358,13 +1381,13 @@ void RTS3DScene::flushOccludedObjectsIntoStencil(RenderInfoClass & rinfo)
 					visiblePlayerColors[numVisiblePlayerColors++]=DX8Wrapper::Convert_Color(rgb,0.5f);
 				}
 
-				Int thisPlayerColorIndex=playerColorIndex[i];
+				Int thisPlayerColorIndex=playerColorIndex[k];
 
 				//Store this object's color index into bits 3-6 of stencil buffer
 				DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILREF, thisPlayerColorIndex<<3);
 
 				//Render all of this player's objects for which we care when they are occluded.
-				RenderObjClass **renderList=&playerObjects[i][0];
+				RenderObjClass **renderList=&playerObjects[k][0];
 				for (Int j=0; j<numObjects; j++)
 				{
 					renderOneObject(rinfo, (*renderList), localPlayerIndex);
@@ -1379,7 +1402,7 @@ void RTS3DScene::flushOccludedObjectsIntoStencil(RenderInfoClass & rinfo)
 		//but need to render here so that they don't interfere with building occlusion.
 		DX8Wrapper::Set_DX8_Render_State(D3DRS_STENCILENABLE, FALSE );	//these objects are not stored in stencil
 		RenderObjClass **nonOccluderOrOccludeeList=m_nonOccludersOrOccludees;
-		for (i=0; i<m_numNonOccluderOrOccludee; i++)
+		for (k=0; k<m_numNonOccluderOrOccludee; k++)
 		{
 			renderOneObject(rinfo, (*nonOccluderOrOccludeeList), localPlayerIndex);
 			nonOccluderOrOccludeeList++;	//advance to next one
@@ -1400,7 +1423,7 @@ void RTS3DScene::flushOccludedObjectsIntoStencil(RenderInfoClass & rinfo)
 
 		//Render all potential occluders on top of already rendered potential occludees.
 		RenderObjClass **occluderList=m_potentialOccluders;
-		for (i=0; i<m_numPotentialOccluders; i++)
+		for (k=0; k<m_numPotentialOccluders; k++)
 		{
 			renderOneObject(rinfo, (*occluderList), localPlayerIndex);
 			occluderList++;	//advance to next one
@@ -1412,17 +1435,18 @@ void RTS3DScene::flushOccludedObjectsIntoStencil(RenderInfoClass & rinfo)
 		//INDX contains the occluded player's color index.  We walk through all the player colors and
 		//draw them wherever the stencil matches the color's index.
 		Int usedPlayerColorBits=0;
-		for (i=0; i<numVisiblePlayerColors; i++)
+		for (k=0; k<numVisiblePlayerColors; k++)
 		{
-			Int color=visiblePlayerColors[i];
-			Int stencilRef=(playerIndexToColorIndex(i+1)<<3)|0x80;
+			Int color=visiblePlayerColors[k];
+			Int stencilRef=(playerIndexToColorIndex(k+1)<<3)|0x80;
 			renderStenciledPlayerColor(color,stencilRef);
 			usedPlayerColorBits |= stencilRef;	//keep track of all bits used for occlusion/player colors.
 		}
 
 		TheW3DShadowManager->setStencilShadowMask(usedPlayerColorBits);
 		if (numVisiblePlayerColors >= 8 && TheGlobalData->m_useShadowVolumes)
-		{	//for cases where we have 8 or more visible players, we're only left with 3 bits to store
+		{
+			//for cases where we have 8 or more visible players, we're only left with 3 bits to store
 			//stencil shadows.  That's probably not enough since it will only allow 7 overlapping shadows.
 			//So we clear the stencil buffer, leaving only the MSB set on any occluded player pixels so that
 			//shadow code knows not to overwrite these pixels.
@@ -1434,7 +1458,8 @@ void RTS3DScene::flushOccludedObjectsIntoStencil(RenderInfoClass & rinfo)
 	}
 	else
 	if (m_numNonOccluderOrOccludee || m_numPotentialOccluders || m_numPotentialOccludees)
-	{	//no occluded objects so don't need to render anything special.  Just draw the queued up
+	{
+		//no occluded objects so don't need to render anything special.  Just draw the queued up
 		//objects like normal because they were skipped in the main scene traversal.
 
 		RenderObjClass **occludeeList=m_potentialOccludees;
@@ -1476,7 +1501,7 @@ void RTS3DScene::flushOccludedObjects(RenderInfoClass & rinfo)
 
 	if (m_occludedObjectsCount)
 	{
-		Int localPlayerIndex = ThePlayerList ? ThePlayerList->getLocalPlayer()->getPlayerIndex() : 0;
+		const Int localPlayerIndex = rts::getObservedOrLocalPlayerIndex_Safe();
 
 		if (DX8Wrapper::Has_Stencil())	//just in case we have shadows, disable them over occluded pixels.
 		{
@@ -1495,7 +1520,8 @@ void RTS3DScene::flushOccludedObjects(RenderInfoClass & rinfo)
 		//First draw all the solid colored models
 		///@todo: Optimize this so that the extra passes don't actually install the material since it's all the same.
 		rinfo.Push_Override_Flags(RenderInfoClass::RINFO_OVERRIDE_ADDITIONAL_PASSES_ONLY);	//disable textures
-		for (Int i=0; i<m_occludedObjectsCount; i++)
+		Int i=0;
+		for (; i<m_occludedObjectsCount; i++)
 		{
 			robj=m_potentialOccludees[i];
 
@@ -1545,7 +1571,7 @@ void RTS3DScene::flushTranslucentObjects(RenderInfoClass & rinfo)
 
 	if (m_translucentObjectsCount)
 	{
-		Int localPlayerIndex = ThePlayerList ? ThePlayerList->getLocalPlayer()->getPlayerIndex() : 0;
+		const Int localPlayerIndex = rts::getObservedOrLocalPlayerIndex_Safe();
 
 		for (Int i=0; i<m_translucentObjectsCount; i++)
 		{
@@ -1575,7 +1601,7 @@ void RTS3DScene::flushTranslucentObjects(RenderInfoClass & rinfo)
 //=============================================================================
 /** Returns an iterator of the lights in the scene. */
 //=============================================================================
-RefRenderObjListIterator * RTS3DScene::createLightsIterator(void)
+RefRenderObjListIterator * RTS3DScene::createLightsIterator()
 {
 	RefRenderObjListIterator * it = NEW RefRenderObjListIterator(&LightList);	// poolify
 	return it;
@@ -1609,23 +1635,23 @@ void RTS3DScene::addDynamicLight(W3DDynamicLight * obj)
 //=============================================================================
 /** Adds a dynamic light. */
 //=============================================================================
-W3DDynamicLight * RTS3DScene::getADynamicLight(void)
+W3DDynamicLight * RTS3DScene::getADynamicLight()
 {
-		RefRenderObjListIterator dynaLightIt(&m_dynamicLightList);
-		W3DDynamicLight *pLight;
-		for (dynaLightIt.First(); !dynaLightIt.Is_Done(); dynaLightIt.Next())
-		{		
-			pLight = (W3DDynamicLight*)dynaLightIt.Peek_Obj();
-			if (!pLight->isEnabled()) {
-				pLight->setEnabled(true);
-				return(pLight);
-			}
+	RefRenderObjListIterator dynaLightIt(&m_dynamicLightList);
+	W3DDynamicLight *pLight;
+	for (dynaLightIt.First(); !dynaLightIt.Is_Done(); dynaLightIt.Next())
+	{
+		pLight = (W3DDynamicLight*)dynaLightIt.Peek_Obj();
+		if (!pLight->isEnabled()) {
+			pLight->setEnabled(true);
+			return(pLight);
 		}
-		pLight = NEW_REF(W3DDynamicLight, ());
-		addDynamicLight( pLight );
-		pLight->Release_Ref();
-		pLight->setEnabled(true);
-		return(pLight);
+	}
+	pLight = NEW_REF(W3DDynamicLight, ());
+	addDynamicLight( pLight );
+	pLight->Release_Ref();
+	pLight->setEnabled(true);
+	return(pLight);
 }
 
 //=============================================================================
@@ -1647,26 +1673,23 @@ void RTS3DScene::doRender( CameraClass * cam )
 {
 	m_camera = cam;
 	DRAW();
-	m_camera = NULL;
+	m_camera = nullptr;
 
-}  // end Customized_Render
+}
 
 //=============================================================================
 // RTS3DScene::draw
 //=============================================================================
 /** Customized render for the 2d scene management */
 //=============================================================================
-void RTS3DScene::draw( )
+void RTS3DScene::draw()
 {
-
-	if (m_camera == NULL) {
+	if (m_camera == nullptr) {
 		DEBUG_CRASH(("Null m_camera in RTS3DScene::draw"));
 		return;
 	}
 	WW3D::Render( this, m_camera );
-
-
-}  // end Customized_Render
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1683,7 +1706,7 @@ RTS2DScene::RTS2DScene()
 	setName("RTS2DScene");
 	m_status = NEW_REF( W3DStatusCircle, () );
 	Add_Render_Object( m_status );
-}  // end RTS2DScene
+}
 
 //=============================================================================
 // RTS2DScene::~RTS2DScene
@@ -1694,7 +1717,7 @@ RTS2DScene::~RTS2DScene()
 {
 	this->Remove_Render_Object(m_status);
 	REF_PTR_RELEASE(m_status);
-}  // end ~RTS2DScene
+}
 
 //=============================================================================
 // RTS2DScene::Custimized_Render
@@ -1703,11 +1726,9 @@ RTS2DScene::~RTS2DScene()
 //=============================================================================
 void RTS2DScene::Customized_Render( RenderInfoClass &rinfo )
 {
-
 	// call simple scene class renderer
 	SimpleSceneClass::Customized_Render( rinfo );
-
-}  // end Customized_Render
+}
 
 //=============================================================================
 // RTS2DScene::doRender
@@ -1716,29 +1737,24 @@ void RTS2DScene::Customized_Render( RenderInfoClass &rinfo )
 //=============================================================================
 void RTS2DScene::doRender( CameraClass * cam )
 {
-
 	m_camera = cam;
 	DRAW();
-	m_camera = NULL;
-
-}  // end Customized_Render
+	m_camera = nullptr;
+}
 
 //=============================================================================
 // RTS2DScene::draw
 //=============================================================================
 /** Customized render for the 2d scene management */
 //=============================================================================
-void RTS2DScene::draw( )
+void RTS2DScene::draw()
 {
-
-	if (m_camera == NULL) {
+	if (m_camera == nullptr) {
 		DEBUG_CRASH(("Null m_camera in RTS2DScene::draw"));
 		return;
 	}
 	WW3D::Render( this, m_camera );
-
-
-}  // end Customized_Render
+}
 
 
 
@@ -1753,7 +1769,7 @@ void RTS2DScene::draw( )
 //=============================================================================
 RTS3DInterfaceScene::RTS3DInterfaceScene()
 {
-}  // end RTS3DInterfaceScene
+}
 
 //=============================================================================
 // RTS3DInterfaceScene::~RTS3DInterfaceScene
@@ -1762,7 +1778,7 @@ RTS3DInterfaceScene::RTS3DInterfaceScene()
 //=============================================================================
 RTS3DInterfaceScene::~RTS3DInterfaceScene()
 {
-}  // end ~RTS3DInterfaceScene
+}
 
 //=============================================================================
 // RTS3DInterfaceScene::Custimized_Render
@@ -1771,9 +1787,164 @@ RTS3DInterfaceScene::~RTS3DInterfaceScene()
 //=============================================================================
 void RTS3DInterfaceScene::Customized_Render( RenderInfoClass &rinfo )
 {
-
 	// call simple scene class renderer
 	SimpleSceneClass::Customized_Render( rinfo );
+}
 
-}  // end Customized_Render
+
+
+/// The following is an :archive" of a partial attempt at detecting the mapshroud hack
+/*
+ *
+
+void RTS3DScene::Visibility_Check(CameraClass * camera)
+{
+#ifdef DIRTY_CONDITION_FLAGS
+	StDrawableDirtyStuffLocker lockDirtyStuff;
+#endif
+
+	RefRenderObjListIterator it(&RenderList);
+	DrawableInfo *drawInfo = nullptr;
+	Drawable	*draw = nullptr;
+	RenderObjClass * robj;
+
+	m_numPotentialOccluders=0;
+	m_numPotentialOccludees=0;
+	m_translucentObjectsCount=0;
+	m_numNonOccluderOrOccludee=0;
+
+	Int currentFrame=0;
+	if (TheGameLogic) currentFrame = TheGameLogic->getFrame();
+	if (currentFrame <= TheGlobalData->m_defaultOcclusionDelay)
+		currentFrame = TheGlobalData->m_defaultOcclusionDelay+1;	//make sure occlusion is enabled when game starts (frame 0).
+
+
+	if (ShaderClass::Is_Backface_Culling_Inverted())
+	{	//we are rendering reflections
+		///@todo: Have better flag to detect reflection pass
+
+		// Loop over all top-level RenderObjects in this scene. If the bounding sphere is not in front
+		// of all the frustum planes, it is invisible.
+		for (it.First(); !it.Is_Done(); it.Next()) {
+
+			robj = it.Peek_Obj();
+
+			draw=nullptr;
+			drawInfo = (DrawableInfo *)robj->Get_User_Data();
+			if (drawInfo)
+				draw=drawInfo->m_drawable;
+
+			if( draw )
+			{
+				if (robj->Is_Force_Visible()) {
+					robj->Set_Visible(true);
+				} else {
+					robj->Set_Visible(draw->getDrawsInMirror() && !camera->Cull_Sphere(robj->Get_Bounding_Sphere()));
+				}
+			}
+			else
+			{	//perform normal culling on non-drawables
+				if (robj->Is_Force_Visible()) {
+					robj->Set_Visible(true);
+				} else {
+					robj->Set_Visible(!camera->Cull_Sphere(robj->Get_Bounding_Sphere()));
+				}
+			}
+		}
+	}
+	else
+	{
+
+		// Loop over all top-level RenderObjects in this scene. If the bounding sphere is not in front
+		// of all the frustum planes, it is invisible.
+		for (it.First(); !it.Is_Done(); it.Next()) {
+
+			robj = it.Peek_Obj();
+
+			if (robj->Is_Force_Visible()) {
+				robj->Set_Visible(true);
+			} else if (robj->Is_Hidden()) {
+				robj->Set_Visible(false);
+			} else {
+
+				UnsignedByte isVisible = 0;
+
+
+        //Cheater Foil
+        isVisible |= (UnsignedByte)(camera->Cull_Sphere(robj->Get_Bounding_Sphere()) == FALSE);
+        isVisible |= (UnsignedByte)(draw->isDrawableEffectivelyHidden());
+        isVisible |= (draw->getFullyObscuredByShroudWithCheatSpy());
+				robj->Set_VisibleWithCheatSpy(isVisible);
+				if (robj->Is_VisibleWithCheatSpy())//this will clear for the bit set above
+
+				{	//need to keep track of occluders and ocludees for subsequent code.
+					drawInfo = (DrawableInfo *)robj->Get_User_Data();
+					if (drawInfo && (draw=drawInfo->m_drawable) != nullptr)
+					{
+
+//            now handled above in the cheater foil <<<<<<<<<<<<
+//						if (draw->isDrawableEffectivelyHidden() || draw->getFullyObscuredByShroud())
+//						{	robj->Set_Visible(false);
+//							continue;
+//						}
+						//assume normal rendering.
+						drawInfo->m_flags = DrawableInfo::ERF_IS_NORMAL;	//clear any rendering flags that may be in effect.
+
+
+						if (draw->getEffectiveOpacity() != 1.0f && m_translucentObjectsCount < TheGlobalData->m_maxVisibleTranslucentObjects)
+						{	drawInfo->m_flags |= DrawableInfo::ERF_IS_TRANSLUCENT;	//object is translucent
+							m_translucentObjectsBuffer[m_translucentObjectsCount++] = robj;
+						}
+						if (TheGlobalData->m_enableBehindBuildingMarkers && TheGameLogic->getShowBehindBuildingMarkers())
+						{
+							//visible drawable. Check if it's either an occluder or occludee
+							if (draw->isKindOf(KINDOF_STRUCTURE) && m_numPotentialOccluders < TheGlobalData->m_maxVisibleOccluderObjects)
+							{	//object which could occlude other objects that need to be visible.
+								//Make sure this object is not translucent so it's not rendered twice (from m_potentialOccluders and m_translucentObjectsBuffer)
+								if (drawInfo->m_flags ^ DrawableInfo::ERF_IS_TRANSLUCENT)
+									m_potentialOccluders[m_numPotentialOccluders++]=robj;
+								drawInfo->m_flags |= DrawableInfo::ERF_POTENTIAL_OCCLUDER;
+							}
+							else
+							if (draw->getObject() &&
+									(draw->isKindOf(KINDOF_SCORE) || draw->isKindOf(KINDOF_SCORE_CREATE) || draw->isKindOf(KINDOF_SCORE_DESTROY) || draw->isKindOf(KINDOF_MP_COUNT_FOR_VICTORY)) &&
+									(draw->getObject()->getSafeOcclusionFrame()) <= currentFrame && m_numPotentialOccludees < TheGlobalData->m_maxVisibleOccludeeObjects)
+							{	//object which could be occluded but still needs to be visible.
+								//We process transucent units twice (also in m_translucentObjectsBuffer) because we need to see them when occluded.
+								m_potentialOccludees[m_numPotentialOccludees++]=robj;
+								drawInfo->m_flags |= DrawableInfo::ERF_POTENTIAL_OCCLUDEE;
+							}
+							else
+							if (drawInfo->m_flags == DrawableInfo::ERF_IS_NORMAL && m_numNonOccluderOrOccludee < TheGlobalData->m_maxVisibleNonOccluderOrOccludeeObjects)
+							{	//regular object with no custom effects but still needs to be delayed to get the occlusion feature to work correctly.
+								//Make sure this object is not translucent so it's not rendered twice (from m_potentialOccluders and m_translucentObjectsBuffer)
+								if (drawInfo->m_flags ^ DrawableInfo::ERF_IS_TRANSLUCENT)	//make sure not translucent
+									m_nonOccludersOrOccludees[m_numNonOccluderOrOccludee++]=robj;
+								drawInfo->m_flags |= DrawableInfo::ERF_IS_NON_OCCLUDER_OR_OCCLUDEE;
+							}
+						}
+
+
+					}
+				}
+
+//				robj->Set_Visible(isVisible); //now handled above in the cheater foil
+			}
+
+			///@todo: We're not using LOD yet so I disabled this code. MW
+			// Also, should check how multiple passes (reflections) get along
+			// with the LOD manager - we're rendering double the load it thinks we are.
+			// Prepare visible objects for LOD:
+			//	if (robj->Is_Really_Visible()) {
+			//			robj->Prepare_LOD(*camera);
+			//		}
+		}
+	}
+
+   Visibility_Checked = true;
+}
+
+
+ *
+ */
 

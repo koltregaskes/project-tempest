@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_TEAMSDIALOG_H__1410F415_1597_4EAF_AE0B_42DACDEB35B9__INCLUDED_)
-#define AFX_TEAMSDIALOG_H__1410F415_1597_4EAF_AE0B_42DACDEB35B9__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // teamsdialog.h : header file
 //
 
@@ -34,7 +30,7 @@ class CTeamsDialog : public CDialog
 {
 // Construction
 public:
-	CTeamsDialog(CWnd* pParent = NULL);   // standard constructor
+	CTeamsDialog(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CTeamsDialog)
@@ -47,7 +43,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CTeamsDialog)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -55,9 +51,9 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CTeamsDialog)
-	virtual BOOL OnInitDialog();
-	virtual void OnOK();
-	virtual void OnCancel();
+	virtual BOOL OnInitDialog() override;
+	virtual void OnOK() override;
+	virtual void OnCancel() override;
 	afx_msg void OnNewteam();
 	afx_msg void OnDeleteteam();
 	afx_msg void OnEditTemplate();
@@ -86,16 +82,14 @@ protected:
 	};
 
 	void updateUI(Int whatToRebuild);
-	void validateTeamOwners( void );
+	void validateTeamOwners();
 	Bool isValidTeamOwner( AsciiString ownerName );
 	void doCorrectTeamOwnerDialog( TeamsInfo *ti );
 
 private:
-	void UpdateTeamsList(void);
+	void UpdateTeamsList();
 
 };
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_TEAMSDIALOG_H__1410F415_1597_4EAF_AE0B_42DACDEB35B9__INCLUDED_)

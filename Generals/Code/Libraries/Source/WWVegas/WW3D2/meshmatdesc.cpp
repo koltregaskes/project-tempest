@@ -62,29 +62,29 @@ MatBufferClass::MatBufferClass(const MatBufferClass & that) :
 	}
 }
 
-MatBufferClass::~MatBufferClass(void)							
-{ 
-	for (int i=0; i<Count; i++) { 
-		REF_PTR_RELEASE(Array[i]); 
-	} 
+MatBufferClass::~MatBufferClass()
+{
+	for (int i=0; i<Count; i++) {
+		REF_PTR_RELEASE(Array[i]);
+	}
 }
 
-void MatBufferClass::Set_Element(int index,VertexMaterialClass * mat)	
-{ 
-	REF_PTR_SET(Array[index],mat); 
+void MatBufferClass::Set_Element(int index,VertexMaterialClass * mat)
+{
+	REF_PTR_SET(Array[index],mat);
 }
 
 VertexMaterialClass * MatBufferClass::Get_Element(int index)
-{ 
-	if (Array[index]) { 
-		Array[index]->Add_Ref(); 
-	} 
-	return Array[index]; 
+{
+	if (Array[index]) {
+		Array[index]->Add_Ref();
+	}
+	return Array[index];
 }
 
 VertexMaterialClass * MatBufferClass::Peek_Element(int index)
-{ 
-	return Array[index]; 
+{
+	return Array[index];
 }
 
 
@@ -95,7 +95,7 @@ VertexMaterialClass * MatBufferClass::Peek_Element(int index)
 **
 **
 **************************************************************************************************/
-TexBufferClass::TexBufferClass(const TexBufferClass & that) : 
+TexBufferClass::TexBufferClass(const TexBufferClass & that) :
 	ShareBufferClass<TextureClass *>(that)
 {
 	// add a reference for each pointer that was copied...
@@ -106,29 +106,29 @@ TexBufferClass::TexBufferClass(const TexBufferClass & that) :
 	}
 }
 
-TexBufferClass::~TexBufferClass(void)
-{ 
-	for (int i=0;i<Count;i++) { 
-		REF_PTR_RELEASE(Array[i]); 
-	} 
+TexBufferClass::~TexBufferClass()
+{
+	for (int i=0;i<Count;i++) {
+		REF_PTR_RELEASE(Array[i]);
+	}
 }
 
 void TexBufferClass::Set_Element(int index,TextureClass * tex)
-{ 
-	REF_PTR_SET(Array[index],tex); 
+{
+	REF_PTR_SET(Array[index],tex);
 }
 
 TextureClass * TexBufferClass::Get_Element(int index)
-{ 
-	if (Array[index]) { 
-		Array[index]->Add_Ref(); 
-	} 
-	return Array[index]; 
+{
+	if (Array[index]) {
+		Array[index]->Add_Ref();
+	}
+	return Array[index];
 }
 
 TextureClass * TexBufferClass::Peek_Element(int index)
-{ 
-	return Array[index]; 
+{
+	return Array[index];
 }
 
 
@@ -158,7 +158,7 @@ bool UVBufferClass::Is_Equal_To(const UVBufferClass & that)
 }
 
 
-void UVBufferClass::Update_CRC(void)
+void UVBufferClass::Update_CRC()
 {
 	CRC = CRC_Memory((unsigned char *)Get_Array(),Get_Count() * sizeof(Vector2));
 }
@@ -174,37 +174,36 @@ void UVBufferClass::Update_CRC(void)
 **************************************************************************************************/
 ShaderClass MeshMatDescClass::NullShader(0);	// Used to mark no shader data
 
-MeshMatDescClass::MeshMatDescClass(void) :
+MeshMatDescClass::MeshMatDescClass() :
 	PassCount(1),
 	VertexCount(0),
 	PolyCount(0)
 {
 	for (int array=0;array < MAX_COLOR_ARRAYS; array++) {
-		ColorArray[array] = NULL;
+		ColorArray[array] = nullptr;
 	}
 
 	for (int uvarray=0;uvarray<MAX_UV_ARRAYS;uvarray++) {
-		UV[uvarray] = NULL;
+		UV[uvarray] = nullptr;
 	}
 
 	for (int pass=0; pass < MAX_PASSES; pass++) {
 		for (int stage=0; stage < MAX_TEX_STAGES; stage++) {
 			UVSource[pass][stage] = -1;
-			Texture[pass][stage] = NULL;
-			TextureArray[pass][stage] = NULL;
+			Texture[pass][stage] = nullptr;
+			TextureArray[pass][stage] = nullptr;
 		}
-//		UVIndex[pass] = NULL;
 		DCGSource[pass] = VertexMaterialClass::MATERIAL;
 		DIGSource[pass] = VertexMaterialClass::MATERIAL;
 
 		Shader[pass] = 0; //ShaderClass::_PresetOpaqueSolidShader;
-		Material[pass] = NULL;
-		ShaderArray[pass] = NULL;
-		MaterialArray[pass] = NULL;
+		Material[pass] = nullptr;
+		ShaderArray[pass] = nullptr;
+		MaterialArray[pass] = nullptr;
 	}
 }
 
-MeshMatDescClass::MeshMatDescClass(const MeshMatDescClass & that) : 
+MeshMatDescClass::MeshMatDescClass(const MeshMatDescClass & that) :
 	PassCount(1),
 	VertexCount(0),
 	PolyCount(0)
@@ -213,28 +212,27 @@ MeshMatDescClass::MeshMatDescClass(const MeshMatDescClass & that) :
 	int stage;
 	int array;
 
-	// init everything to NULL
+	// init everything to nullptr
 	for (array=0;array < MAX_COLOR_ARRAYS; array++) {
-		ColorArray[array] = NULL;
+		ColorArray[array] = nullptr;
 	}
 	for (array=0;array < MAX_UV_ARRAYS; array++) {
-		UV[array] = NULL;
+		UV[array] = nullptr;
 	}
 
 	for (pass=0; pass < MAX_PASSES; pass++) {
 		for (stage=0; stage < MAX_TEX_STAGES; stage++) {
 			UVSource[pass][stage] = -1;
-			Texture[pass][stage] = NULL;
-			TextureArray[pass][stage] = NULL;
+			Texture[pass][stage] = nullptr;
+			TextureArray[pass][stage] = nullptr;
 		}
-//		UVIndex[pass] = NULL;
 		DCGSource[pass] = VertexMaterialClass::MATERIAL;
 		DIGSource[pass] = VertexMaterialClass::MATERIAL;
 
 		Shader[pass] = 0; //ShaderClass::_PresetOpaqueSolidShader;
-		Material[pass] = NULL;
-		ShaderArray[pass] = NULL;
-		MaterialArray[pass] = NULL;
+		Material[pass] = nullptr;
+		ShaderArray[pass] = nullptr;
+		MaterialArray[pass] = nullptr;
 	}
 
 	*this = that;
@@ -244,7 +242,7 @@ MeshMatDescClass &
 MeshMatDescClass::operator = (const MeshMatDescClass & that)
 {
 	if (this != &that) {
-		
+
 		PassCount = that.PassCount;
 		VertexCount = that.VertexCount;
 		PolyCount = that.PolyCount;
@@ -261,7 +259,7 @@ MeshMatDescClass::operator = (const MeshMatDescClass & that)
 			for (int stage=0; stage < MAX_TEX_STAGES; stage++) {
 				UVSource[pass][stage] = that.UVSource[pass][stage];
 				REF_PTR_SET(Texture[pass][stage],that.Texture[pass][stage]);
-			
+
 				// make our own array of texture pointers.
 				REF_PTR_RELEASE(TextureArray[pass][stage]);
 				if (that.TextureArray[pass][stage]) {
@@ -269,7 +267,6 @@ MeshMatDescClass::operator = (const MeshMatDescClass & that)
 				}
 			}
 
-//			REF_PTR_SET(UVIndex [pass], that.UVIndex [pass]);
 			DCGSource[pass] = that.DCGSource[pass];
 			DIGSource[pass] = that.DIGSource[pass];
 
@@ -289,12 +286,12 @@ MeshMatDescClass::operator = (const MeshMatDescClass & that)
 			if (that.ShaderArray[pass]) {
 				ShaderArray[pass] = NEW_REF(ShareBufferClass<ShaderClass>,(*that.ShaderArray[pass]));
 			}
-		}	
+		}
 	}
 	return *this;
 }
 
-MeshMatDescClass::~MeshMatDescClass(void)
+MeshMatDescClass::~MeshMatDescClass()
 {
 	Reset(0,0,0);
 }
@@ -327,16 +324,15 @@ void MeshMatDescClass::Reset(int polycount,int vertcount,int passcount)
 			REF_PTR_RELEASE(Texture[pass][stage]);
 			REF_PTR_RELEASE(TextureArray[pass][stage]);
 		}
-		
-//		REF_PTR_RELEASE(UVIndex[pass]);
+
 		DCGSource[pass] = VertexMaterialClass::MATERIAL;
 		DIGSource[pass] = VertexMaterialClass::MATERIAL;
 		Shader[pass] = 0;
 		REF_PTR_RELEASE(ShaderArray[pass]);
-		
+
 		REF_PTR_RELEASE(Material[pass]);
 		REF_PTR_RELEASE(MaterialArray[pass]);
-		
+
 	}
 }
 
@@ -349,7 +345,7 @@ void MeshMatDescClass::Init_Alternate(MeshMatDescClass & default_materials,MeshM
 
 	// Color arrays
 	for (int array=0; array<MAX_COLOR_ARRAYS; array++) {
-		if (alternate_materials.ColorArray[array] != NULL) {
+		if (alternate_materials.ColorArray[array] != nullptr) {
 			REF_PTR_SET(ColorArray[array],alternate_materials.ColorArray[array]);
 		} else {
 			REF_PTR_SET(ColorArray[array],default_materials.ColorArray[array]);
@@ -371,7 +367,7 @@ void MeshMatDescClass::Init_Alternate(MeshMatDescClass & default_materials,MeshM
 			// and set its index into our UVSource array.
 			if (alternate_materials.UVSource[pass][stage] == -1) {
 				if (default_materials.UVSource[pass][stage] != -1) {
-					
+
 					// Look up the uv array in default_materials that we need to bring over.
 					int default_uv_source = default_materials.UVSource[pass][stage];
 					UVBufferClass * uvarray = default_materials.UV[default_uv_source];
@@ -391,17 +387,17 @@ void MeshMatDescClass::Init_Alternate(MeshMatDescClass & default_materials,MeshM
 						UVSource[pass][stage] = found_index;
 					} else {
 						int new_index = Get_UV_Array_Count();
-						REF_PTR_SET(UV[new_index],default_materials.UV[default_uv_source]); 
+						REF_PTR_SET(UV[new_index],default_materials.UV[default_uv_source]);
 						UVSource[pass][stage] = new_index;
 					}
-				} 
+				}
 			} else {
 				UVSource[pass][stage] = alternate_materials.UVSource[pass][stage];
 			}
 
 			// Texture pointer(s):  If alternate_materials has either a single texture or an array of textures,
 			// then add-ref only the texture data it contains.  Otherwise, add-ref the data in default_materials.
-			if ((alternate_materials.Texture[pass][stage] != NULL) || (alternate_materials.TextureArray[pass][stage])) {
+			if ((alternate_materials.Texture[pass][stage] != nullptr) || (alternate_materials.TextureArray[pass][stage])) {
 				REF_PTR_SET(Texture[pass][stage] , alternate_materials.Texture[pass][stage]);
 				REF_PTR_SET(TextureArray[pass][stage] , alternate_materials.TextureArray[pass][stage]);
 			} else {
@@ -409,13 +405,6 @@ void MeshMatDescClass::Init_Alternate(MeshMatDescClass & default_materials,MeshM
 				REF_PTR_SET(TextureArray[pass][stage] , default_materials.TextureArray[pass][stage]);
 			}
 		}
-		
-		// UV Index array
-//		if (alternate_materials.UVIndex[pass] != NULL) {
-//			REF_PTR_SET(UVIndex[pass],alternate_materials.UVIndex[pass]);
-//		} else {
-//			REF_PTR_SET(UVIndex[pass],default_materials.UVIndex[pass]);
-//		}
 
 		// Vertex color configuration
 		if (alternate_materials.DCGSource[pass] == VertexMaterialClass::MATERIAL) {
@@ -423,13 +412,13 @@ void MeshMatDescClass::Init_Alternate(MeshMatDescClass & default_materials,MeshM
 		} else {
 			DCGSource[pass] = alternate_materials.DCGSource[pass];
 		}
-		
+
 		// Shaders, currently I can't tell if the alternate data has a shader...  Can't override the shader for now.
 		Shader[pass] = default_materials.Shader[pass];
 		REF_PTR_SET(ShaderArray[pass],default_materials.ShaderArray[pass]);
 
 		// Vertex Materials.  If alternate_materials has either a single or array of materials, then copy them
-		if ((alternate_materials.Material[pass] != NULL) || (alternate_materials.MaterialArray[pass] != NULL)) {
+		if ((alternate_materials.Material[pass] != nullptr) || (alternate_materials.MaterialArray[pass] != nullptr)) {
 			REF_PTR_SET(Material[pass],alternate_materials.Material[pass]);
 			REF_PTR_SET(MaterialArray[pass],alternate_materials.MaterialArray[pass]);
 		} else {
@@ -438,36 +427,36 @@ void MeshMatDescClass::Init_Alternate(MeshMatDescClass & default_materials,MeshM
 				Material[pass] = NEW_REF(VertexMaterialClass,(*(default_materials.Material[pass])));
 			} else {
 				if (default_materials.MaterialArray[pass]) {
-					WWDEBUG_SAY(("Unimplemented case: mesh has more than one default vertex material but no alternate vertex materials have been defined.\r\n")); 
+					WWDEBUG_SAY(("Unimplemented case: mesh has more than one default vertex material but no alternate vertex materials have been defined."));
 				}
-				Material[pass] = NULL;
+				Material[pass] = nullptr;
 			}
 		}
 	}
 }
 
-bool MeshMatDescClass::Is_Empty(void)
+bool MeshMatDescClass::Is_Empty()
 {
 	for (int array=0; array<MAX_COLOR_ARRAYS; array++) {
-		if (ColorArray[array] != NULL) return false;
+		if (ColorArray[array] != nullptr) return false;
 	}
 
 	for (int uvarray=0; uvarray<MAX_UV_ARRAYS; uvarray++) {
-		if (UV[uvarray] != NULL) return false;
+		if (UV[uvarray] != nullptr) return false;
 	}
 
 	for (int pass=0; pass<MAX_PASSES; pass++) {
 		for (int stage=0; stage<MAX_TEX_STAGES; stage++) {
-			if (Texture[pass][stage] != NULL) return false;
-			if (TextureArray[pass][stage] != NULL) return false;
+			if (Texture[pass][stage] != nullptr) return false;
+			if (TextureArray[pass][stage] != nullptr) return false;
 		}
 
-//		if (UVIndex[pass] != NULL) return false;
-		if (Material[pass] != NULL) return false;
-		if (MaterialArray[pass] != NULL) return false;
+//		if (UVIndex[pass] != nullptr) return false;
+		if (Material[pass] != nullptr) return false;
+		if (MaterialArray[pass] != nullptr) return false;
 
 	}
-	
+
 	return true;
 }
 
@@ -510,20 +499,20 @@ VertexMaterialClass * MeshMatDescClass::Get_Material(int vidx,int pass) const
 
 		return MaterialArray[pass]->Get_Element(vidx);
 
-	} else if (Material[pass] != NULL) {
+	} else if (Material[pass] != nullptr) {
 
 		Material[pass]->Add_Ref();
 		return Material[pass];
-	
+
 	}
-	return NULL;
+	return nullptr;
 }
 
 ShaderClass	MeshMatDescClass::Get_Shader(int pidx,int pass) const
 {
 	if (ShaderArray[pass]) {
 		return ShaderArray[pass]->Get_Element(pidx);
-	} 
+	}
 	return Shader[pass];
 }
 
@@ -532,21 +521,21 @@ TextureClass * MeshMatDescClass::Get_Texture(int pidx,int pass,int stage) const
 	if (TextureArray[pass][stage]) {
 
 		return TextureArray[pass][stage]->Get_Element(pidx);
-	
-	} else if (Texture[pass][stage] != NULL) {
+
+	} else if (Texture[pass][stage] != nullptr) {
 
 		Texture[pass][stage]->Add_Ref();
 		return Texture[pass][stage];
-		
-	}	
-	return NULL;
+
+	}
+	return nullptr;
 }
 
 VertexMaterialClass * MeshMatDescClass::Peek_Material(int vidx,int pass) const
 {
 	if (MaterialArray[pass]) {
 		return MaterialArray[pass]->Peek_Element(vidx);
-	} 
+	}
 	return Material[pass];
 }
 
@@ -560,7 +549,7 @@ TextureClass * MeshMatDescClass::Peek_Texture(int pidx,int pass,int stage) const
 
 TexBufferClass * MeshMatDescClass::Get_Texture_Array(int pass,int stage,bool create)
 {
-	if (create && TextureArray[pass][stage] == NULL) {
+	if (create && TextureArray[pass][stage] == nullptr) {
 		TextureArray[pass][stage] = NEW_REF(TexBufferClass,(PolyCount, "MeshMatDescClass::TextureArray"));
 	}
 	return TextureArray[pass][stage];
@@ -568,7 +557,7 @@ TexBufferClass * MeshMatDescClass::Get_Texture_Array(int pass,int stage,bool cre
 
 MatBufferClass * MeshMatDescClass::Get_Material_Array(int pass,bool create)
 {
-	if (create && MaterialArray[pass] == NULL) {
+	if (create && MaterialArray[pass] == nullptr) {
 		MaterialArray[pass] = NEW_REF(MatBufferClass,(VertexCount, "MeshMatDescClass::MaterialArray"));
 	}
 	return MaterialArray[pass];
@@ -576,14 +565,14 @@ MatBufferClass * MeshMatDescClass::Get_Material_Array(int pass,bool create)
 
 ShaderClass * MeshMatDescClass::Get_Shader_Array(int pass,bool create)
 {
-	if (create && ShaderArray[pass] == NULL) {
+	if (create && ShaderArray[pass] == nullptr) {
 		ShaderArray[pass] = NEW_REF(ShareBufferClass<ShaderClass>,(PolyCount, "MeshMatDescClass::ShaderArray"));
 		ShaderArray[pass]->Clear();
 	}
 	if (ShaderArray[pass]) {
 		return ShaderArray[pass]->Get_Array();
 	}
-	return NULL;
+	return nullptr;
 }
 
 void MeshMatDescClass::Make_UV_Array_Unique(int pass,int stage)
@@ -598,7 +587,7 @@ void MeshMatDescClass::Make_UV_Array_Unique(int pass,int stage)
 
 void MeshMatDescClass::Make_Color_Array_Unique(int array)
 {
-	if ((ColorArray[array] != NULL) && (ColorArray[array]->Num_Refs() > 1)) {
+	if ((ColorArray[array] != nullptr) && (ColorArray[array]->Num_Refs() > 1)) {
 		ShareBufferClass<unsigned> * unique_color_array = NEW_REF(ShareBufferClass<unsigned>,(*ColorArray[array]));
 		ColorArray[array]->Release_Ref();
 		ColorArray[array] = unique_color_array;
@@ -634,52 +623,53 @@ void MeshMatDescClass::Install_UV_Array(int pass,int stage,Vector2 * uvs,int cou
 		** Find the first empty UV-array slot
 		*/
 		int new_index = 0;
-		while ((UV[new_index] != NULL) && (new_index < MAX_UV_ARRAYS)) {
+		while ((UV[new_index] != nullptr) && (new_index < MAX_UV_ARRAYS)) {
 			new_index++;
 		}
 
 		if (new_index < MAX_UV_ARRAYS) {
 
-			WWASSERT(UV[new_index] == NULL);
+			WWASSERT(UV[new_index] == nullptr);
 			UV[new_index] = NEW_REF(UVBufferClass,(count, "MeshMatDescClass::UV"));
 			memcpy(UV[new_index]->Get_Array(),uvs,count * sizeof(Vector2));
 			UV[new_index]->Update_CRC();  // update the crc for future comparision
 			Set_UV_Source(pass,stage,new_index);
-		} 
+		}
 	}
 }
 
 
-void MeshMatDescClass::Post_Load_Process(bool lighting_enabled)
+void MeshMatDescClass::Post_Load_Process(bool lighting_enabled,MeshModelClass * parent)
 {
 	/*
 	** Configure all vertex materials to source the uv coordinates and colors from the correct arrays
 	** Pre-multiply the vertex color arrays.
 	*/
-	for (int pass=0; pass<PassCount; pass++) {
+	int pass=0;
+	for (; pass<PassCount; pass++) {
 
 		/*
-		** If this pass doesn't have a vertex material, create one 
+		** If this pass doesn't have a vertex material, create one
 		*/
-		if ((Material[pass] == NULL) && (MaterialArray[pass] == NULL)) {
+		if ((Material[pass] == nullptr) && (MaterialArray[pass] == nullptr)) {
 			Material[pass] = NEW_REF(VertexMaterialClass,());
 		}
 
 		/*
 		** Configure the materials to source the uv coordinates and colors
 		*/
-		if (Material[pass] != NULL) {
+		if (Material[pass] != nullptr) {
 
 			Configure_Material(Material[pass],pass,lighting_enabled);
 
 		} else {
-			VertexMaterialClass * prev_mtl = NULL;
+			VertexMaterialClass * prev_mtl = nullptr;
 			VertexMaterialClass * mtl = Peek_Material(pass,0);
-			
+
 			for (int vidx=0; vidx<VertexCount; vidx++) {
-				
+
 				mtl = Peek_Material(vidx,pass);
-				if ((mtl != prev_mtl) && (mtl != NULL)) {
+				if ((mtl != prev_mtl) && (mtl != nullptr)) {
 					Configure_Material(mtl,pass,lighting_enabled);
 					prev_mtl = mtl;
 				}
@@ -708,7 +698,7 @@ void MeshMatDescClass::Post_Load_Process(bool lighting_enabled)
 		Vector3 mtl_emissive;
 		float mtl_opacity = 1.0f;
 
-		VertexMaterialClass * prev_mtl = NULL;
+		VertexMaterialClass * prev_mtl = nullptr;
 		VertexMaterialClass * mtl = Peek_Material(0, pass);
 		if (mtl) {
 			mtl->Get_Diffuse(&single_diffuse);
@@ -753,8 +743,8 @@ void MeshMatDescClass::Post_Load_Process(bool lighting_enabled)
 		}
 
 		// If both DCG and DIG arrays are submitted, multiply them together to DCG channel
-		if ((DCGSource[pass] != VertexMaterialClass::MATERIAL) && (ColorArray[0] != NULL) &&
-			 (DIGSource[pass] != VertexMaterialClass::MATERIAL) && (ColorArray[1] != NULL)) {
+		if ((DCGSource[pass] != VertexMaterialClass::MATERIAL) && (ColorArray[0] != nullptr) &&
+			 (DIGSource[pass] != VertexMaterialClass::MATERIAL) && (ColorArray[1] != nullptr)) {
 			unsigned * diffuse_array = ColorArray[0]->Get_Array();
 			unsigned * emissive_array = ColorArray[1]->Get_Array();
 
@@ -769,16 +759,16 @@ void MeshMatDescClass::Post_Load_Process(bool lighting_enabled)
 		}
 		DIGSource[pass]=VertexMaterialClass::MATERIAL;	// DIG channel no more
 
-		if ((DCGSource[pass] != VertexMaterialClass::MATERIAL) && (ColorArray[0] != NULL)) {
+		if ((DCGSource[pass] != VertexMaterialClass::MATERIAL) && (ColorArray[0] != nullptr)) {
 			unsigned * diffuse_array = ColorArray[0]->Get_Array();
 			Vector3 mtl_diffuse;
 			float mtl_opacity = 1.0f;
 
-			VertexMaterialClass * prev_mtl = NULL;
+			VertexMaterialClass * prev_mtl = nullptr;
 			VertexMaterialClass * mtl = Peek_Material(0,pass);
 
 			for (int vidx=0; vidx<VertexCount; vidx++) {
-				
+
 				mtl = Peek_Material(vidx,pass);
 				if (mtl != prev_mtl) {
 					prev_mtl = mtl;
@@ -858,16 +848,16 @@ void MeshMatDescClass::Post_Load_Process(bool lighting_enabled)
 		** don't need to pre-multiply the color values; hopefully this is the behavior on
 		** other hardware as well!
 		*/
-/*		if ((DCGSource[pass] != VertexMaterialClass::MATERIAL) && (ColorArray[0] != NULL)) {
+/*		if ((DCGSource[pass] != VertexMaterialClass::MATERIAL) && (ColorArray[0] != nullptr)) {
 			unsigned * diffuse_array = ColorArray[0]->Get_Array();
 			Vector3 mtl_diffuse;
 			float mtl_opacity = 1.0f;
 
-			VertexMaterialClass * prev_mtl = NULL;
+			VertexMaterialClass * prev_mtl = nullptr;
 			VertexMaterialClass * mtl = Peek_Material(0,pass);
 
 			for (int vidx=0; vidx<VertexCount; vidx++) {
-				
+
 				mtl = Peek_Material(vidx,pass);
 				if (mtl != prev_mtl) {
 					prev_mtl = mtl;
@@ -881,22 +871,21 @@ void MeshMatDescClass::Post_Load_Process(bool lighting_enabled)
 				diffuse.Z *= mtl_diffuse.Z;
 				diffuse.W *= mtl_opacity;
 				diffuse_array[vidx]=DX8Wrapper::Convert_Color(diffuse);
-			
+
 			}
 		}
 */		/*
 		** If needed, pre-multiply the emissive color array with the material color
 		*/
-/*		if ((DIGSource[pass] != VertexMaterialClass::MATERIAL) && (ColorArray[1] != NULL)) {
+/*		if ((DIGSource[pass] != VertexMaterialClass::MATERIAL) && (ColorArray[1] != nullptr)) {
 
 			unsigned * emissive_array = ColorArray[1]->Get_Array();
 			Vector3 mtl_emissive;
 
-			VertexMaterialClass * prev_mtl = NULL;
+			VertexMaterialClass * prev_mtl = nullptr;
 			VertexMaterialClass * mtl = Peek_Material(0,pass);
 
 			for (int vidx=0; vidx<VertexCount; vidx++) {
-				
 				mtl = Peek_Material(vidx,pass);
 				if (mtl != prev_mtl) {
 					prev_mtl = mtl;
@@ -908,7 +897,7 @@ void MeshMatDescClass::Post_Load_Process(bool lighting_enabled)
 				emissive.Y *= mtl_emissive.Y;
 				emissive.Z *= mtl_emissive.Z;
 				emissive_array[vidx]=DX8Wrapper::Convert_Color(emissive);
-			
+
 			}
 		}
 
@@ -925,7 +914,7 @@ void MeshMatDescClass::Configure_Material(VertexMaterialClass * mtl,int pass,boo
 
 	mtl->Set_Lighting(lighting_enabled);
 
-	for (int stage=0; stage<MAX_TEX_STAGES; stage++) {			
+	for (int stage=0; stage<MAX_TEX_STAGES; stage++) {
 		int src = UVSource[pass][stage];
 		if (src == -1) {
 			src = 0;
@@ -934,26 +923,26 @@ void MeshMatDescClass::Configure_Material(VertexMaterialClass * mtl,int pass,boo
 	}
 }
 
-bool MeshMatDescClass::Do_Mappers_Need_Normals(void)
+bool MeshMatDescClass::Do_Mappers_Need_Normals()
 {
-	if (DX8Caps::Support_NPatches() && WW3D::Get_NPatches_Level()>1) return true;
+	if (DX8Wrapper::Get_Current_Caps()->Support_NPatches() && WW3D::Get_NPatches_Level()>1) return true;
 
 	for (int pass=0; pass<PassCount; pass++) {
 		/*
 		** Check the materials on this pass to see if any have mappers which require normals
 		*/
-		if (Material[pass] != NULL) {
+		if (Material[pass] != nullptr) {
 
 			if (Material[pass]->Do_Mappers_Need_Normals()) return true;
 
 		} else {
-			VertexMaterialClass * prev_mtl = NULL;
+			VertexMaterialClass * prev_mtl = nullptr;
 			VertexMaterialClass * mtl = Peek_Material(pass,0);
-			
+
 			for (int vidx=0; vidx<VertexCount; vidx++) {
-				
+
 				mtl = Peek_Material(vidx,pass);
-				if ((mtl != prev_mtl) && (mtl != NULL)) {
+				if ((mtl != prev_mtl) && (mtl != nullptr)) {
 
 					if (mtl->Do_Mappers_Need_Normals()) return true;
 					prev_mtl = mtl;
@@ -961,7 +950,6 @@ bool MeshMatDescClass::Do_Mappers_Need_Normals(void)
 			}
 		}
 	}
-	
+
 	return false;
 }
-

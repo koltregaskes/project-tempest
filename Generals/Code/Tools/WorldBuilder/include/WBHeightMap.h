@@ -16,35 +16,32 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __WBHEIGHTMAP_H_
-#define __WBHEIGHTMAP_H_
+#pragma once
 
-#include "W3DDevice/GameClient/HeightMap.h"	
-	
+#include "W3DDevice/GameClient/HeightMap.h"
+
 class WBHeightMap : public HeightMapRenderObjClass
-{	
+{
 
 public:
-	WBHeightMap(void);
+	WBHeightMap();
 
 	/////////////////////////////////////////////////////////////////////////////
 	// Render Object Interface (W3D methods)
 	/////////////////////////////////////////////////////////////////////////////
-	virtual void					Render(RenderInfoClass & rinfo);
-	virtual Bool					Cast_Ray(RayCollisionTestClass & raytest);
+	virtual void					Render(RenderInfoClass & rinfo) override;
+	virtual Bool					Cast_Ray(RayCollisionTestClass & raytest) override;
 
 	virtual Real getHeightMapHeight(Real x, Real y, Coord3D* normal);	///<return height and normal at given point
 	virtual Real getMaxCellHeight(Real x, Real y);	///< returns maximum height of the 4 cell corners.
 
 	void setDrawEntireMap(Bool entire) {m_drawEntireMap = entire;};
-	Bool getDrawEntireMap(void) {return m_drawEntireMap;};
+	Bool getDrawEntireMap() {return m_drawEntireMap;};
 	void setFlattenHeights(Bool flat);
 
 protected:
-	void flattenHeights(void);
+	void flattenHeights();
 protected:
 	Bool m_drawEntireMap;
 	Bool m_flattenHeights;
 };
-
-#endif  // end __WBHEIGHTMAP_H_

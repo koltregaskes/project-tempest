@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_WaterOptions_H__6B56E20C_582E_4132_A251_87902218852C__INCLUDED_)
-#define AFX_WaterOptions_H__6B56E20C_582E_4132_A251_87902218852C__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // WaterOptions.h : header file
 //
 #include "WBPopupSlider.h"
@@ -39,7 +35,7 @@ class WaterOptions : public COptionsPanel, public PopupSliderOwner
 
 // Construction
 public:
-	WaterOptions(CWnd* pParent = NULL);   // standard constructor
+	WaterOptions(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(WaterOptions)
@@ -52,9 +48,9 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(WaterOptions)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	virtual void OnOK(){return;};  //!< Modeless dialogs don't OK, so eat this for modeless.
-	virtual void OnCancel(){return;}; //!< Modeless dialogs don't close on ESC, so eat this for modeless.
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
+	virtual void OnOK() override {return;};  //!< Modeless dialogs don't OK, so eat this for modeless.
+	virtual void OnCancel() override {return;}; //!< Modeless dialogs don't close on ESC, so eat this for modeless.
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -62,7 +58,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(WaterOptions)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnChangeWaterEdit();
 	afx_msg void OnChangeHeightEdit();
 	afx_msg void OnChangeSpacingEdit();
@@ -81,28 +77,26 @@ protected:
 	static Int					 m_waterPointSpacing;
 	static Bool m_creatingWaterAreas; ///< True if we are creating flood fill water polygons, rather than dropping single points.
 protected:
-	void updateTheUI(void);
-	void startUpdateHeight(void);
-	void updateHeight(void);
-	void endUpdateHeight(void);
+	void updateTheUI();
+	void startUpdateHeight();
+	void updateHeight();
+	void endUpdateHeight();
 	PolygonTrigger *adjustCount(PolygonTrigger *trigger, Int firstPt, Int lastPt, Int desiredPointCount);
 
 public:
-	static void update(void);
+	static void update();
 	static void setHeight(Int height);
-	static Int getHeight(void) { return m_waterHeight;};
-	static Int getSpacing(void) { return m_waterPointSpacing;};
-	static Bool getCreatingWaterAreas(void) {return m_creatingWaterAreas;}
+	static Int getHeight() { return m_waterHeight;};
+	static Int getSpacing() { return m_waterPointSpacing;};
+	static Bool getCreatingWaterAreas() {return m_creatingWaterAreas;}
 
 public:
 
-	virtual void GetPopSliderInfo(const long sliderID, long *pMin, long *pMax, long *pLineSize, long *pInitial);
-	virtual void PopSliderChanged(const long sliderID, long theVal);
-	virtual void PopSliderFinished(const long sliderID, long theVal);
+	virtual void GetPopSliderInfo(const long sliderID, long *pMin, long *pMax, long *pLineSize, long *pInitial) override;
+	virtual void PopSliderChanged(const long sliderID, long theVal) override;
+	virtual void PopSliderFinished(const long sliderID, long theVal) override;
 
 };
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_WaterOptions_H__6B56E20C_582E_4030_A251_879097C8853C__INCLUDED_)

@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_TEAMIDENTITY_H__B37DB2FD_297F_4D0E_AACD_193BE30C6C85__INCLUDED_)
-#define AFX_TEAMIDENTITY_H__B37DB2FD_297F_4D0E_AACD_193BE30C6C85__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // TeamIdentity.h : header file
 //
 class Dict;
@@ -47,15 +43,15 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(TeamIdentity)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
+	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam) override;
 	//}}AFX_VIRTUAL
 
 protected:
 	Dict		*m_teamDict;
 	SidesList	*m_sides;
 protected:
-	void loadUnitsInfo(int idcMinUnit, NameKeyType keyMinUnit, 
+	void loadUnitsInfo(int idcMinUnit, NameKeyType keyMinUnit,
 								int idcMaxUnit, NameKeyType keyMaxUnit,
 								int idcUnitType, NameKeyType keyUnitType);
 	void OnUnitTypeButton(Int idcUnitType);
@@ -68,7 +64,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(TeamIdentity)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnAiRecruitable();
 	afx_msg void OnAutoReinforce();
 	afx_msg void OnBaseDefense();
@@ -98,5 +94,3 @@ protected:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_TEAMIDENTITY_H__B37DB2FD_297F_4D0E_AACD_193BE30C6C85__INCLUDED_)

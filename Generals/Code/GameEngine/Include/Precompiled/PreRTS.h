@@ -23,11 +23,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // This file contains all the header files that shouldn't change frequently.
-// Be careful what you stick in here, because putting files that change often in here will 
+// Be careful what you stick in here, because putting files that change often in here will
 // tend to cheese people's goats.
 
-#ifndef __PRERTS_H__
-#define __PRERTS_H__
+#pragma once
 
 //-----------------------------------------------------------------------------
 // srj sez: this must come first, first, first.
@@ -36,25 +35,31 @@
 class STLSpecialAlloc;
 
 
-// We actually don't use Windows for much other than timeGetTime, but it was included in 40 
+// We actually don't use Windows for much other than timeGetTime, but it was included in 40
 // different .cpp files, so I bit the bullet and included it here.
 // PLEASE DO NOT ABUSE WINDOWS OR IT WILL BE REMOVED ENTIRELY. :-)
-//--------------------------------------------------------------------------------- System Includes 
+//--------------------------------------------------------------------------------- System Includes
 #define WIN32_LEAN_AND_MEAN
+// TheSuperHackers @build JohnsterID 05/01/2026 Add ATL compatibility for MinGW-w64 builds
+#if defined(__GNUC__) && defined(_WIN32)
+    #include <Utility/atl_compat.h>
+#endif
 #include <atlbase.h>
 #include <windows.h>
 
 #include <assert.h>
 #include <ctype.h>
 #include <direct.h>
-#include <EXCPT.H>
+#include <excpt.h>
 #include <float.h>
-#include <fstream.h>
+#include <Utility/fstream_adapter.h>
 #include <imagehlp.h>
 #include <io.h>
 #include <limits.h>
 #include <lmcons.h>
+#if defined(_MSC_VER) && _MSC_VER < 1300
 #include <mapicode.h>
+#endif
 #include <math.h>
 #include <memory.h>
 #include <mmsystem.h>
@@ -67,13 +72,11 @@ class STLSpecialAlloc;
 #include <snmp.h>
 #include <stdarg.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <sys/timeb.h>
 #include <sys/types.h>
-#include <TCHAR.H>
+#include <tchar.h>
 #include <time.h>
 #include <vfw.h>
 #include <winerror.h>
@@ -101,7 +104,7 @@ class STLSpecialAlloc;
 
 //------------------------------------------------------------------------------------ RTS Includes
 // Icky. These have to be in this order.
-#include "Lib/Basetype.h"
+#include "Lib/BaseType.h"
 #include "Common/STLTypedefs.h"
 #include "Common/Errors.h"
 #include "Common/Debug.h"
@@ -125,4 +128,6 @@ class STLSpecialAlloc;
 #include "Common/Thing.h"
 #include "Common/UnicodeString.h"
 
-#endif /* __PRERTS_H__ */
+#if defined(__GNUC__) && defined(_WIN32)
+    #pragma GCC diagnostic pop
+#endif

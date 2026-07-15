@@ -24,12 +24,12 @@
 
 // FILE: LayoutScheme.h ///////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
-//                                                                          
-//                       Westwood Studios Pacific.                          
-//                                                                          
-//                       Confidential Information					         
-//                Copyright (C) 2001 - All Rights Reserved                  
-//                                                                          
+//
+//                       Westwood Studios Pacific.
+//
+//                       Confidential Information
+//                Copyright (C) 2001 - All Rights Reserved
+//
 //-----------------------------------------------------------------------------
 //
 // Project:    GUIEdit
@@ -45,9 +45,6 @@
 
 #pragma once
 
-#ifndef __LAYOUTSCHEME_H_
-#define __LAYOUTSCHEME_H_
-
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include <windows.h>
 
@@ -62,22 +59,22 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 // LayoutScheme ---------------------------------------------------------------
-/** The layout scheme provides a place for default look of newly 
+/** The layout scheme provides a place for default look of newly
 	* created controls and windows */
 //-----------------------------------------------------------------------------
 class LayoutScheme
 {
 
 public:
-	
+
 	LayoutScheme();
 	~LayoutScheme();
 
-	void init( void );
+	void init();
 
-	void openDialog( void );  ///< open the scheme info and editing dialog
+	void openDialog();  ///< open the scheme info and editing dialog
 
-	char *getSchemeFilename( void );  ///< get the scheme filename
+	char *getSchemeFilename();  ///< get the scheme filename
 	void setSchemeFilename( char *filename );  ///< set the scheme filename
 
 	Bool saveScheme( char *filename );  ///< save the current scheme to file
@@ -88,14 +85,14 @@ public:
 													 Color color, Color borderColor );
 
 	void setFont( GameFont *font );
-	GameFont *getFont( void );
+	GameFont *getFont();
 
-	Color getEnabledTextColor( void );
-	Color getEnabledTextBorderColor( void );
-	Color getDisabledTextColor( void );
-	Color getDisabledTextBorderColor( void );
-	Color getHiliteTextColor( void );
-	Color getHiliteTextBorderColor( void );
+	Color getEnabledTextColor();
+	Color getEnabledTextBorderColor();
+	Color getDisabledTextColor();
+	Color getDisabledTextBorderColor();
+	Color getHiliteTextColor();
+	Color getHiliteTextBorderColor();
 	void setEnabledTextColor( Color c );
 	void setEnabledTextBorderColor( Color c );
 	void setDisabledTextColor( Color c );
@@ -103,7 +100,7 @@ public:
 	void setHiliteTextColor( Color c );
 	void setHiliteTextBorderColor( Color c );
 
-	/** apply the image and color info stored in the state identifer tables
+	/** apply the image and color info stored in the state identifier tables
 	used for "property editing" to all appropriate windows currently
 	loaded in the editor */
 	void applyPropertyTablesToWindow( GameWindow *root );
@@ -121,19 +118,19 @@ protected:
 
 	GameFont *m_font;  ///< default font
 
-};  // end LayoutScheme
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 // INLINING ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-inline char *LayoutScheme::getSchemeFilename( void ) { return m_schemeFilename; }
-inline void LayoutScheme::setSchemeFilename( char *filename ) { strcpy( m_schemeFilename, filename ); }
-inline Color LayoutScheme::getEnabledTextColor( void ) { return m_enabledText.color; }
-inline Color LayoutScheme::getEnabledTextBorderColor( void ) { return m_enabledText.borderColor; }
-inline Color LayoutScheme::getDisabledTextColor( void ) { return m_disabledText.color; }
-inline Color LayoutScheme::getDisabledTextBorderColor( void ) { return m_disabledText.borderColor; }
-inline Color LayoutScheme::getHiliteTextColor( void ) { return m_hiliteText.color; }
-inline Color LayoutScheme::getHiliteTextBorderColor( void ) { return m_hiliteText.borderColor; }
+inline char *LayoutScheme::getSchemeFilename() { return m_schemeFilename; }
+inline void LayoutScheme::setSchemeFilename( char *filename ) { strlcpy(m_schemeFilename, filename, ARRAY_SIZE(m_schemeFilename)); }
+inline Color LayoutScheme::getEnabledTextColor() { return m_enabledText.color; }
+inline Color LayoutScheme::getEnabledTextBorderColor() { return m_enabledText.borderColor; }
+inline Color LayoutScheme::getDisabledTextColor() { return m_disabledText.color; }
+inline Color LayoutScheme::getDisabledTextBorderColor() { return m_disabledText.borderColor; }
+inline Color LayoutScheme::getHiliteTextColor() { return m_hiliteText.color; }
+inline Color LayoutScheme::getHiliteTextBorderColor() { return m_hiliteText.borderColor; }
 inline void LayoutScheme::setEnabledTextColor( Color c ) { m_enabledText.color = c; }
 inline void LayoutScheme::setEnabledTextBorderColor( Color c ) { m_enabledText.borderColor = c; }
 inline void LayoutScheme::setDisabledTextColor( Color c ) { m_disabledText.color = c; }
@@ -141,12 +138,9 @@ inline void LayoutScheme::setDisabledTextBorderColor( Color c ) { m_disabledText
 inline void LayoutScheme::setHiliteTextColor( Color c ) { m_hiliteText.color = c; }
 inline void LayoutScheme::setHiliteTextBorderColor( Color c ) { m_hiliteText.borderColor = c; }
 inline void LayoutScheme::setFont( GameFont *font ) { m_font = font; }
-inline GameFont *LayoutScheme::getFont( void ) { return m_font; }
+inline GameFont *LayoutScheme::getFont() { return m_font; }
 
 ///////////////////////////////////////////////////////////////////////////////
 // EXTERNALS //////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 extern LayoutScheme *TheDefaultScheme;
-
-#endif // end __LAYOUTSCHEME_H_
-

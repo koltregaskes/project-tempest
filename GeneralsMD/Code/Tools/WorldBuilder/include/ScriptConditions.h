@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_ScriptConditionsDlg_H__EEFDFF65_2440_4AFE_B5D6_9E887C8C2DED__INCLUDED_)
-#define AFX_ScriptConditionsDlg_H__EEFDFF65_2440_4AFE_B5D6_9E887C8C2DED__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // ScriptConditionsDlg.h : header file
 //
 class Script;
@@ -38,7 +34,7 @@ class ScriptConditionsDlg : public CPropertyPage
 // Construction
 public:
 	ScriptConditionsDlg();
-	~ScriptConditionsDlg();
+	virtual ~ScriptConditionsDlg() override;
 
 // Dialog Data
 	//{{AFX_DATA(ScriptConditionsDlg)
@@ -52,7 +48,7 @@ public:
 	// ClassWizard generate virtual function overrides
 	//{{AFX_VIRTUAL(ScriptConditionsDlg)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -66,8 +62,8 @@ protected:
 	Int					m_index; // Index of whatever is currently selected.
 
 protected:
-	void enableUI(void); 
-	void loadList(void);
+	void enableUI();
+	void loadList();
 	Int doMoveUp( OrCondition **outWhichNow );
 	Int doMoveDown( OrCondition **outWhichNow );
 	void setSel(OrCondition *pOr, Condition *pCond);
@@ -75,7 +71,7 @@ protected:
 protected:
 	// Generated message map functions
 	//{{AFX_MSG(ScriptConditionsDlg)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnEditCondition();
 	afx_msg void OnSelchangeConditionList();
 	afx_msg void OnDblclkConditionList();
@@ -93,5 +89,3 @@ protected:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_ScriptConditionsDlg_H__EEFDFF65_2440_4AFE_B5D6_9E887C8C2DED__INCLUDED_)

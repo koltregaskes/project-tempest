@@ -31,16 +31,11 @@
 #include "Common/OSDisplay.h"
 
 #include "Common/SubsystemInterface.h"
-#include "Common/STLTypeDefs.h"
+#include "Common/STLTypedefs.h"
 #include "Common/AsciiString.h"
-#include "Common/SystemInfo.h"
 #include "Common/UnicodeString.h"
 #include "GameClient/GameText.h"
 
-#ifdef _INTERNAL
-//#pragma optimize("", off)
-//#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
-#endif
 
 
 extern HWND ApplicationHWnd;
@@ -50,40 +45,40 @@ static void RTSFlagsToOSFlags(UnsignedInt buttonFlags, UnsignedInt otherFlags, U
 {
 	outWindowsFlags = 0;
 
-	if (BitTest(buttonFlags, OSDBT_OK)) {
+	if (BitIsSet(buttonFlags, OSDBT_OK)) {
 		outWindowsFlags |= MB_OK;
 	}
-	
-	if (BitTest(buttonFlags, OSDBT_CANCEL)) {
+
+	if (BitIsSet(buttonFlags, OSDBT_CANCEL)) {
 		outWindowsFlags |= MB_OKCANCEL;
 	}
 
 	//-----------------------------------------------------------------------------------------------
-	if (BitTest(otherFlags, OSDOF_SYSTEMMODAL)) {
+	if (BitIsSet(otherFlags, OSDOF_SYSTEMMODAL)) {
 		outWindowsFlags |= MB_SYSTEMMODAL;
 	}
 
-	if (BitTest(otherFlags, OSDOF_APPLICATIONMODAL)) {
+	if (BitIsSet(otherFlags, OSDOF_APPLICATIONMODAL)) {
 		outWindowsFlags |= MB_APPLMODAL;
 	}
 
-	if (BitTest(otherFlags, OSDOF_TASKMODAL)) {
+	if (BitIsSet(otherFlags, OSDOF_TASKMODAL)) {
 		outWindowsFlags |= MB_TASKMODAL;
 	}
 
-	if (BitTest(otherFlags, OSDOF_EXCLAMATIONICON)) {
+	if (BitIsSet(otherFlags, OSDOF_EXCLAMATIONICON)) {
 		outWindowsFlags |= MB_ICONEXCLAMATION;
 	}
 
-	if (BitTest(otherFlags, OSDOF_INFORMATIONICON)) {
+	if (BitIsSet(otherFlags, OSDOF_INFORMATIONICON)) {
 		outWindowsFlags |= MB_ICONINFORMATION;
 	}
 
-	if (BitTest(otherFlags, OSDOF_ERRORICON)) {
+	if (BitIsSet(otherFlags, OSDOF_ERRORICON)) {
 		outWindowsFlags |= MB_ICONERROR;
 	}
 
-	if (BitTest(otherFlags, OSDOF_STOPICON)) {
+	if (BitIsSet(otherFlags, OSDOF_STOPICON)) {
 		outWindowsFlags |= MB_ICONSTOP;
 	}
 
@@ -101,29 +96,23 @@ OSDisplayButtonType OSDisplayWarningBox(AsciiString p, AsciiString m, UnsignedIn
 
 	UnsignedInt windowsOptionsFlags = 0;
 	RTSFlagsToOSFlags(buttonFlags, otherFlags, windowsOptionsFlags);
-	
+
 	// @todo Make this return more than just ok/cancel - jkmcd
 	// (we need a function to translate back the other way.)
-	Int returnResult = 0;
-	if (TheSystemIsUnicode) 
-	{
-		returnResult = ::MessageBoxW(NULL, mesgStr.str(), promptStr.str(), windowsOptionsFlags);
-	} 
-	else 
-	{
-		// However, if we're using the default version of the message box, we need to 
-		// translate the string into an AsciiString
-		AsciiString promptA, mesgA;
-		promptA.translate(promptStr);
-		mesgA.translate(mesgStr);
-		//Make sure main window is not TOP_MOST
-		::SetWindowPos(ApplicationHWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
-		returnResult = ::MessageBoxA(NULL, mesgA.str(), promptA.str(), windowsOptionsFlags);
-	}
-
+	const Int returnResult = ::MessageBoxW(nullptr, mesgStr.str(), promptStr.str(), windowsOptionsFlags);
 	if (returnResult == IDOK) {
 		return OSDBT_OK;
-	} 
+	}
 
 	return OSDBT_CANCEL;
+}
+
+//-------------------------------------------------------------------------------------------------
+void OSDisplaySetBusyState(Bool busyDisplay, Bool busySystem)
+{
+	EXECUTION_STATE state = ES_CONTINUOUS;
+	state |= busyDisplay ? ES_DISPLAY_REQUIRED : 0;
+	state |= busySystem ? ES_SYSTEM_REQUIRED : 0;
+
+	::SetThreadExecutionState(state);
 }

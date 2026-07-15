@@ -36,16 +36,11 @@
  * Functions:                                                                                  *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-#if defined(_MSC_VER)
 #pragma once
-#endif
-
-#ifndef HRAWANIM_H
-#define HRAWANIM_H
 
 #include "always.h"
 #include "hanim.h"
- 
+
 class MotionChannelClass;
 class BitChannelClass;
 
@@ -64,7 +59,7 @@ struct NodeMotionStruct
 
 	BitChannelClass *			Vis;
 };
- 
+
 /**********************************************************************************
 
 	HRawAnimClass
@@ -79,55 +74,53 @@ class HRawAnimClass : public HAnimClass
 {
 
 public:
-	
+
 	enum
 	{
 		OK,
 		LOAD_ERROR
 	};
-	
-	HRawAnimClass(void);
-	~HRawAnimClass(void);
+
+	HRawAnimClass();
+	virtual ~HRawAnimClass() override;
 
 	int							Load_W3D(ChunkLoadClass & cload);
 
-	const char *				Get_Name(void) const { return Name; }
-	const char *				Get_HName(void) const { return HierarchyName; }
-	int							Get_Num_Frames(void) { return NumFrames; }
-	float							Get_Frame_Rate() { return FrameRate; }
-	float							Get_Total_Time() { return (float)NumFrames / FrameRate; }
+	virtual const char *				Get_Name() const override { return Name; }
+	virtual const char *				Get_HName() const override { return HierarchyName; }
+	virtual int							Get_Num_Frames() override { return NumFrames; }
+	virtual float							Get_Frame_Rate() override { return FrameRate; }
+	virtual float							Get_Total_Time() override { return (float)NumFrames / FrameRate; }
 
-//	Vector3						Get_Translation(int pividx,float frame);
-//	Quaternion					Get_Orientation(int pividx,float frame);
-	void							Get_Translation(Vector3& translation, int pividx,float frame) const;
-	void							Get_Orientation(Quaternion& orientation, int pividx,float frame) const;
-	void							Get_Transform(Matrix3D& transform, int pividx,float frame) const;
-	bool							Get_Visibility(int pividx,float frame);
+	virtual void							Get_Translation(Vector3& translation, int pividx,float frame) const override;
+	virtual void							Get_Orientation(Quaternion& orientation, int pividx,float frame) const override;
+	virtual void							Get_Transform(Matrix3D& transform, int pividx,float frame) const override;
+	virtual bool							Get_Visibility(int pividx,float frame) override;
 
-	bool							Is_Node_Motion_Present(int pividx);
-	int							Get_Num_Pivots(void) const { return NumNodes; }
+	virtual bool							Is_Node_Motion_Present(int pividx) override;
+	virtual int							Get_Num_Pivots() const override { return NumNodes; }
 
 	// Methods that test the presence of a certain motion channel.
-	bool							Has_X_Translation (int pividx);
-	bool							Has_Y_Translation (int pividx);
-	bool							Has_Z_Translation (int pividx);
-	bool							Has_Rotation (int pividx);
-	bool							Has_Visibility (int pividx);
-	NodeMotionStruct				*Get_Node_Motion_Array(void) {return NodeMotion;}
-	virtual int					Class_ID(void)	const															{ return CLASSID_HRAWANIM; }
+	virtual bool							Has_X_Translation (int pividx) override;
+	virtual bool							Has_Y_Translation (int pividx) override;
+	virtual bool							Has_Z_Translation (int pividx) override;
+	virtual bool							Has_Rotation (int pividx) override;
+	virtual bool							Has_Visibility (int pividx) override;
+	NodeMotionStruct				*Get_Node_Motion_Array() {return NodeMotion;}
+	virtual int					Class_ID()	const override { return CLASSID_HRAWANIM; }
 
 private:
 
 	char							Name[2*W3D_NAME_LEN];
 	char							HierarchyName[W3D_NAME_LEN];
-	
+
 	int							NumFrames;
 	int							NumNodes;
 	float							FrameRate;
 
 	NodeMotionStruct *		NodeMotion;
 
-	void Free(void);	
+	void Free();
 	bool read_channel(ChunkLoadClass & cload,MotionChannelClass * * newchan,bool pre30);
 	void add_channel(MotionChannelClass * newchan);
 
@@ -135,9 +128,3 @@ private:
 	void add_bit_channel(BitChannelClass * newchan);
 
 };
-
-
-
-
-#endif
-

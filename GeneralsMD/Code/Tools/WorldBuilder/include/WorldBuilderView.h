@@ -20,16 +20,11 @@
 //
 /////////////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_WORLDBUILDERVIEW_H__FBA4134F_2826_11D5_8CE0_00010297BBAC__INCLUDED_)
-#define AFX_WORLDBUILDERVIEW_H__FBA4134F_2826_11D5_8CE0_00010297BBAC__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #include "Lib/BaseType.h"
 #include "W3DDevice/GameClient/WorldHeightMap.h"
-#include "WbView.h"
+#include "wbview.h"
 
 //#include "WW3D_SimpleWindow.h"
 
@@ -49,20 +44,20 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CWorldBuilderView)
 	public:
-	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
+	virtual BOOL PreCreateWindow(CREATESTRUCT& cs) override;
 	protected:
-	virtual BOOL OnPreparePrinting(CPrintInfo* pInfo);
-	virtual void OnBeginPrinting(CDC* pDC, CPrintInfo* pInfo);
-	virtual void OnEndPrinting(CDC* pDC, CPrintInfo* pInfo);
-	virtual void OnDraw(CDC* pDC);
+	virtual BOOL OnPreparePrinting(CPrintInfo* pInfo) override;
+	virtual void OnBeginPrinting(CDC* pDC, CPrintInfo* pInfo) override;
+	virtual void OnEndPrinting(CDC* pDC, CPrintInfo* pInfo) override;
+	virtual void OnDraw(CDC* pDC) override;
 	//}}AFX_VIRTUAL
 
 // Implementation
 public:
-	virtual ~CWorldBuilderView();
-#ifdef _DEBUG
-	virtual void AssertValid() const;
-	virtual void Dump(CDumpContext& dc) const;
+	virtual ~CWorldBuilderView() override;
+#ifdef RTS_DEBUG
+	virtual void AssertValid() const override;
+	virtual void Dump(CDumpContext& dc) const override;
 #endif
 
 protected:
@@ -90,7 +85,7 @@ protected:
 	void drawContours(CDC *pDc, CRgn *pRgn, Int minX, Int maxX, Int minY, Int maxY);
 
 	/// Compound boolean expression.
-	static inline Bool isBetween(Int cur, Int first, Int second) { 
+	static Bool isBetween(Int cur, Int first, Int second) {
 		Bool is = false;
 		if (cur>=first && cur<=second) is = true;
 		if (cur<=first && cur>=second) is = true;
@@ -101,17 +96,17 @@ protected:
 	void interpolate(CPoint *pt, Int ht, CPoint pt1, Int ht1, CPoint pt2, Int ht2);
 
 	/// Draw the object's icon in the dc at a given point.
-	void drawObjectInView(CDC *pDc, MapObject *pMapObj); 
+	void drawObjectInView(CDC *pDc, MapObject *pMapObj);
 
 public:
 	/// Get the current draw size in pixels in the 2d window of one height map cell.
-	Int getCellSize(void) {return m_cellSize;}
+	Int getCellSize() {return m_cellSize;}
 
 	/// Sets the current draw size.
 	void setCellSize(Int cellSize);
 
 	/// Set whether contours are drawn.
-	Bool getShowContours(void) {return m_showContours;}
+	Bool getShowContours() {return m_showContours;}
 	/// Set whether contours are drawn.
 	void setShowContours(Bool show);
 	/// Update the center to match a center point from the 3d view.
@@ -120,23 +115,23 @@ public:
 protected:
 
 public:
-	virtual Bool viewToDocCoords(CPoint curPt, Coord3D *newPt, Bool constrain);
-	virtual Bool docToViewCoords(Coord3D curPt, CPoint* newPt);
+	virtual Bool viewToDocCoords(CPoint curPt, Coord3D *newPt, Bool constrain) override;
+	virtual Bool docToViewCoords(Coord3D curPt, CPoint* newPt) override;
 
 	/// Set the center for display.
-	virtual void setCenterInView(Real x, Real y);
+	virtual void setCenterInView(Real x, Real y) override;
 
 	/// the doc has changed size; readjust view as necessary.
-	virtual void adjustDocSize();
+	virtual void adjustDocSize() override;
 
-	/// Invalidates an object. Pass NULL to inval all objects.
-	virtual void invalObjectInView(MapObject *pObj);
+	/// Invalidates an object. Pass null to inval all objects.
+	virtual void invalObjectInView(MapObject *pObj) override;
 
 	/// Invalidates the area of one height map cell in the 2d view.
-	virtual void invalidateCellInView(int xIndex, int yIndex);
+	virtual void invalidateCellInView(int xIndex, int yIndex) override;
 
 	/// Scrolls the window by this amount (doc coords).
-	virtual void scrollInView(Real x, Real y, Bool end);
+	virtual void scrollInView(Real x, Real y, Bool end) override;
 
 // Generated message map functions
 protected:
@@ -161,5 +156,3 @@ protected:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_WORLDBUILDERVIEW_H__FBA4134F_2826_11D5_8CE0_00010297BBAC__INCLUDED_)

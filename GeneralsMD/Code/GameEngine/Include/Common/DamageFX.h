@@ -29,9 +29,6 @@
 
 #pragma once
 
-#ifndef _DamageFX_H_
-#define _DamageFX_H_
-
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "Common/GameCommon.h"
 #include "Common/NameKeyGenerator.h"
@@ -64,7 +61,7 @@ typedef const FXList* ConstFXListPtr;
 
 	-- DamageFX is shared between multiple units; there should generally only be one instance
 	of any particular class. The implication is that it should not require private data storage
-	to do what it needs to do, aside from stuff initialized at object instantiation time. To help 
+	to do what it needs to do, aside from stuff initialized at object instantiation time. To help
 	enforce this, all it's methods are declared 'const'. If you can't implement the damage you
 	need within this framework, please *don't* simply de-const things, because it could lead to very
 	strange side-effects. Instead, the system will have to be enhanced to allow for multiple instances
@@ -107,8 +104,8 @@ private:
 	struct DFX
 	{
 		Real									m_amountForMajorFX;				///< if damage done is >= this, use major fx
-		ConstFXListPtr				m_majorDamageFXList;			///< fx to make 
-		ConstFXListPtr				m_minorDamageFXList;			///< fx to make 
+		ConstFXListPtr				m_majorDamageFXList;			///< fx to make
+		ConstFXListPtr				m_minorDamageFXList;			///< fx to make
 		UnsignedInt						m_damageFXThrottleTime;
 
 		DFX()
@@ -119,17 +116,17 @@ private:
 		void clear()
 		{
 			m_amountForMajorFX = 0.0f;
-			m_majorDamageFXList = NULL;
-			m_minorDamageFXList = NULL;
+			m_majorDamageFXList = nullptr;
+			m_minorDamageFXList = nullptr;
 			m_damageFXThrottleTime = 0;
 		}
 	};
 
 	DFX m_dfx[DAMAGE_NUM_TYPES][LEVEL_COUNT];
-};  
+};
 
 //-------------------------------------------------------------------------------------------------
-/** 
+/**
 	The "store" used to hold all the DamageFXs in existence. This is usually used when creating
 	an Object (actually, a Body module), but can be used at any time after that. (It is explicitly
 	OK to swap an Object's DamageFX out at any given time.)
@@ -141,29 +138,28 @@ class DamageFXStore : public SubsystemInterface
 public:
 
 	DamageFXStore();
-	~DamageFXStore();
+	virtual ~DamageFXStore() override;
 
-	void init();
-	void reset();
-	void update();
+	virtual void init() override;
+	virtual void reset() override;
+	virtual void update() override;
 
 	/**
 		Find the DamageFX with the given name. If no such DamageFX exists, return null.
 	*/
-	const DamageFX *findDamageFX( AsciiString name ) const;
+	const DamageFX *findDamageFX( NameKeyType namekey ) const;
+	const DamageFX *findDamageFX( const AsciiString& name ) const;
+	const DamageFX *findDamageFX( const char* name ) const;
 
 	static void parseDamageFXDefinition(INI* ini);
 
 
 private:
 
-	typedef std::hash_map< NameKeyType, DamageFX, rts::hash<NameKeyType>, rts::equal_to<NameKeyType> > DamageFXMap;
+	typedef std::hash_map< NameKeyType, DamageFX, rts::hash<NameKeyType>, rts::equal_to<NameKeyType>/**/> DamageFXMap;
 	DamageFXMap m_dfxmap;
 
 };
 
 // EXTERNALS //////////////////////////////////////////////////////////////////////////////////////
 extern DamageFXStore *TheDamageFXStore;
-
-#endif // _DamageFX_H_
-

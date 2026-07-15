@@ -49,8 +49,8 @@
 
 /*
 ** Temporary Buffers
-** These buffers are used by the skin code for temporary storage of the deformed vertices and 
-** vertex normals.  
+** These buffers are used by the skin code for temporary storage of the deformed vertices and
+** vertex normals.
 */
 static DynamicVectorClass<Vector3>	_TempVertexBuffer;
 static DynamicVectorClass<Vector3>	_TempNormalBuffer;
@@ -65,55 +65,47 @@ static DynamicVectorClass<unsigned long> _TempClipFlagBuffer;
 */
 
 
-MeshModelClass::MeshModelClass(void) :
-	DefMatDesc(NULL),
-	AlternateMatDesc(NULL),
-	CurMatDesc(NULL),
-	MatInfo(NULL),
-	GapFiller(NULL)
+MeshModelClass::MeshModelClass() :
+	DefMatDesc(nullptr),
+	AlternateMatDesc(nullptr),
+	CurMatDesc(nullptr),
+	MatInfo(nullptr),
+	GapFiller(nullptr)
 {
 	Set_Flag(DIRTY_BOUNDS,true);
 
 	DefMatDesc = W3DNEW MeshMatDescClass;
 	CurMatDesc = DefMatDesc;
-	
+
 	MatInfo = NEW_REF( MaterialInfoClass, () );
-	
-	return ;
 }
 
 MeshModelClass::MeshModelClass(const MeshModelClass & that) :
 	MeshGeometryClass(that),
-	DefMatDesc(NULL),
-	AlternateMatDesc(NULL),
-	CurMatDesc(NULL),
-	MatInfo(NULL),
-	GapFiller(NULL)
+	DefMatDesc(nullptr),
+	AlternateMatDesc(nullptr),
+	CurMatDesc(nullptr),
+	MatInfo(nullptr),
+	GapFiller(nullptr)
 {
 	DefMatDesc = W3DNEW MeshMatDescClass(*(that.DefMatDesc));
-	if (that.AlternateMatDesc != NULL) {
+	if (that.AlternateMatDesc != nullptr) {
 		AlternateMatDesc = W3DNEW MeshMatDescClass(*(that.AlternateMatDesc));
 	}
 	CurMatDesc = DefMatDesc;
 
 	clone_materials(that);
-	return ;
 }
 
-MeshModelClass::~MeshModelClass(void)
+MeshModelClass::~MeshModelClass()
 {
-	TheDX8MeshRenderer.Unregister_Mesh_Type(this);
 
 	Reset(0,0,0);
 	REF_PTR_RELEASE(MatInfo);
 
-	if (DefMatDesc != NULL) {
-		delete DefMatDesc;
-	}
-	if (AlternateMatDesc != NULL) {
-		delete AlternateMatDesc;
-	}
-	return ;
+	delete DefMatDesc;
+	delete AlternateMatDesc;
+
 }
 
 MeshModelClass & MeshModelClass::operator = (const MeshModelClass & that)
@@ -128,28 +120,31 @@ MeshModelClass & MeshModelClass::operator = (const MeshModelClass & that)
 		*DefMatDesc = *(that.DefMatDesc);
 		CurMatDesc = DefMatDesc;
 
-		if (AlternateMatDesc != NULL) {
-			delete AlternateMatDesc;
-			AlternateMatDesc = NULL;
-		}
+		delete AlternateMatDesc;
+		AlternateMatDesc = nullptr;
 
-		if (that.AlternateMatDesc != NULL) {
+		if (that.AlternateMatDesc != nullptr) {
 			AlternateMatDesc = W3DNEW MeshMatDescClass(*(that.AlternateMatDesc));
 		}
 
 		clone_materials(that);
 
-		if (GapFiller) {
-			delete[] GapFiller;
-				GapFiller=NULL;
-		}
-		if (that.GapFiller) GapFiller=W3DNEW GapFillerClass(*that.GapFiller);
+		delete GapFiller;
+			GapFiller=nullptr;
+
+		if (that.GapFiller)
+			GapFiller=W3DNEW GapFillerClass(*that.GapFiller);
 	}
 	return * this;
 }
 
 void MeshModelClass::Reset(int polycount,int vertcount,int passcount)
 {
+	//DMS - We must delete the gapfiller object BEFORE the geometry is reset.  Otherwise,
+	// the number of stages and passes gets reset and the gapfiller cannot deallocate properly.
+	delete GapFiller;
+	GapFiller=nullptr;
+
 	Reset_Geometry(polycount,vertcount);
 
 	// Release everything we have and reset to initial state
@@ -158,16 +153,11 @@ void MeshModelClass::Reset(int polycount,int vertcount,int passcount)
 
 	MatInfo->Reset();
 	DefMatDesc->Reset(polycount,vertcount,passcount);
-	if (AlternateMatDesc != NULL) {
-		delete AlternateMatDesc;
-		AlternateMatDesc = NULL;
-	}
+
+	delete AlternateMatDesc;
+	AlternateMatDesc = nullptr;
+
 	CurMatDesc = DefMatDesc;
-
-	delete GapFiller;
-	GapFiller=NULL;
-
-	return ;
 }
 
 void MeshModelClass::Register_For_Rendering()
@@ -177,18 +167,18 @@ void MeshModelClass::Register_For_Rendering()
 		if (WW3D::Get_NPatches_Gap_Filling_Mode()!=WW3D::NPATCHES_GAP_FILLING_DISABLED) {
 			Init_For_NPatch_Rendering();
 		}
-		else if (GapFiller) {
+		else {
 			delete GapFiller;
-			GapFiller=NULL;
+			GapFiller=nullptr;
 		}
 	}
 	else {
 		if (WW3D::Get_NPatches_Gap_Filling_Mode()==WW3D::NPATCHES_GAP_FILLING_FORCE) {
 			Init_For_NPatch_Rendering();
 		}
-		else if (GapFiller) {
+		else {
 			delete GapFiller;
-			GapFiller=NULL;
+			GapFiller=nullptr;
 		}
 	}
 
@@ -227,7 +217,7 @@ void MeshModelClass::Replace_VertexMaterial(VertexMaterialClass* vmat,VertexMate
 {
 	WWASSERT(vmat);
 	WWASSERT(new_vmat);
-	
+
 	for (int pass=0;pass<Get_Pass_Count();++pass) {
 		if (Has_Material_Array(pass)) {
 			for (int i=0;i<Get_Vertex_Count();++i) {
@@ -247,12 +237,12 @@ void MeshModelClass::Replace_VertexMaterial(VertexMaterialClass* vmat,VertexMate
 		if (fvf_category) {
 			fvf_category->Change_Polygon_Renderer_Material(PolygonRendererList,vmat,new_vmat,pass);
 		}
-	}	
+	}
 }
 
 DX8FVFCategoryContainer* MeshModelClass::Peek_FVF_Category_Container()
 {
-	if (PolygonRendererList.Is_Empty()) return NULL;
+	if (PolygonRendererList.Is_Empty()) return nullptr;
 	DX8PolygonRendererClass* polygon_renderer=PolygonRendererList.Get_Head();
 	WWASSERT(polygon_renderer);
 	DX8TextureCategoryClass* texture_category=polygon_renderer->Get_Texture_Category();
@@ -264,7 +254,7 @@ DX8FVFCategoryContainer* MeshModelClass::Peek_FVF_Category_Container()
 
 void MeshModelClass::Shadow_Render(SpecialRenderInfoClass & rinfo,const Matrix3D & tm,const HTreeClass * htree)
 {
-	if (rinfo.BWRenderer != NULL) {
+	if (rinfo.BWRenderer != nullptr) {
 		if (_TempTransformedVertexBuffer.Length() < VertexCount) _TempTransformedVertexBuffer.Resize(VertexCount);
 		Vector4* transf_ptr=&(_TempTransformedVertexBuffer[0]);
 		get_deformed_screenspace_vertices(transf_ptr,rinfo,tm,htree);
@@ -308,7 +298,7 @@ void MeshModelClass::get_deformed_vertices(Vector3 *dst_vert, Vector3 *dst_norm,
 		const Matrix3D & tm = htree->Get_Transform(bonelink[vi]);
 
 		// Make a copy so we can set the translation to zero
-		Matrix3D mytm=tm;		
+		Matrix3D mytm=tm;
 
 		int idx=bonelink[vi];
 		int cnt;
@@ -347,7 +337,7 @@ void MeshModelClass::compose_deformed_vertex_buffer(
 		const Matrix3D & tm = htree->Get_Transform(bonelink[vi]);
 
 		// Make a copy so we can set the translation to zero
-		Matrix3D mytm=tm;		
+		Matrix3D mytm=tm;
 
 		int idx=bonelink[vi];
 		int cnt;
@@ -384,20 +374,21 @@ void MeshModelClass::compose_deformed_vertex_buffer(
 // Destination pointers MUST point to arrays large enough to hold all vertices
 void MeshModelClass::get_deformed_screenspace_vertices(Vector4 *dst_vert,const RenderInfoClass & rinfo,const Matrix3D & mesh_transform,const HTreeClass * htree)
 {
-	Matrix4 prj = rinfo.Camera.Get_Projection_Matrix() * rinfo.Camera.Get_View_Matrix() * mesh_transform;
+	Matrix4x4 prj = rinfo.Camera.Get_Projection_Matrix() * rinfo.Camera.Get_View_Matrix() * mesh_transform;
 
 	Vector3 * src_vert = Vertex->Get_Array();
 	int vertex_count=Get_Vertex_Count();
-	
+
 	if (Get_Flag(SKIN) && VertexBoneLink && htree) {
 		uint16 * bonelink = VertexBoneLink->Get_Array();
 		for (int vi = 0; vi < vertex_count;) {
 			int idx=bonelink[vi];
 
-			Matrix4 tm = prj * htree->Get_Transform(idx);
+			Matrix4x4 tm = prj * htree->Get_Transform(idx);
 
 			// Count equal matrices (the vertices should be pre-sorted by matrices they use)
-			for (int cnt = vi; cnt < vertex_count; cnt++) if (idx!=bonelink[cnt]) break;
+			int cnt = vi;
+			for (; cnt < vertex_count; cnt++) if (idx!=bonelink[cnt]) break;
 
 			// Transform to screenspace (x,y,z,w)
 			VectorProcessorClass::Transform(
@@ -424,13 +415,13 @@ void MeshModelClass::Make_Geometry_Unique()
 	ShareBufferClass<Vector3> * unique_verts = NEW_REF(ShareBufferClass<Vector3>,(*Vertex));
 	REF_PTR_SET(Vertex,unique_verts);
 	REF_PTR_RELEASE(unique_verts);
-	
+
 	ShareBufferClass<Vector3> * norms = NEW_REF(ShareBufferClass<Vector3>,(*VertexNorm));
 	REF_PTR_SET(VertexNorm,norms);
 	REF_PTR_RELEASE(norms);
 
 #if (!OPTIMIZE_PLANEEQ_RAM)
-	ShareBufferClass<Vector4> * peq = NEW_REF(ShareBufferClass<Vector4>,(*PlaneEq, "MeshModelClass::PlaneEq"));	
+	ShareBufferClass<Vector4> * peq = NEW_REF(ShareBufferClass<Vector4>,(*PlaneEq, "MeshModelClass::PlaneEq"));
 	REF_PTR_SET(PlaneEq,peq);
 	REF_PTR_RELEASE(peq);
 #endif
@@ -448,13 +439,13 @@ void MeshModelClass::Make_Color_Array_Unique(int array_index)
 
 void MeshModelClass::Enable_Alternate_Material_Description(bool onoff)
 {
-	if ((onoff == true) && (AlternateMatDesc != NULL)) {
+	if ((onoff == true) && (AlternateMatDesc != nullptr)) {
 		if (CurMatDesc != AlternateMatDesc) {
 			CurMatDesc = AlternateMatDesc;
-			
+
 			if (Get_Flag(SORT) && WW3D::Is_Munge_Sort_On_Load_Enabled())
 				compute_static_sort_levels();
-			
+
 			// TODO: Invalidate just this meshes DX8 data!!!
 			TheDX8MeshRenderer.Invalidate();
 		}
@@ -471,17 +462,17 @@ void MeshModelClass::Enable_Alternate_Material_Description(bool onoff)
 	}
 }
 
-bool MeshModelClass::Is_Alternate_Material_Description_Enabled(void)
+bool MeshModelClass::Is_Alternate_Material_Description_Enabled()
 {
 	return CurMatDesc == AlternateMatDesc;
 }
 /*
-void MeshModelClass::Process_Texture_Reduction(void)
+void MeshModelClass::Process_Texture_Reduction()
 {
 	MatInfo->Process_Texture_Reduction();
 }
 */
-bool MeshModelClass::Needs_Vertex_Normals(void)
+bool MeshModelClass::Needs_Vertex_Normals()
 {
 	if (Get_Flag(MeshModelClass::PRELIT_MASK) == 0) {
 		return true;
@@ -490,11 +481,11 @@ bool MeshModelClass::Needs_Vertex_Normals(void)
 }
 
 void Whatever(
-	Vector3i* added_polygon_indices,
+	TriIndex* added_polygon_indices,
 	unsigned& added_polygon_count,
 	const Vector3* locations,
 	unsigned vertex_count,
-	const Vector3i* polygon_indices,
+	const TriIndex* polygon_indices,
 	unsigned polygon_count);
 
 
@@ -522,7 +513,7 @@ struct TriangleSide
 	}
 	TriangleSide() {}
 
-	bool operator== (const TriangleSide& s) 
+	bool operator== (const TriangleSide& s)
 	{
 		unsigned i=*(unsigned*)&loc1[0]^*(unsigned*)&s.loc1[0];
 		i|=*(unsigned*)&loc1[1]^*(unsigned*)&s.loc1[1];
@@ -581,38 +572,38 @@ HashTemplateClass<TriangleSide,SideIndexInfo> SideHash;
 //
 // ----------------------------------------------------------------------------
 
-GapFillerClass::GapFillerClass(MeshModelClass* mmc_) : mmc(NULL), PolygonCount(0)
+GapFillerClass::GapFillerClass(MeshModelClass* mmc_) : mmc(nullptr), PolygonCount(0)
 {
 	REF_PTR_SET(mmc,mmc_);
 
 	ArraySize=mmc->Get_Polygon_Count()*6;	// Each side of each triangle can have 2 polygons added, in the worst case
-	PolygonArray=W3DNEWARRAY Vector3i[ArraySize];
+	PolygonArray=W3DNEWARRAY TriIndex[ArraySize];
 	for (int pass=0;pass<mmc->Get_Pass_Count();++pass) {
 		for (int stage=0;stage<MeshMatDescClass::MAX_TEX_STAGES;++stage) {
 			if (mmc->Has_Texture_Array(pass,stage)) {
 				TextureArray[pass][stage]=W3DNEWARRAY TextureClass*[ArraySize];
 			}
-			else TextureArray[pass][stage]=NULL;
+			else TextureArray[pass][stage]=nullptr;
 		}
 
 		if (mmc->Has_Material_Array(pass)) {
 			MaterialArray[pass]=W3DNEWARRAY VertexMaterialClass*[ArraySize];
 		}
-		else MaterialArray[pass]=NULL;
+		else MaterialArray[pass]=nullptr;
 
 		if (mmc->Has_Shader_Array(pass)) {
 			ShaderArray[pass]=W3DNEWARRAY ShaderClass[ArraySize];
 		}
-		else ShaderArray[pass]=NULL;
+		else ShaderArray[pass]=nullptr;
 	}
 }
 
-GapFillerClass::GapFillerClass(const GapFillerClass& that) : mmc(NULL), PolygonCount(that.PolygonCount)
+GapFillerClass::GapFillerClass(const GapFillerClass& that) : mmc(nullptr), PolygonCount(that.PolygonCount)
 {
 	REF_PTR_SET(mmc,that.mmc);
 
 	ArraySize=that.ArraySize;
-	PolygonArray=W3DNEWARRAY Vector3i[ArraySize];
+	PolygonArray=W3DNEWARRAY TriIndex[ArraySize];
 	for (int pass=0;pass<mmc->Get_Pass_Count();++pass) {
 		for (int stage=0;stage<MeshMatDescClass::MAX_TEX_STAGES;++stage) {
 			if (that.TextureArray[pass][stage]) {
@@ -622,7 +613,7 @@ GapFillerClass::GapFillerClass(const GapFillerClass& that) : mmc(NULL), PolygonC
 					TextureArray[pass][stage][i]->Add_Ref();
 				}
 			}
-			else TextureArray[pass][stage]=NULL;
+			else TextureArray[pass][stage]=nullptr;
 		}
 
 		if (that.MaterialArray[pass]) {
@@ -632,7 +623,7 @@ GapFillerClass::GapFillerClass(const GapFillerClass& that) : mmc(NULL), PolygonC
 				MaterialArray[pass][i]->Add_Ref();
 			}
 		}
-		else MaterialArray[pass]=NULL;
+		else MaterialArray[pass]=nullptr;
 
 		if (that.ShaderArray[pass]) {
 			ShaderArray[pass]=W3DNEWARRAY ShaderClass[ArraySize];
@@ -640,7 +631,7 @@ GapFillerClass::GapFillerClass(const GapFillerClass& that) : mmc(NULL), PolygonC
 				ShaderArray[pass][i]=that.ShaderArray[pass][i];
 			}
 		}
-		else ShaderArray[pass]=NULL;
+		else ShaderArray[pass]=nullptr;
 	}
 }
 
@@ -697,7 +688,7 @@ WWASSERT(loc1==loc2 || loc1==loc3 || loc2==loc3);
 //vidx2=mmc->Get_Polygon_Array()[polygon_index][1];
 //vidx3=mmc->Get_Polygon_Array()[polygon_index][2];
 
-	PolygonArray[PolygonCount]=Vector3i(vidx1,vidx2,vidx3);
+	PolygonArray[PolygonCount]=TriIndex(vidx1,vidx2,vidx3);
 	for (int pass=0;pass<mmc->Get_Pass_Count();++pass) {
 		if (mmc->Has_Shader_Array(pass)) {
 			ShaderArray[pass][PolygonCount]=mmc->Get_Shader(polygon_index,pass);
@@ -727,8 +718,8 @@ void GapFillerClass::Shrink_Buffers()
 	if (PolygonCount==ArraySize) return;
 
 	// Shrink the polygon array
-	Vector3i* new_polygon_array=W3DNEWARRAY Vector3i[PolygonCount];
-	memcpy(new_polygon_array,PolygonArray,PolygonCount*sizeof(Vector3i));
+	TriIndex* new_polygon_array=W3DNEWARRAY TriIndex[PolygonCount];
+	memcpy(new_polygon_array,PolygonArray,PolygonCount*sizeof(TriIndex));
 	delete[] PolygonArray;
 	PolygonArray=new_polygon_array;
 
@@ -775,14 +766,15 @@ void MeshModelClass::Init_For_NPatch_Rendering()
 
 	const Vector3* locations=Get_Vertex_Array();
 	unsigned vertex_count=Get_Vertex_Count();
-	const Vector3i* polygon_indices=Get_Polygon_Array();
+	const TriIndex* polygon_indices=Get_Polygon_Array();
 	unsigned polygon_count=Get_Polygon_Count();
 
 	LocationHash.Remove_All();
 	DuplicateLocationHash.Remove_All();
 	SideHash.Remove_All();
 
-	for (unsigned i=0;i<vertex_count;++i) {
+	unsigned i=0;
+	for (;i<vertex_count;++i) {
 		if (LocationHash.Exists(locations[i])) {
 			if (!DuplicateLocationHash.Exists(locations[i])) {
 				DuplicateLocationHash.Insert(locations[i],i);

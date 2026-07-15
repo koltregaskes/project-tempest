@@ -29,20 +29,17 @@
 
 #pragma once
 
-#ifndef __BATTLE_PLAN_UPDATE_H_
-#define __BATTLE_PLAN_UPDATE_H_
-
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "Common/KindOf.h"
-#include "GameLogic/Module/UpdateModule.h"
+#include "GameLogic/Module/SpecialPowerUpdateModule.h"
 
 // FORWARD REFERENCES /////////////////////////////////////////////////////////////////////////////
 class SpecialPowerModule;
 class ParticleSystem;
 class FXList;
 class AudioEventRTS;
-enum  MaxHealthChangeType;
-enum  CommandOption;
+enum  MaxHealthChangeType CPP_11(: Int);
+enum  CommandOption CPP_11(: Int);
 
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
@@ -86,11 +83,11 @@ public:
 	BattlePlanUpdateModuleData();
 	static void buildFieldParse(MultiIniFieldParse& p);
 
-private: 
+private:
 
 };
 
-enum TransitionStatus
+enum TransitionStatus CPP_11(: Int)
 {
 	TRANSITIONSTATUS_IDLE,
 	TRANSITIONSTATUS_UNPACKING,
@@ -98,7 +95,7 @@ enum TransitionStatus
 	TRANSITIONSTATUS_PACKING,
 };
 
-enum BattlePlanStatus
+enum BattlePlanStatus CPP_11(: Int)
 {
 	PLANSTATUS_NONE,
 	PLANSTATUS_BOMBARDMENT,
@@ -106,10 +103,17 @@ enum BattlePlanStatus
 	PLANSTATUS_SEARCHANDDESTROY,
 };
 
-class BattlePlanBonuses : public MemoryPoolObject
+struct BattlePlanBonusesData
 {
-	MEMORY_POOL_GLUE_WITH_USERLOOKUP_CREATE(BattlePlanBonuses, "BattlePlanBonuses")		
-public:
+	BattlePlanBonusesData() //Default the bonuses to no change.
+		: m_armorScalar(1.0f)
+		, m_bombardment(0)
+		, m_searchAndDestroy(0)
+		, m_holdTheLine(0)
+		, m_sightRangeScalar(1.0f)
+	{
+	}
+
 	Real						m_armorScalar;
 	Int							m_bombardment;				//Represents having weapon bonuses for bombardment plan
 	Int							m_searchAndDestroy;		//Represents having weapon bonuses for searchAndDestroy plan
@@ -117,6 +121,11 @@ public:
 	Real						m_sightRangeScalar;
 	KindOfMaskType	m_validKindOf;
 	KindOfMaskType	m_invalidKindOf;
+};
+
+class BattlePlanBonuses : public BattlePlanBonusesData, public MemoryPoolObject
+{
+	MEMORY_POOL_GLUE_WITH_USERLOOKUP_CREATE(BattlePlanBonuses, "BattlePlanBonuses")
 };
 EMPTY_DTOR(BattlePlanBonuses)
 
@@ -137,23 +146,25 @@ public:
 	// virtual destructor prototype provided by memory pool declaration
 
 	// SpecialPowerUpdateInterface
-	virtual void initiateIntentToDoSpecialPower(const SpecialPowerTemplate *specialPowerTemplate, const Object *targetObj, const Coord3D *targetPos, UnsignedInt commandOptions, Int locationCount );
-	virtual Bool isSpecialAbility() const { return false; }
-	virtual Bool isSpecialPower() const { return true; }
-	virtual Bool isActive() const {return m_status != TRANSITIONSTATUS_IDLE;}
-	virtual SpecialPowerUpdateInterface* getSpecialPowerUpdateInterface() { return this; }
-	virtual Bool doesSpecialPowerHaveOverridableDestinationActive() const { return false; }
-	virtual void setSpecialPowerOverridableDestination( const Coord3D *loc ) {}
-	virtual Bool isPowerCurrentlyInUse( const CommandButton *command = NULL ) const;
+	virtual Bool initiateIntentToDoSpecialPower(const SpecialPowerTemplate *specialPowerTemplate, const Object *targetObj, const Coord3D *targetPos, const Waypoint *way, UnsignedInt commandOptions ) override;
+	virtual Bool isSpecialAbility() const override { return false; }
+	virtual Bool isSpecialPower() const override { return true; }
+	virtual Bool isActive() const override {return m_status != TRANSITIONSTATUS_IDLE;}
+	virtual SpecialPowerUpdateInterface* getSpecialPowerUpdateInterface() override { return this; }
+	virtual Bool doesSpecialPowerHaveOverridableDestinationActive() const override { return false; } //Is it active now?
+	virtual Bool doesSpecialPowerHaveOverridableDestination() const override { return false; }	//Does it have it, even if it's not active?
+	virtual void setSpecialPowerOverridableDestination( const Coord3D *loc ) override {}
+	virtual Bool isPowerCurrentlyInUse( const CommandButton *command = nullptr ) const override;
 
 	//Returns the currently active battle plan -- unpacked and ready... returns PLANSTATUS_NONE if in transition!
 	BattlePlanStatus getActiveBattlePlan() const;
 
-	virtual void onObjectCreated();
-	virtual void onDelete();
-	virtual UpdateSleepTime update();
+	virtual void onObjectCreated() override;
+	virtual void onDelete() override;
+	virtual UpdateSleepTime update() override;
+	virtual void onCapture(Player* oldOwner, Player* newOwner) override;
 
-	virtual CommandOption getCommandOption() const;
+	virtual CommandOption getCommandOption() const override;
 protected:
 
 	void setStatus( TransitionStatus status );
@@ -161,13 +172,13 @@ protected:
 	void recenterTurret();
 	Bool isTurretInNaturalPosition();
 	void setBattlePlan( BattlePlanStatus plan );
-	void createVisionObject();	
+	void createVisionObject();
 
 	BattlePlanStatus m_currentPlan;	//The current battle plan displayed by the building (includes packing & unpacking)
 	BattlePlanStatus m_desiredPlan; //The user desired battle plan
 	BattlePlanStatus m_planAffectingArmy; //The current battle plan that is affecting troops!
 	TransitionStatus m_status;
-	
+
 	UnsignedInt m_nextReadyFrame;
 	SpecialPowerModuleInterface *m_specialPowerModule;
 	Bool				m_invalidSettings;
@@ -189,7 +200,3 @@ protected:
 	ObjectID m_visionObjectID;
 
 };
-
-
-#endif
-

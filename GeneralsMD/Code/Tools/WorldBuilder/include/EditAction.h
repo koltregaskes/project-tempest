@@ -16,17 +16,13 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_EditAction_H__64465BA2_AD81_4EFD_BAB4_93F66C90ECD1__INCLUDED_)
-#define AFX_EditAction_H__64465BA2_AD81_4EFD_BAB4_93F66C90ECD1__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // EditAction.h : header file
 //
 
 
-class ScriptAction;	 
+class ScriptAction;
 class SidesList;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -36,7 +32,7 @@ class EditAction : public CDialog
 {
 // Construction
 public:
-	EditAction(CWnd* pParent = NULL);   // standard constructor
+	EditAction(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(EditAction)
@@ -49,8 +45,8 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(EditAction)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult);
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
+	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult) override;
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -72,7 +68,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(EditAction)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnSelchangeScriptActionType();
 	afx_msg void OnTimer(UINT nIDEvent);
 	//}}AFX_MSG
@@ -81,5 +77,3 @@ protected:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_EditAction_H__64465BA2_AD81_4EFD_BAB4_93F66C90ECD1__INCLUDED_)

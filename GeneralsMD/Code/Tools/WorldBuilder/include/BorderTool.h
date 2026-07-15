@@ -17,6 +17,7 @@
 */
 
 #pragma once
+
 #include "Tool.h"
 
 class BorderTool : public Tool
@@ -27,21 +28,21 @@ class BorderTool : public Tool
 		Bool m_addingNewBorder;
 		Int m_modifyBorderNdx;
 		ModificationType m_modificationType;
-		
-	
+
+
 	public:
 		BorderTool();
-		~BorderTool();
+		virtual ~BorderTool() override;
 
-		Int getToolID(void) {return m_toolID;}
-		virtual void setCursor(void);
+		Int getToolID() {return m_toolID;}
+		virtual void setCursor() override;
 
-		virtual void activate(); 
-		virtual void deactivate(); 
+		virtual void activate() override;
+		virtual void deactivate() override;
 
-		virtual Bool followsTerrain(void) { return false;	}
+		virtual Bool followsTerrain() override { return false;	}
 
-		virtual void mouseMoved(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc);
-		virtual void mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc);
-		virtual void mouseUp(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc);
+		virtual void mouseMoved(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) override;
+		virtual void mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) override;
+		virtual void mouseUp(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) override;
 };

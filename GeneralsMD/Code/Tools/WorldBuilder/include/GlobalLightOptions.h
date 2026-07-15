@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_GLOBALLIGHTOPTIONS_H__6B56E20C_582E_4030_A251_879097C8853C__INCLUDED_)
-#define AFX_GLOBALLIGHTOPTIONS_H__6B56E20C_582E_4030_A251_879097C8853C__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // GLOBALLIGHTOPTIONS.h : header file
 //
 
@@ -39,12 +35,12 @@ class GlobalLightOptions : public CDialog	, public PopupSliderOwner
 public:
 	enum {K_TERRAIN=1, K_OBJECTS=2, K_BOTH=3};
 	enum {K_SUN=0, K_ACCENT1=1, K_ACCENT2=2};
-	int kUIRedIDs[3];// = {IDC_RD_EDIT, IDC_RD_EDIT1, IDC_RD_EDIT2}; 
-	int kUIGreenIDs[3];// = {IDC_GD_EDIT, IDC_GD_EDIT1, IDC_GD_EDIT2}; 
-	int kUIBlueIDs[3];// = {IDC_BD_EDIT, IDC_BD_EDIT1, IDC_BD_EDIT2}; 
+	int kUIRedIDs[3];// = {IDC_RD_EDIT, IDC_RD_EDIT1, IDC_RD_EDIT2};
+	int kUIGreenIDs[3];// = {IDC_GD_EDIT, IDC_GD_EDIT1, IDC_GD_EDIT2};
+	int kUIBlueIDs[3];// = {IDC_BD_EDIT, IDC_BD_EDIT1, IDC_BD_EDIT2};
 	CButtonShowColor m_colorButton;
 
-	GlobalLightOptions(CWnd* pParent = NULL);   // standard constructor
+	GlobalLightOptions(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(GlobalLightOptions)
@@ -57,7 +53,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(GlobalLightOptions)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -65,7 +61,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(GlobalLightOptions)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnShowWindow(BOOL bShow, UINT nStatus);
 	afx_msg void OnMove(int x, int y);
 	afx_msg void OnChangeFrontBackEdit();
@@ -76,9 +72,9 @@ protected:
 	afx_msg void OnRadioTerrain();
 	afx_msg void OnColorPress();
 	afx_msg void OnResetLights();
-	afx_msg void OnClose(); 
-	virtual void OnOK(){return;};  //!< Modeless dialogs don't OK, so eat this for modeless.
-	virtual void OnCancel(){return;}; //!< Modeless dialogs don't close on ESC, so eat this for modeless.
+	afx_msg void OnClose();
+	virtual void OnOK() override {return;};  //!< Modeless dialogs don't OK, so eat this for modeless.
+	virtual void OnCancel() override {return;}; //!< Modeless dialogs don't close on ESC, so eat this for modeless.
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
@@ -127,17 +123,15 @@ protected:
 	void applyAngle(Int lightIndex=0);
 	void showLightFeedback(Int lightIndex=0);
 	void applyColor(Int lightIndex=0);
-	void updateEditFields(void);
+	void updateEditFields();
 	void stuffValuesIntoFields(Int lightIndex = 0);
 public:
 
-	virtual void GetPopSliderInfo(const long sliderID, long *pMin, long *pMax, long *pLineSize, long *pInitial);
-	virtual void PopSliderChanged(const long sliderID, long theVal);
-	virtual void PopSliderFinished(const long sliderID, long theVal);
+	virtual void GetPopSliderInfo(const long sliderID, long *pMin, long *pMax, long *pLineSize, long *pInitial) override;
+	virtual void PopSliderChanged(const long sliderID, long theVal) override;
+	virtual void PopSliderFinished(const long sliderID, long theVal) override;
 
 };
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_GLOBALLIGHTOPTIONS_H__6B56E20C_582E_4030_A251_879097C8853C__INCLUDED_)

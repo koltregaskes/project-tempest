@@ -22,15 +22,12 @@
 
 #pragma once
 
-#ifndef TILETOOL_H
-#define TILETOOL_H
-
 #include "Tool.h"
 class WorldHeightMapEdit;
 /*************************************************************************
 **                             TileTool
 ***************************************************************************/
-class TileTool : public Tool 
+class TileTool : public Tool
 {
 protected:
 	WorldHeightMapEdit *m_htMapEditCopy; //< ref counted.
@@ -38,35 +35,34 @@ protected:
 	CPoint							m_prevViewPt;
 
 public:
-	TileTool(void);
-	~TileTool(void);
+	TileTool();
+	virtual ~TileTool() override;
 
 public:
-	virtual void mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc);
-	virtual void mouseUp(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc);
-	virtual void mouseMoved(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc);
-	virtual WorldHeightMapEdit *getHeightMap(void) {return m_htMapEditCopy;};
-	virtual void activate(); ///< Become the current tool.
-	virtual Int getWidth(void) {return 1;};
+	virtual void mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) override;
+	virtual void mouseUp(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) override;
+	virtual void mouseMoved(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) override;
+	virtual WorldHeightMapEdit *getHeightMap() override {return m_htMapEditCopy;};
+	virtual void activate() override; ///< Become the current tool.
+	virtual Int getWidth() {return 1;};
 };
 
 /*************************************************************************
 **                             BigTileTool
 ***************************************************************************/
-class BigTileTool : public TileTool 
+class BigTileTool : public TileTool
 {
 
 protected:
 	static Int m_currentWidth;
 
 public:
- 	virtual void activate(); ///< Become the current tool.
+	virtual void activate() override; ///< Become the current tool.
 
 public:
-	BigTileTool(void);
+	BigTileTool();
 
 	static void setWidth(Int width) ;
-	virtual Int getWidth(void) {return m_currentWidth;};
+	virtual Int getWidth() override {return m_currentWidth;};
 
 };
-#endif //TOOL_H

@@ -22,31 +22,25 @@
 
 #pragma once
 
-#ifndef BLEND_EDGE_TOOL_H
-#define BLEND_EDGE_TOOL_H
-
 #include "Tool.h"
 class WorldHeightMapEdit;
 /*************************************************************************/
 /**                             BlendEdgeTool
-	 Does the BlendEdgesOut tool operation. 
+	 Does the BlendEdgesOut tool operation.
 ***************************************************************************/
 ///  Blend edges out tool.
-class BlendEdgeTool : public Tool 
+class BlendEdgeTool : public Tool
 {
 protected:
 	Coord3D m_downPt;
 
 public:
-	BlendEdgeTool(void);
-	~BlendEdgeTool(void);
+	BlendEdgeTool();
+	virtual ~BlendEdgeTool() override;
 
 public:
 	/// Perform tool on mouse down.
-	virtual void mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc);
-	virtual void mouseUp(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc);
+	virtual void mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) override;
+	virtual void mouseUp(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) override;
 
 };
-
-
-#endif //TOOL_H

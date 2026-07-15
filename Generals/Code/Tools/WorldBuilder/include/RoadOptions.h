@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_RoadOptions_H__D3FF66C5_7107_4DAC_8A29_5EBAB5C3A24E__INCLUDED_)
-#define AFX_RoadOptions_H__D3FF66C5_7107_4DAC_8A29_5EBAB5C3A24E__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // RoadOptions.h : header file
 //
 
@@ -37,9 +33,9 @@ class RoadOptions : public COptionsPanel
 {
 // Construction
 public:
-	RoadOptions(CWnd* pParent = NULL);   ///< standard constructor
+	RoadOptions(CWnd* pParent = nullptr);   ///< standard constructor
 
-	~RoadOptions(void);   ///< standard destructor
+	virtual ~RoadOptions() override;   ///< standard destructor
 	enum { NAME_MAX_LEN = 64 };
 // Dialog Data
 	//{{AFX_DATA(RoadOptions)
@@ -52,10 +48,10 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(RoadOptions)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	virtual void OnOK(){return;};  ///< Modeless dialogs don't OK, so eat this for modeless.
-	virtual void OnCancel(){return;}; ///< Modeless dialogs don't close on ESC, so eat this for modeless.
-	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult);
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
+	virtual void OnOK() override {return;};  ///< Modeless dialogs don't OK, so eat this for modeless.
+	virtual void OnCancel() override {return;}; ///< Modeless dialogs don't close on ESC, so eat this for modeless.
+	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult) override;
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -63,7 +59,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(RoadOptions)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnTightCurve();
 	afx_msg void OnAngled();
 	afx_msg void OnBroadCurve();
@@ -87,25 +83,23 @@ protected:
 
 protected:
 	void addRoad(char *pPath, Int objectNdx, HTREEITEM parent);
-	HTREEITEM findOrAdd(HTREEITEM parent, char *pLabel);
+	HTREEITEM findOrAdd(HTREEITEM parent, const char *pLabel);
 	Bool findAndSelect(HTREEITEM parent, AsciiString label);
 	Bool setRoadTreeViewSelection(HTREEITEM parent, Int selection);
-	void updateLabel(void);
+	void updateLabel();
 	void ChangeRoadType(AsciiString newRoad);
-	void SelectConnected(void);
+	void SelectConnected();
 
 public:
-	static AsciiString getCurRoadName(void) {return m_currentRoadName;}
-	static Bool isBridge(void) {return (m_currentRoadIndex >= m_numberOfRoads);}
-	static Bool isAngled(void) {return m_angleCorners;}
-	static Bool isTightCurve(void) {return m_tightCurve;}
-	static Bool isJoin(void) {return m_doJoin;}
-	static void updateSelection(void);
-	static Bool selectionIsRoadsOnly(void);
-	void applyToSelection(void);
-}; 
+	static AsciiString getCurRoadName() {return m_currentRoadName;}
+	static Bool isBridge() {return (m_currentRoadIndex >= m_numberOfRoads);}
+	static Bool isAngled() {return m_angleCorners;}
+	static Bool isTightCurve() {return m_tightCurve;}
+	static Bool isJoin() {return m_doJoin;}
+	static void updateSelection();
+	static Bool selectionIsRoadsOnly();
+	void applyToSelection();
+};
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_RoadOptions_H__D3FF66C5_711D_4DAC_8A29_5EAAB5C3A23E__INCLUDED_)

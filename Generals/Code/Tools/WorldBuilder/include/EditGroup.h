@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_EDITGROUP_H__712F9978_4300_4625_9364_39E903FA3284__INCLUDED_)
-#define AFX_EDITGROUP_H__712F9978_4300_4625_9364_39E903FA3284__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // EditGroup.h : header file
 //
 
@@ -33,7 +29,7 @@ class EditGroup : public CDialog
 {
 // Construction
 public:
-	EditGroup(ScriptGroup *pGroup, CWnd* pParent = NULL);   // standard constructor
+	EditGroup(ScriptGroup *pGroup, CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(EditGroup)
@@ -46,7 +42,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(EditGroup)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -57,13 +53,11 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(EditGroup)
-	virtual void OnOK();
-	virtual BOOL OnInitDialog();
+	virtual void OnOK() override;
+	virtual BOOL OnInitDialog() override;
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_EDITGROUP_H__712F9978_4300_4625_9364_39E903FA3284__INCLUDED_)

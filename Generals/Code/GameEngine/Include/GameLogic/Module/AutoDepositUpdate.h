@@ -24,12 +24,12 @@
 
 // FILE: AutoDepositUpdate.h /////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
-//                                                                          
-//                       Electronic Arts Pacific.                          
-//                                                                          
-//                       Confidential Information                           
-//                Copyright (C) 2002 - All Rights Reserved                  
-//                                                                          
+//
+//                       Electronic Arts Pacific.
+//
+//                       Confidential Information
+//                Copyright (C) 2002 - All Rights Reserved
+//
 //-----------------------------------------------------------------------------
 //
 //	created:	Aug 2002
@@ -37,16 +37,13 @@
 //	Filename: 	AutoDepositUpdate.h
 //
 //	author:		Chris Huybregts
-//	
+//
 //	purpose:	Auto Deposit Update Module
 //
 //-----------------------------------------------------------------------------
 ///////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#ifndef __AUTO_DEPOSIT_UPDATE_H_
-#define __AUTO_DEPOSIT_UPDATE_H_
 
 //-----------------------------------------------------------------------------
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
@@ -61,6 +58,13 @@
 //-----------------------------------------------------------------------------
 class Player;
 class Thing;
+void parseUpgradePair( INI *ini, void *instance, void *store, const void *userData );
+struct upgradePair
+{
+	std::string type;
+	Int         amount;
+};
+
 //-----------------------------------------------------------------------------
 // TYPE DEFINES ///////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
@@ -78,14 +82,14 @@ public:
 		m_initialCaptureBonus = 0;
 	}
 
-	static void buildFieldParse(MultiIniFieldParse& p) 
+	static void buildFieldParse(MultiIniFieldParse& p)
 	{
     UpdateModuleData::buildFieldParse(p);
-		static const FieldParse dataFieldParse[] = 
+		static const FieldParse dataFieldParse[] =
 		{
-			{ "DepositTiming",					INI::parseDurationUnsignedInt,		NULL, offsetof( AutoDepositUpdateModuleData, m_depositFrame ) },
-			{ "DepositAmount",					INI::parseInt,		NULL, offsetof( AutoDepositUpdateModuleData, m_depositAmount ) },
-			{ "InitialCaptureBonus",		INI::parseInt,		NULL, offsetof( AutoDepositUpdateModuleData, m_initialCaptureBonus ) },
+			{ "DepositTiming",					INI::parseDurationUnsignedInt,		nullptr, offsetof( AutoDepositUpdateModuleData, m_depositFrame ) },
+			{ "DepositAmount",					INI::parseInt,		nullptr, offsetof( AutoDepositUpdateModuleData, m_depositAmount ) },
+			{ "InitialCaptureBonus",		INI::parseInt,		nullptr, offsetof( AutoDepositUpdateModuleData, m_initialCaptureBonus ) },
 			{ 0, 0, 0, 0 }
 		};
     p.add(dataFieldParse);
@@ -106,7 +110,7 @@ public:
 	// virtual destructor prototype provided by memory pool declaration
 
 	void awardInitialCaptureBonus( Player *player );	// Test and award the initial capture bonus
-	virtual UpdateSleepTime update( void );
+	virtual UpdateSleepTime update() override;
 
 protected:
 
@@ -124,5 +128,3 @@ protected:
 //-----------------------------------------------------------------------------
 // EXTERNALS //////////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
-
-#endif // __AUTO_DEPOSIT_UPDATE_H_

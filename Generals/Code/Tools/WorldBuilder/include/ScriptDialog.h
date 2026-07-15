@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_SCRIPTDIALOG_H__885FEF28_85F9_4556_9908_1BEC0B6E4C62__INCLUDED_)
-#define AFX_SCRIPTDIALOG_H__885FEF28_85F9_4556_9908_1BEC0B6E4C62__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // ScriptDialog.h : header file
 //
 
@@ -35,9 +31,9 @@ public:
 	unsigned short int m_groupIndex;	 // 12 bits
 	unsigned short int m_scriptIndex; // 12 bits
 
-	ListType(void) {m_objType=BOGUS_TYPE;m_playerIndex=0;m_groupIndex = 0; m_scriptIndex=0;}
+	ListType() {m_objType=BOGUS_TYPE;m_playerIndex=0;m_groupIndex = 0; m_scriptIndex=0;}
 
-	Int ListToInt(void) { return((m_objType<<28)+(m_playerIndex<<24)+(m_groupIndex<<12)+m_scriptIndex);}
+	Int ListToInt() { return((m_objType<<28)+(m_playerIndex<<24)+(m_groupIndex<<12)+m_scriptIndex);}
 
 	void IntToList(int i) {m_objType = ((i)>>28)&0x0F; m_playerIndex = ((i)>>24)&0x0F; m_groupIndex = ((i)>>12)&0x0FFF; m_scriptIndex = (i)&0x0FFF;}
 };
@@ -52,7 +48,7 @@ class Parameter;
 class CSDTreeCtrl : public CTreeCtrl
 {
 	public:
-	
+
 	protected:
 		virtual void OnRButtonDown(UINT nFlags, CPoint point);
 		DECLARE_MESSAGE_MAP()
@@ -65,8 +61,8 @@ class ScriptDialog : public CDialog
 {
 // Construction
 public:
-	ScriptDialog(CWnd* pParent = NULL);   // standard constructor
-	~ScriptDialog();   //  destructor
+	ScriptDialog(CWnd* pParent = nullptr);   // standard constructor
+	virtual ~ScriptDialog() override;   //  destructor
 
 // Dialog Data
 	//{{AFX_DATA(ScriptDialog)
@@ -79,17 +75,17 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(ScriptDialog)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
 public:
-	static void updateWarnings(void);
+	static void updateWarnings();
 	static void updateScriptWarning(Script *pScript);
 
 	/// To allow CSDTreeCtrl access to these member functions of ScriptDialog
-	Script *friend_getCurScript(void);
-	ScriptGroup *friend_getCurGroup(void);
+	Script *friend_getCurScript();
+	ScriptGroup *friend_getCurGroup();
 
 protected:
 	ListType	m_curSelection;
@@ -111,8 +107,8 @@ protected:
 	HTREEITEM addPlayer(Int playerIndx);
 	void addScriptList(HTREEITEM hPlayer, Int playerIndex, ScriptList *pSL);
 	void doDropOn(HTREEITEM hDrop, HTREEITEM hTarget);
-	Script *getCurScript(void);
-	ScriptGroup *getCurGroup(void);
+	Script *getCurScript();
+	ScriptGroup *getCurGroup();
 	void reloadPlayer(Int playerIndex, ScriptList *pSL);
 	HTREEITEM findItem(ListType sel, Bool failSafe = FALSE);
 	void insertScript(Script *pNewScript);
@@ -136,7 +132,7 @@ protected:
 	// Generated message map functions
 	//{{AFX_MSG(ScriptDialog)
 	afx_msg void OnSelchangedScriptTree(NMHDR* pNMHDR, LRESULT* pResult);
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnNewFolder();
 	afx_msg void OnNewScript();
 	afx_msg void OnEditScript();
@@ -145,8 +141,8 @@ protected:
 	afx_msg void OnSave();
 	afx_msg void OnLoad();
 	afx_msg void OnDblclkScriptTree(NMHDR* pNMHDR, LRESULT* pResult);
-	virtual void OnOK();
-	virtual void OnCancel();
+	virtual void OnOK() override;
+	virtual void OnCancel() override;
 	afx_msg void OnBegindragScriptTree(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnScriptActivate();
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
@@ -158,5 +154,3 @@ protected:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_SCRIPTDIALOG_H__885FEF28_85F9_4556_9908_1BEC0B6E4C62__INCLUDED_)

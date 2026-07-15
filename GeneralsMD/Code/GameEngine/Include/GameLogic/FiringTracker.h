@@ -29,9 +29,6 @@
 
 #pragma once
 
-#ifndef FIRING_TRACKER_H
-#define FIRING_TRACKER_H
-
 #include "Common/GameType.h"
 #include "Common/GameMemory.h"
 #include "Common/AudioEventRTS.h"
@@ -52,7 +49,7 @@ class FiringTrackerModuleData : public ModuleData
 class FiringTracker : public UpdateModule
 {
 	MAKE_STANDARD_MODULE_MACRO_WITH_MODULE_DATA( FiringTracker, FiringTrackerModuleData )
-	MEMORY_POOL_GLUE_WITH_USERLOOKUP_CREATE(FiringTracker, "FiringTrackerPool" )	
+	MEMORY_POOL_GLUE_WITH_USERLOOKUP_CREATE(FiringTracker, "FiringTrackerPool" )
 public:
 	FiringTracker(Thing *thing, const ModuleData *modData);
 	void shotFired(const Weapon* weaponFired, ObjectID victimID );			///< Owner just fired this weapon at this Object
@@ -60,9 +57,9 @@ public:
 	Int getNumConsecutiveShotsAtVictim( const Object *victim ) const;
 
 	/// this is never disabled, since we want disabled things to continue to slowly "spin down"... (srj)
-	virtual DisabledMaskType getDisabledTypesToProcess() const { return DISABLEDMASK_ALL; }
+	virtual DisabledMaskType getDisabledTypesToProcess() const override { return DISABLEDMASK_ALL; }
 
-	virtual UpdateSleepTime update();	///< See if spin down is needed because we haven't shot in a while
+	virtual UpdateSleepTime update() override;	///< See if spin down is needed because we haven't shot in a while
 
 protected:
 
@@ -71,7 +68,7 @@ protected:
 		user update modules, so it redefines this. Please don't redefine this
 		for other modules without very careful deliberation. (srj)
 	*/
-	virtual SleepyUpdatePhase getUpdatePhase() const
+	virtual SleepyUpdatePhase getUpdatePhase() const override
 	{
 		return PHASE_FINAL;
 	}
@@ -91,6 +88,3 @@ private:
 	UnsignedInt			m_frameToStopLoopingSound;	///< if sound is looping, frame to stop looping it (or zero if not looping)
 	AudioHandle			m_audioHandle;
 };
-
-#endif
-

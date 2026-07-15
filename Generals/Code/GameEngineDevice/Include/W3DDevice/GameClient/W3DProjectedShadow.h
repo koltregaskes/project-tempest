@@ -30,17 +30,16 @@
 //
 //
 ///////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#ifndef __W3D_PROJECTED_SHADOW_H_
-#define __W3D_PROJECTED_SHADOW_H_
+#pragma once
 
 #include "GameClient/Shadow.h"
 
 class W3DShadowTexture;	//forward reference
 class W3DShadowTextureManager;	//forward reference
-class W3DProjectedShadow; //forward reference
 class Drawable;	//forward reference
+class W3DProjectedShadow; //forward reference.
+class TexProjectClass;
 
 class W3DProjectedShadowManager	: public ProjectedShadowManager
 {
@@ -51,27 +50,33 @@ class W3DProjectedShadowManager	: public ProjectedShadowManager
 			};
 */
 	public:
-		W3DProjectedShadowManager( void );
-		~W3DProjectedShadowManager( void );
-		Bool init(void);					///<allocate one-time shadow assets for length of entire game.
-		void reset(void);					///<free all existing shadows - ready for next map.
-		void shutdown(void);			///<free all assets prior to shutdown of entire game.
+		W3DProjectedShadowManager();
+		virtual ~W3DProjectedShadowManager() override;
+		Bool init();					///<allocate one-time shadow assets for length of entire game.
+		void reset();					///<free all existing shadows - ready for next map.
+		void shutdown();			///<free all assets prior to shutdown of entire game.
+		void prepareShadows();
 		Int	 renderShadows(RenderInfoClass & rinfo);	///<iterate over each object and render its shadow onto affected objects.
-		void ReleaseResources(void);	///<release device dependent D3D resources.
-		Bool ReAcquireResources(void);	///<allocate device dependent D3D resources.
-		void invalidateCachedLightPositions(void);	///<forces shadows to update regardless of last lightposition
+		void ReleaseResources();	///<release device dependent D3D resources.
+		Bool ReAcquireResources();	///<allocate device dependent D3D resources.
+		void invalidateCachedLightPositions();	///<forces shadows to update regardless of last lightposition
 
-		virtual Shadow	*addDecal(RenderObjClass *robj, Shadow::ShadowTypeInfo *shadowInfo);	///<add a non-shadow decal
-		virtual Shadow	*addDecal(Shadow::ShadowTypeInfo *shadowInfo);	///<add a non-shadow decal which does not follow an object.
+		virtual Shadow	*addDecal(RenderObjClass *robj, Shadow::ShadowTypeInfo *shadowInfo) override;	///<add a non-shadow decal
+		virtual Shadow	*addDecal(Shadow::ShadowTypeInfo *shadowInfo) override;	///<add a non-shadow decal which does not follow an object.
 		W3DProjectedShadow	*addShadow( RenderObjClass *robj, Shadow::ShadowTypeInfo *shadowInfo, Drawable *draw);	///<add a new shadow with texture of given name or that of robj.
+		W3DProjectedShadow	*createDecalShadow( Shadow::ShadowTypeInfo *shadowInfo);	///<add a new shadow with texture of given name or that of robj.
 		void removeShadow (W3DProjectedShadow *shadow);
-		void removeAllShadows(void); ///< Remove all shadows.
-		TextureClass *getRenderTarget(void)	{ return m_dynamicRenderTarget;}
-		SpecialRenderInfoClass *getRenderContext(void)	{ return m_shadowContext;}
-		void updateRenderTargetTextures(void);	///<render into any textures that need updating.
+		void removeAllShadows(); ///< Remove all shadows.
+		TextureClass *getRenderTarget()	{ return m_dynamicRenderTarget;}
+		SpecialRenderInfoClass *getRenderContext()	{ return m_shadowContext;}
+		void updateRenderTargetTextures();	///<render into any textures that need updating.
 		void queueDecal(W3DProjectedShadow *shadow);	///<add shadow decal to render list - decal conforms to terrain.
 		void queueSimpleDecal(W3DProjectedShadow *shadow);	///< add shadow decal to render list - decal floats on terrain.
 		void flushDecals(W3DShadowTexture *texture, ShadowType type);	///<empty queue by rendering all decals with given texture
+
+	private:
+		Int renderProjectedTerrainShadow(W3DProjectedShadow *shadow, AABoxClass &box);	///<render shadow on map terrain.
+		void updateShadowNumbers(ShadowType shadowType, Int addNum);
 
 	private:
 		W3DProjectedShadow *m_shadowList;
@@ -84,9 +89,48 @@ class W3DProjectedShadowManager	: public ProjectedShadowManager
 		W3DShadowTextureManager *m_W3DShadowTextureManager;
 		Int m_numDecalShadows;							///< number of decal shadows in the system.
 		Int m_numProjectionShadows;						///< number of projected shadows in the system.
-		Int renderProjectedTerrainShadow(W3DProjectedShadow *shadow, AABoxClass &box);	///<render shadow on map terrain.
+
+		//Bounding rectangle around rendered portion of terrain.
+		Int m_drawEdgeX;
+		Int m_drawEdgeY;
+		Int m_drawStartX;
+		Int m_drawStartY;
 };
 
 extern W3DProjectedShadowManager *TheW3DProjectedShadowManager;
 
-#endif	//__W3D_PROJECTED_SHADOW_H_
+/** Object for maintaining and updating an object's shadow texture.
+*/
+class W3DProjectedShadow	: public Shadow
+{
+	friend class W3DProjectedShadowManager;
+
+	public:
+		W3DProjectedShadow();
+		~W3DProjectedShadow();
+		void setRenderObject( RenderObjClass	*robj) {m_robj=robj;}
+		void setObjPosHistory(const Vector3 &pos)	{m_lastObjPosition=pos;}	///<position of object when projection matrix was updated.
+		void setTexture(Int lightIndex,W3DShadowTexture *texture)	{m_shadowTexture[lightIndex]=texture;}	///<textur with light's shadow
+		void update();	///<updates the texture and/or projection parameters when the object or light moves.
+		void init();		///<allocates local member variables used for projection
+		void updateTexture(Vector3 &lightPos);	///<updates the shadow texture image using render object and given light position.
+		void updateProjectionParameters(const Matrix3D &cameraXform);	///<recompute projection matrix - needed when light or object moves.
+		TexProjectClass *getShadowProjector()	{return m_shadowProjector;}
+		#if defined(RTS_DEBUG)
+		virtual void getRenderCost(RenderCost & rc) const override;
+		#endif
+		W3DShadowTexture *getTexture(Int lightIndex) {return m_shadowTexture[lightIndex];}
+
+
+	protected:
+		W3DShadowTexture *m_shadowTexture[MAX_SHADOW_LIGHTS];		///<cached shadow data
+		TexProjectClass	 *m_shadowProjector;										///<object used to generate texture and projection matrix.
+		RenderObjClass	*m_robj;						///<render object used to cast the shadow.
+		Vector3		m_lastObjPosition;	///<position of  object at time of projection matrix update.
+		W3DProjectedShadow *m_next;	/// for the shadow manager list
+		Bool	m_allowWorldAlign;	/// wrap shadow around world geometry - else align perpendicular to local z-axis.
+		Real	m_decalOffsetU;		/// texture coordinate offset so not centered at object origin.
+		Real	m_decalOffsetV;		/// texture coordinate offset so not centered at object origin.
+		Int		m_flags;			/// custom rendering flags
+		virtual void release() override	{TheW3DProjectedShadowManager->removeShadow(this);}	///<release shadow from manager
+};

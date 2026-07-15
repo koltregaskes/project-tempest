@@ -16,13 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-#ifndef __RULEROPTIONS_H_
-#define __RULEROPTIONS_H_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // RulerOptions.h : header file
 //
 #include "OptionsPanel.h"
@@ -30,13 +25,13 @@
 /////////////////////////////////////////////////////////////////////////////
 // RulerOptions dialog
 
-class RulerOptions : public COptionsPanel	
+class RulerOptions : public COptionsPanel
 {
 
 // Construction
 public:
 
-	RulerOptions(CWnd* pParent = NULL);   // standard constructor
+	RulerOptions(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(RulerOptions)
@@ -49,9 +44,9 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(RulerOptions)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	virtual void OnOK(){return;};  //!< Modeless dialogs don't OK, so eat this for modeless.
-	virtual void OnCancel(){return;}; //!< Modeless dialogs don't close on ESC, so eat this for modeless.
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
+	virtual void OnOK() override {return;};  //!< Modeless dialogs don't OK, so eat this for modeless.
+	virtual void OnCancel() override {return;}; //!< Modeless dialogs don't close on ESC, so eat this for modeless.
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -59,7 +54,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(RulerOptions)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnChangeWidthEdit();
 	afx_msg void OnChangeCheckRuler();
 	//}}AFX_MSG
@@ -76,5 +71,3 @@ public:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif __RULEROPTIONS_H_

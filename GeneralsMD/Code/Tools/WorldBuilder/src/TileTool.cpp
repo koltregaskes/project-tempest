@@ -20,7 +20,7 @@
 // Texture tiling tool for worldbuilder.
 // Author: John Ahlquist, April 2001
 
-#include "StdAfx.h" 
+#include "StdAfx.h"
 #include "resource.h"
 
 #include "TileTool.h"
@@ -37,20 +37,20 @@
 
 
 /// Constructor
-TileTool::TileTool(void) :
+TileTool::TileTool() :
 	Tool(ID_TILE_TOOL, IDC_TILE_CURSOR)
 {
-	m_htMapEditCopy = NULL;
+	m_htMapEditCopy = nullptr;
 }
-	
+
 /// Destructor
-TileTool::~TileTool(void) 
+TileTool::~TileTool()
 {
 	REF_PTR_RELEASE(m_htMapEditCopy);
 }
 
 /// Shows the terrain materials options panel.
-void TileTool::activate() 
+void TileTool::activate()
 {
 	CMainFrame::GetMainFrame()->showOptionsDialog(IDD_TERRAIN_MATERIAL);
 	TerrainMaterial::setToolOptions(true);
@@ -60,7 +60,7 @@ void TileTool::activate()
 
 
 /// Common mouse down code for left and right clicks.
-void TileTool::mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) 
+void TileTool::mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc)
 {
 	if (m == TRACK_L)
 		m_textureClassToDraw = TerrainMaterial::getFgTexClass();
@@ -80,7 +80,7 @@ void TileTool::mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBu
 }
 
 /// Common mouse up code for left and right clicks.
-void TileTool::mouseUp(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) 
+void TileTool::mouseUp(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc)
 {
 	if (m != TRACK_L && m != TRACK_R) return;
 #define DONT_DO_FULL_UPDATE
@@ -182,20 +182,20 @@ void TileTool::mouseMoved(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldB
 Int BigTileTool::m_currentWidth = 0;
 
 /// Constructor
-BigTileTool::BigTileTool(void)
+BigTileTool::BigTileTool()
 {
 	m_toolID = ID_BIG_TILE_TOOL;
 }
 
 /// Shows the terrain materials options panel.
-void BigTileTool::setWidth(Int width) 
+void BigTileTool::setWidth(Int width)
 {
 	m_currentWidth = width;
 	DrawObject::setBrushFeedbackParms(true, m_currentWidth, 0);
 }
 
 /// Shows the terrain materials options panel.
-void BigTileTool::activate() 
+void BigTileTool::activate()
 {
 	CMainFrame::GetMainFrame()->showOptionsDialog(IDD_TERRAIN_MATERIAL);
 	TerrainMaterial::setToolOptions(false);

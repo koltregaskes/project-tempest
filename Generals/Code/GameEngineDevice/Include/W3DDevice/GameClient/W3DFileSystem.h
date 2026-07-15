@@ -24,23 +24,18 @@
 
 // FILE: W3DFileSystem.h ////////////////////////////////////////////////////////
 //
-// W3D implementation of a file factory.  Uses GDI assets, so that 
+// W3D implementation of a file factory.  Uses GDI assets, so that
 // W3D files and targa files are loaded using the GDI file interface.
 //
 // Author: John Ahlquist, Sept 2001
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-
-#if _MSC_VER >= 1000
 #pragma once
-#endif // _MSC_VER >= 1000
 
-#ifndef __W3DFILESYSTEM_H_
-#define __W3DFILESYSTEM_H_
-
-#include "WWLIB/ffactory.h"
-#include "Common/File.h"
+#include "WWLib/ffactory.h"
+#include "Common/ArchiveFileSystem.h"
+#include "Common/file.h"
 
 //-------------------------------------------------------------------------------------------------
 /** Game file access.  At present this allows us to access test assets, assets from
@@ -52,20 +47,25 @@ class GameFileClass : public FileClass
 public:
 
 	GameFileClass(char const *filename);
-	GameFileClass(void);
-	virtual ~GameFileClass(void);
+	GameFileClass();
+	virtual ~GameFileClass() override;
 
-	virtual char const * File_Name(void) const;
-	virtual char const * Set_Name(char const *filename);
-	virtual bool Is_Available(int forced=false);
-	virtual bool Is_Open(void) const;
-	virtual int Open(char const *filename, int rights=READ);
-	virtual int Open(int rights=READ);
-	virtual int Read(void *buffer, int len);
-	virtual int Seek(int pos, int dir=SEEK_CUR);
-	virtual int Size(void);
-	virtual int Write(void const *buffer, int len);
-	virtual void Close(void);
+	virtual char const * File_Name() const override;
+	virtual char const * Set_Name(char const *filename) override;
+
+	// (gth) had to re-instate these functions in the base class, for now just give empty implementations...
+	virtual int Create() override { assert(0); return 1; }
+	virtual int Delete() override { assert(0); return 1; }
+
+	virtual bool Is_Available(int forced=false) override;
+	virtual bool Is_Open() const override;
+	virtual int Open(char const *filename, int rights=READ) override;
+	virtual int Open(int rights=READ) override;
+	virtual int Read(void *buffer, int len) override;
+	virtual int Seek(int pos, int dir=SEEK_CUR) override;
+	virtual int Size() override;
+	virtual int Write(void const *buffer, int len) override;
+	virtual void Close() override;
 
 protected:
 
@@ -83,12 +83,16 @@ protected:
 */
 class	W3DFileSystem : public FileFactoryClass {
 public:
-	W3DFileSystem(void);
-	~W3DFileSystem(void);
+	W3DFileSystem();
+	virtual ~W3DFileSystem() override;
 
-	virtual FileClass * Get_File( char const *filename );
-	virtual void Return_File( FileClass *file );
+	virtual FileClass * Get_File( char const *filename ) override;
+	virtual void Return_File( FileClass *file ) override;
+
+private:
+
+	static void reprioritizeTexturesBySize();
+	static void reprioritizeTexturesBySize(ArchivedDirectoryInfo& dirInfo);
 };
 
 extern W3DFileSystem *TheW3DFileSystem;
-#endif

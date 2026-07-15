@@ -16,14 +16,11 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef GROVEOPTIONS_H
-#define GROVEOPTIONS_H
-
 #pragma once
 
 #include <map>
 #include <vector>
-#include "worldbuilder.h"
+#include "WorldBuilder.h"
 #include "OptionsPanel.h"
 #include "Common/STLTypedefs.h"
 
@@ -42,41 +39,39 @@ UnicodeString GetDisplayNameFromPair(const PairNameDisplayName *pNamePair);
 class GroveOptions : public COptionsPanel
 {
 	protected:
-		std::vector<std::pair<Int, Int> >	mVecGroup;
+		std::vector<std::pair<Int, Int>/**/>	mVecGroup;
 		VecPairNameDisplayName mVecDisplayNames;
 
 		Int	mNumTrees;
-	
-	public:
-		GroveOptions(CWnd* pParent = NULL);
-		~GroveOptions();
-		void makeMain(void);
 
-		virtual BOOL OnInitDialog();
-		int getNumTrees(void);
+	public:
+		GroveOptions(CWnd* pParent = nullptr);
+		virtual ~GroveOptions() override;
+		void makeMain();
+
+		virtual BOOL OnInitDialog() override;
+		int getNumTrees();
 		int getNumType(int type);
 		AsciiString getTypeName(int type);
-		int getTotalTreePerc(void);
-		Bool getCanPlaceInWater(void);
-		Bool getCanPlaceOnCliffs(void);
+		int getTotalTreePerc();
+		Bool getCanPlaceInWater();
+		Bool getCanPlaceOnCliffs();
 
 	protected:
-		void _setTreesToLists(void);
-		void _buildTreeList(void);
-		void _setDefaultRatios(void);
-		void _setDefaultNumTrees(void);
-		void _setDefaultPlacementAllowed(void);
+		void _setTreesToLists();
+		void _buildTreeList();
+		void _setDefaultRatios();
+		void _setDefaultNumTrees();
+		void _setDefaultPlacementAllowed();
 
-		afx_msg void _updateTreeWeights(void);
-		afx_msg void _updateTreeCount(void);
-		afx_msg void _updateGroveMakeup(void);
-		afx_msg void _updatePlacementAllowed(void);
+		afx_msg void _updateTreeWeights();
+		afx_msg void _updateTreeCount();
+		afx_msg void _updateGroveMakeup();
+		afx_msg void _updatePlacementAllowed();
 
-		virtual void OnOK();
+		virtual void OnOK() override;
 		virtual void OnClose();
 	DECLARE_MESSAGE_MAP()
 };
 
 extern GroveOptions *TheGroveOptions;
-
-#endif

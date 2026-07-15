@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_PROPEDIT_H__93C02F45_592B_4CFD_A092_7445559D26EB__INCLUDED_)
-#define AFX_PROPEDIT_H__93C02F45_592B_4CFD_A092_7445559D26EB__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // propedit.h : header file
 //
 
@@ -32,7 +28,7 @@ class PropEdit : public CDialog
 {
 // Construction
 public:
-	PropEdit(AsciiString* key, Dict::DataType* type, AsciiString* value, Bool valueOnly, CWnd *parent = NULL);
+	PropEdit(AsciiString* key, Dict::DataType* type, AsciiString* value, Bool valueOnly, CWnd *parent = nullptr);
 
 // Dialog Data
 	//{{AFX_DATA(PropEdit)
@@ -45,7 +41,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(PropEdit)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -65,7 +61,7 @@ protected:
 	afx_msg void OnCloseupKeytype();
 	afx_msg void OnSelchangeKeytype();
 	afx_msg void OnChangeValue();
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnPropbool();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
@@ -73,5 +69,3 @@ protected:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_PROPEDIT_H__93C02F45_592B_4CFD_A092_7445559D26EB__INCLUDED_)

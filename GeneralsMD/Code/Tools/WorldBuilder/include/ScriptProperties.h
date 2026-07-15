@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_SCRIPTPROPERTIES_H__CE62125B_9FAB_4EF0_A8B5_36DD5393A2B0__INCLUDED_)
-#define AFX_SCRIPTPROPERTIES_H__CE62125B_9FAB_4EF0_A8B5_36DD5393A2B0__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // ScriptProperties.h : header file
 //
 class Script;
@@ -35,7 +31,7 @@ class ScriptProperties : public CPropertyPage
 // Construction
 public:
 	ScriptProperties();
-	~ScriptProperties();
+	virtual ~ScriptProperties() override;
 
 // Dialog Data
 	//{{AFX_DATA(ScriptProperties)
@@ -49,16 +45,16 @@ public:
 	// ClassWizard generate virtual function overrides
 	//{{AFX_VIRTUAL(ScriptProperties)
 	public:
-	virtual BOOL OnSetActive();
+	virtual BOOL OnSetActive() override;
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
 public:
 	void setScript(Script *pScript) {m_script = pScript;}
 protected:
-	void enableControls(void);
+	void enableControls();
 
 protected:
 	Script *m_script;
@@ -85,5 +81,3 @@ protected:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_SCRIPTPROPERTIES_H__CE62125B_9FAB_4EF0_A8B5_36DD5393A2B0__INCLUDED_)

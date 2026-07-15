@@ -42,7 +42,6 @@
 #include "camera.h"
 #include "light.h"
 
-
 /*
 ** Constants
 */
@@ -52,8 +51,10 @@ const float DIFFUSE_TO_AMBIENT_FRACTION = 1.0f;
 /*
 ** Static variables
 */
-static _LightingLODCutoff			= 0.5f;	
-static _LightingLODCutoff2			= 0.5f * 0.5f;
+// TheSuperHackers @fix xezon 13/03/2025 Set integer type as per the original.
+// TODO: Investigate if it should be a float.
+static int _LightingLODCutoff			= 0.5f;
+static int _LightingLODCutoff2			= 0.5f * 0.5f;
 
 
 /************************************************************************************************
@@ -68,8 +69,8 @@ void LightEnvironmentClass::InputLightStruct::Init
 	const Vector3 & object_center
 )
 {
-	m_point = false; 
-	switch(light.Get_Type()) 
+	m_point = false;
+	switch(light.Get_Type())
 	{
 	case LightClass::POINT:
 	case LightClass::SPOT:
@@ -101,14 +102,14 @@ void LightEnvironmentClass::InputLightStruct::Init_From_Point_Or_Spot_Light
 	*/
 	double atten_start,atten_end;
 	light.Get_Far_Attenuation_Range(atten_start,atten_end);
-	
+
 	float atten = 1.0f - (dist - atten_start) / (atten_end - atten_start);
 	atten = WWMath::Clamp(atten,0.0f,1.0f);
 
 
 
 	if (light.Get_Type() == LightClass::SPOT) {
-		
+
 		Vector3 spot_dir;
 		light.Get_Spot_Direction(spot_dir);
 		Matrix3D::Rotate_Vector(light.Get_Transform(),spot_dir,&spot_dir);
@@ -126,7 +127,7 @@ void LightEnvironmentClass::InputLightStruct::Init_From_Point_Or_Spot_Light
 	light.Get_Ambient(&Ambient);
 	light.Get_Diffuse(&Diffuse);
 
-	m_point = (light.Get_Type() == LightClass::POINT); 
+	m_point = (light.Get_Type() == LightClass::POINT);
 	m_center = light.Get_Position();
 	m_innerRadius = atten_start;
 	m_outerRadius = atten_end;
@@ -138,7 +139,7 @@ void LightEnvironmentClass::InputLightStruct::Init_From_Point_Or_Spot_Light
 		DiffuseRejected = false;
 		Ambient *= atten;
 		Diffuse *= atten;
-		
+
 	} else {
 
 		DiffuseRejected = true;
@@ -164,11 +165,11 @@ void LightEnvironmentClass::InputLightStruct::Init_From_Directional_Light
 }
 
 
-float LightEnvironmentClass::InputLightStruct::Contribution(void)
+float LightEnvironmentClass::InputLightStruct::Contribution()
 {
 	return Diffuse.Length2();
 }
-	
+
 
 /************************************************************************************************
 **
@@ -184,7 +185,7 @@ void LightEnvironmentClass::OutputLightStruct::Init
 {
 	Diffuse = input.Diffuse;
 	Matrix3D::Inverse_Rotate_Vector(camera_tm,input.Direction,&Direction);
-}	
+}
 
 
 
@@ -194,7 +195,7 @@ void LightEnvironmentClass::OutputLightStruct::Init
 **
 ************************************************************************************************/
 
-LightEnvironmentClass::LightEnvironmentClass(void) :
+LightEnvironmentClass::LightEnvironmentClass() :
 	LightCount(0),
 	ObjectCenter(0,0,0),
 	OutputAmbient(0,0,0)
@@ -202,7 +203,7 @@ LightEnvironmentClass::LightEnvironmentClass(void) :
 }
 
 
-LightEnvironmentClass::~LightEnvironmentClass(void)
+LightEnvironmentClass::~LightEnvironmentClass()
 {
 }
 
@@ -220,8 +221,9 @@ void LightEnvironmentClass::Add_Light(const LightClass & light)
 	/*
 	** Compute the equivalent directional + ambient light
 	*/
+
 	InputLightStruct new_light;
-	new_light.Init(light,ObjectCenter);
+	new_light.Init(light, ObjectCenter);
 
 	/*
 	** Add in the ambient component
@@ -267,7 +269,7 @@ void LightEnvironmentClass::Set_Lighting_LOD_Cutoff(float inten)
 	_LightingLODCutoff2 = _LightingLODCutoff * _LightingLODCutoff;
 }
 
-float LightEnvironmentClass::Get_Lighting_LOD_Cutoff(void)
+float LightEnvironmentClass::Get_Lighting_LOD_Cutoff()
 {
 	return _LightingLODCutoff;
 }

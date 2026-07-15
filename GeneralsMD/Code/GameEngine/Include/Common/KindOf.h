@@ -24,13 +24,10 @@
 
 // FILE: KindOf.h //////////////////////////////////////////////////////////////////////////
 // Author: Steven Johnson, Dec 2001
-// Desc:	 
-///////////////////////////////////////////////////////////////////////////////////////////////////	
+// Desc:
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#ifndef __KINDOF_H_
-#define __KINDOF_H_
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "Lib/BaseType.h"
@@ -41,11 +38,11 @@
 /** Kind of flags for determining groups of things that belong together
 	* NOTE: You *MUST* keep this in the same order as the KindOfNames[] below */
 //-------------------------------------------------------------------------------------------------
-enum KindOfType
+enum KindOfType CPP_11(: Int)
 {
 	KINDOF_INVALID = -1,
-	KINDOF_FIRST = 0,
-	KINDOF_OBSTACLE = KINDOF_FIRST,	///< an obstacle to land-based pathfinders
+
+	KINDOF_OBSTACLE,								///< an obstacle to land-based pathfinders
 	KINDOF_SELECTABLE,							///< Actually means MOUSE-INTERACTABLE (doesn't mean you can select it!)
 	KINDOF_IMMOBILE,								///< fixed in location
 	KINDOF_CAN_ATTACK,							///< can attack
@@ -80,9 +77,12 @@ enum KindOfType
 	KINDOF_NO_COLLIDE,							///< Never collide with or be collided with
 	KINDOF_REPAIR_PAD,							///< is a repair pad object that can repair other machines
 	KINDOF_HEAL_PAD,								///< is a heal pad object that can heal flesh and bone units
-	KINDOF_STEALTH_GARRISON,				/** enemy teams can't tell that unit is in building.. and if they 
+	KINDOF_STEALTH_GARRISON,				/** enemy teams can't tell that unit is in building.. and if they
 																		garrison that building, they stealth unit will eject. */
 	KINDOF_CASH_GENERATOR,					///< used to check if the unit generates cash... checked by cash hackers and whatever else comes up
+#if RTS_GENERALS
+	KINDOF_AIRFIELD,								///< unit has a runway that planes can takeoff/land on
+#endif
 	KINDOF_DRAWABLE_ONLY,						///< template is used only to create drawables (not Objects)
 	KINDOF_MP_COUNT_FOR_VICTORY,		///< If a player loses all his buildings that have this kindof in a multiplayer game, he loses.
 	KINDOF_REBUILD_HOLE,						///< a GLA rebuild hole
@@ -96,12 +96,12 @@ enum KindOfType
 	KINDOF_CAN_SURRENDER,						///< object that can surrender
 #endif
 	KINDOF_CAN_BE_REPULSED,					///< object that runs away from a repulsor object.
-	KINDOF_MOB_NEXUS,					      ///< object that cooyrdinates the members of a mob (i.e. GLAInfantryAngryMob)
+	KINDOF_MOB_NEXUS,					      ///< object that coordinates the members of a mob (i.e. GLAInfantryAngryMob)
 	KINDOF_IGNORED_IN_GUI,					///< object that is the members of a mob (i.e. GLAInfantryAngryMob)
 	KINDOF_CRATE,										///< a bonus crate
 	KINDOF_CAPTURABLE,							///< is "capturable" even if not an enemy (should generally be used only for structures, eg, Tech bldgs)
 	KINDOF_CLEARED_BY_BUILD,				///< is auto-cleared from the map when built over via construction
-	KINDOF_SMALL_MISSILE,						///< Missile object: ONLY USED FOR ANTI-MISSILE TARGETTING PURPOSES! Keep using PROJECTILE!
+	KINDOF_SMALL_MISSILE,						///< Missile object: ONLY USED FOR ANTI-MISSILE TARGETING PURPOSES! Keep using PROJECTILE!
 	KINDOF_ALWAYS_VISIBLE,					///< is never obscured by fog of war or shroud.  mostly for UI feedback objects.
 	KINDOF_UNATTACKABLE,						///< You cannot target this thing, it probably doesn't really exist
 	KINDOF_MINE,										///< a landmine. (possibly also extend to Col. Burton timed charges?)
@@ -142,6 +142,7 @@ enum KindOfType
 	KINDOF_HERO,										///< Any of the single-instance infantry, JarmenKell, BlackLotus, ColonelBurton
 	KINDOF_IGNORES_SELECT_ALL,			///< Too late to figure out intelligently if something should respond to a Select All command
 	KINDOF_DONT_AUTO_CRUSH_INFANTRY,					///< These units don't try to crush the infantry if ai.
+	// TheSuperHackers @info Added in Zero Hour:
 	KINDOF_CLIFF_JUMPER,						///< Can't climb cliffs, but can jump off of them.
 	KINDOF_FS_SUPPLY_DROPZONE,						///< A supply dropzone.
 	KINDOF_FS_SUPERWEAPON,					///< A superweapon structure like a nuke silo, particle uplink cannon, scudstorm.
@@ -171,21 +172,21 @@ enum KindOfType
 	KINDOF_CONSERVATIVE_BUILDING,		///< Conservative structures aren't considered part of your base for sneak attack boundary calculations...
 	KINDOF_IGNORE_DOCKING_BONES,		///< Structure will not look up docking bones. Patch 1.03 hack.
 
-	KINDOF_COUNT										// total number of kindofs
-	
-}; 
+	KINDOF_COUNT,										// total number of kindofs
+	KINDOF_FIRST = 0,
+};
 
 typedef BitFlags<KINDOF_COUNT>	KindOfMaskType;
 
 #define MAKE_KINDOF_MASK(k) KindOfMaskType(KindOfMaskType::kInit, (k))
 
-inline Bool TEST_KINDOFMASK(const KindOfMaskType& m, KindOfType t) 
-{ 
-	return m.test(t); 
+inline Bool TEST_KINDOFMASK(const KindOfMaskType& m, KindOfType t)
+{
+	return m.test(t);
 }
 
-inline Bool TEST_KINDOFMASK_ANY(const KindOfMaskType& m, const KindOfMaskType& mask) 
-{ 
+inline Bool TEST_KINDOFMASK_ANY(const KindOfMaskType& m, const KindOfMaskType& mask)
+{
 	return m.anyIntersectionWith(mask);
 }
 
@@ -194,14 +195,14 @@ inline Bool TEST_KINDOFMASK_MULTI(const KindOfMaskType& m, const KindOfMaskType&
 	return m.testSetAndClear(mustBeSet, mustBeClear);
 }
 
-inline Bool KINDOFMASK_ANY_SET(const KindOfMaskType& m) 
-{ 
-	return m.any(); 
+inline Bool KINDOFMASK_ANY_SET(const KindOfMaskType& m)
+{
+	return m.any();
 }
 
-inline void CLEAR_KINDOFMASK(KindOfMaskType& m) 
-{ 
-	m.clear(); 
+inline void CLEAR_KINDOFMASK(KindOfMaskType& m)
+{
+	m.clear();
 }
 
 inline void SET_ALL_KINDOFMASK_BITS(KindOfMaskType& m)
@@ -218,7 +219,3 @@ inline void FLIP_KINDOFMASK(KindOfMaskType& m)
 // defined in Common/System/Kindof.cpp
 extern KindOfMaskType KINDOFMASK_NONE;	// inits to all zeroes
 extern KindOfMaskType KINDOFMASK_FS;		// Initializes all FS types for faction structures.
-void initKindOfMasks();
-
-#endif	// __KINDOF_H_
-

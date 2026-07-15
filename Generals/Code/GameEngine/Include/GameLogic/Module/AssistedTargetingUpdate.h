@@ -29,9 +29,6 @@
 
 #pragma once
 
-#ifndef _ASSISTED_TARGETING_UPDATE_H
-#define _ASSISTED_TARGETING_UPDATE_H
-
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "GameLogic/Module/UpdateModule.h"
 
@@ -41,15 +38,14 @@ class AssistedTargetingUpdateModuleData : public UpdateModuleData
 public:
 	Int m_clipSize;
 	WeaponSlotType m_weaponSlot;
-	ThingTemplate *m_laserFromAssisted;
-	ThingTemplate *m_laserToTarget;
+
+	AsciiString m_laserFromAssistedName;
+	AsciiString m_laserToTargetName;
 
 	AssistedTargetingUpdateModuleData()
 	{
 		m_clipSize = 1;
 		m_weaponSlot = PRIMARY_WEAPON;
-		m_laserFromAssisted = NULL;
-		m_laserToTarget = NULL;
 	}
 
 	static void buildFieldParse(MultiIniFieldParse& p);
@@ -68,14 +64,14 @@ public:
 	AssistedTargetingUpdate( Thing *thing, const ModuleData* moduleData );
 	// virtual destructor prototype provided by memory pool declaration
 
-	virtual UpdateSleepTime update( void );
+	virtual UpdateSleepTime update() override;
 
 	Bool isFreeToAssist() const;
 	void assistAttack( const Object *requestingObject, Object *victimObject );
 
 private:
 	void makeFeedbackLaser( const ThingTemplate *laserTemplate, const Object *from, const Object *to );
+
+	const ThingTemplate *m_laserFromAssisted;
+	const ThingTemplate *m_laserToTarget;
 };
-
-#endif 
-

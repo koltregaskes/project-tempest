@@ -24,13 +24,10 @@
 
 // FILE: DestroyModule.h /////////////////////////////////////////////////////////////////////////////////
 // Author: Colin Day, September 2001
-// Desc:	 
+// Desc:
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#ifndef __DestroyModule_H_
-#define __DestroyModule_H_
 
 #include "Common/Module.h"
 #include "GameLogic/Module/BehaviorModule.h"
@@ -59,12 +56,8 @@ public:
 	static Int getInterfaceMask() { return MODULEINTERFACE_DESTROY; }
 
 	// BehaviorModule
-	virtual DestroyModuleInterface* getDestroy() { return this; }
-
-	virtual void onDestroy() = 0;
+	virtual DestroyModuleInterface* getDestroy() override { return this; }
 
 protected:
 
 };
-
-#endif

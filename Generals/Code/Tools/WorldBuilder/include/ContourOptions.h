@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_ContourOptions_H__7B56E24C_582E_4530_A451_873397C8852D__INCLUDED_)
-#define AFX_ContourOptions_H__7B56E24C_582E_4530_A451_873397C8852D__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // ContourOptions.h : header file
 //
 
@@ -39,7 +35,7 @@ public:
 				MIN_WIDTH=1,
 				MAX_WIDTH=6};
 
-	ContourOptions(CWnd* pParent = NULL);   // standard constructor
+	ContourOptions(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(ContourOptions)
@@ -52,7 +48,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(ContourOptions)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -60,7 +56,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(ContourOptions)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	afx_msg void OnShowContours();
 	//}}AFX_MSG
@@ -77,14 +73,12 @@ protected:
 	CSliderCtrl m_contourWidthSlider;		///< Brush width slider control.
 
 public:
-	static Int getContourWidth(void) {return m_contourWidth;};  ///<Returns width.
-	static Int getContourOffset(void) {return m_contourOffset;}; ///<Returns offset.
-	static Int getContourStep(void) {return m_contourStep;}; ///<Returns step.
+	static Int getContourWidth() {return m_contourWidth;};  ///<Returns width.
+	static Int getContourOffset() {return m_contourOffset;}; ///<Returns offset.
+	static Int getContourStep() {return m_contourStep;}; ///<Returns step.
 
 
 };
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_ContourOptions_H__6B56E20C_582E_4030_A251_879097C8853C__INCLUDED_)

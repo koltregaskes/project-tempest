@@ -31,9 +31,6 @@
 
 #pragma once
 
-#ifndef __MODULE_H_
-#define __MODULE_H_
-
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "Common/INI.h"
 #include "Common/GameMemory.h"
@@ -41,20 +38,21 @@
 #include "Common/Snapshot.h"
 
 // FORWARD REFERENCES /////////////////////////////////////////////////////////////////////////////
-enum TimeOfDay;
-enum StaticGameLODLevel;
+enum TimeOfDay CPP_11(: Int);
+enum StaticGameLODLevel CPP_11(: Int);
 class Drawable;
 class Object;
 class Player;
 class Thing;
 class W3DModelDrawModuleData;	// ugh, hack (srj)
+class W3DTreeDrawModuleData; // ugh, hack (srj)
 struct FieldParse;
 
 // TYPES //////////////////////////////////////////////////////////////////////////////////////////
 
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
-enum ModuleType 
+enum ModuleType CPP_11(: Int)
 {
 	MODULETYPE_BEHAVIOR = 0,
 
@@ -69,7 +67,7 @@ enum ModuleType
 	MODULETYPE_CLIENT_UPDATE = 2,
 	// put new drawable module types here
 
-	NUM_MODULE_TYPES,  // keep this last!
+	NUM_MODULE_TYPES,
 
 	FIRST_DRAWABLE_MODULE_TYPE = MODULETYPE_DRAW,
 	LAST_DRAWABLE_MODULE_TYPE = MODULETYPE_CLIENT_UPDATE,
@@ -79,7 +77,7 @@ enum ModuleType
 
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
-enum ModuleInterfaceType 
+enum ModuleInterfaceType CPP_11(: Int)
 {
 	MODULEINTERFACE_UPDATE					= 0x00000001,
 	MODULEINTERFACE_DIE							= 0x00000002,
@@ -109,20 +107,22 @@ public:
 	NameKeyType getModuleTagNameKey() const { return m_moduleTagNameKey; }
 
 	virtual Bool isAiModuleData() const { return false; }
-	
+
 	// ugh, hack
-	virtual const W3DModelDrawModuleData* getAsW3DModelDrawModuleData() const { return NULL; }
+	virtual const W3DModelDrawModuleData* getAsW3DModelDrawModuleData() const { return nullptr; }
+	// ugh, hack
+	virtual const W3DTreeDrawModuleData* getAsW3DTreeDrawModuleData() const { return nullptr; }
 	virtual StaticGameLODLevel getMinimumRequiredGameLOD() const { return (StaticGameLODLevel)0;}
 
-	static void buildFieldParse(MultiIniFieldParse& p) 
+	static void buildFieldParse(MultiIniFieldParse& p)
 	{
 		// nothing
 	}
 
 public:
-	virtual void crc( Xfer *xfer ) {}
-	virtual void xfer( Xfer *xfer ) {}
-	virtual void loadPostProcess( void ) {}
+	virtual void crc( Xfer *xfer ) override {}
+	virtual void xfer( Xfer *xfer ) override {}
+	virtual void loadPostProcess() override {}
 
 private:
 	NameKeyType m_moduleTagNameKey;		///< module tag key, unique among all modules for an object instance
@@ -136,20 +136,20 @@ private:
 #define MAKE_STANDARD_MODULE_MACRO( cls ) \
 public: \
 	static Module* friend_newModuleInstance( Thing *thing, const ModuleData* moduleData ) { return newInstance( cls )( thing, moduleData ); } \
-	virtual NameKeyType getModuleNameKey() const { static NameKeyType nk = NAMEKEY(#cls); return nk; } \
+	virtual NameKeyType getModuleNameKey() const override { static NameKeyType nk = NAMEKEY(#cls); return nk; } \
 protected: \
-	virtual void crc( Xfer *xfer ); \
-	virtual void xfer( Xfer *xfer ); \
-	virtual void loadPostProcess( void );
+	virtual void crc( Xfer *xfer ) override; \
+	virtual void xfer( Xfer *xfer ) override; \
+	virtual void loadPostProcess() override;
 
 // ------------------------------------------------------------------------------------------------
 // For the creation of abstract module classes
 // ------------------------------------------------------------------------------------------------
 #define MAKE_STANDARD_MODULE_MACRO_ABC( cls ) \
 protected: \
-	virtual void crc( Xfer *xfer ); \
-	virtual void xfer( Xfer *xfer ); \
-	virtual void loadPostProcess( void );
+	virtual void crc( Xfer *xfer ) override; \
+	virtual void xfer( Xfer *xfer ) override; \
+	virtual void loadPostProcess() override;
 
 //-------------------------------------------------------------------------------------------------
 // only use this macro for an ABC. for a real class, use MAKE_STANDARD_MODULE_MACRO_WITH_MODULE_DATA.
@@ -170,7 +170,7 @@ public: \
 	MAKE_STANDARD_MODULE_DATA_MACRO_ABC(cls, clsmd)
 
 //-------------------------------------------------------------------------------------------------
-/** Common interface for thing modules, we want a single common base class 
+/** Common interface for thing modules, we want a single common base class
 	* for all the modules (either object or drawable) so that we can use
 	* a single module factory to handle instancing them ... it's just
 	* convenient this way */
@@ -192,15 +192,15 @@ public:
 
 	virtual NameKeyType getModuleNameKey() const = 0;
 
-	inline NameKeyType getModuleTagNameKey() const { return getModuleData()->getModuleTagNameKey(); }
+	NameKeyType getModuleTagNameKey() const { return getModuleData()->getModuleTagNameKey(); }
 
 	/** this is called after all the Modules for a given Thing are created; it
 		allows Modules to resolve any inter-Module dependencies.
 	*/
 	virtual void onObjectCreated() { }
-	
+
 	/**
-		this is called whenever a drawable is bound to the object. 
+		this is called whenever a drawable is bound to the object.
 		drawable is NOT guaranteed to be non-null.
 	*/
 	virtual void onDrawableBoundToObject() { }
@@ -210,20 +210,20 @@ public:
 
 	/** onDelete() will be called on all modules contained by an object or drawable before
 	the actual deletion of each of those modules happens */
-	virtual void onDelete( void ) { }
+	virtual void onDelete() { }
 
 protected:
 
-	inline const ModuleData* getModuleData() const { return m_moduleData; }
+	const ModuleData* getModuleData() const { return m_moduleData; }
 
-	virtual void crc( Xfer *xfer );
-	virtual void xfer( Xfer *xfer );
-	virtual void loadPostProcess( void );
+	virtual void crc( Xfer *xfer ) override;
+	virtual void xfer( Xfer *xfer ) override;
+	virtual void loadPostProcess() override;
 
 private:
 	const ModuleData* m_moduleData;
 
-};  // end Module
+};
 //-------------------------------------------------------------------------------------------------
 
 
@@ -251,12 +251,12 @@ public:
 
 protected:
 
-	inline Object *getObject() { return m_object; }
-	inline const Object *getObject() const { return m_object; }
+	Object *getObject() { return m_object; }
+	const Object *getObject() const { return m_object; }
 
-	virtual void crc( Xfer *xfer );
-	virtual void xfer( Xfer *xfer );
-	virtual void loadPostProcess( void );
+	virtual void crc( Xfer *xfer ) override;
+	virtual void xfer( Xfer *xfer ) override;
+	virtual void loadPostProcess() override;
 
 private:
 
@@ -278,7 +278,7 @@ private:
 //=================================================================================================
 
 //-------------------------------------------------------------------------------------------------
-/** Module interface specific for Drawbles, this is really just to make a clear distinction
+/** Module interface specific for Drawables, this is really just to make a clear distinction
 	* between modules intended for use in objects and modules intended for use
 	* in drawables */
 //-------------------------------------------------------------------------------------------------
@@ -294,12 +294,12 @@ public:
 
 protected:
 
-	inline Drawable *getDrawable() { return m_drawable; }
-	inline const Drawable *getDrawable() const { return m_drawable; }
+	Drawable *getDrawable() { return m_drawable; }
+	const Drawable *getDrawable() const { return m_drawable; }
 
-	virtual void crc( Xfer *xfer );
-	virtual void xfer( Xfer *xfer );
-	virtual void loadPostProcess( void );
+	virtual void crc( Xfer *xfer ) override;
+	virtual void xfer( Xfer *xfer ) override;
+	virtual void loadPostProcess() override;
 
 private:
 
@@ -314,7 +314,3 @@ private:
 //-------------------------------------------------------------------------------------------------
 /** VARIOUS MODULE INTERFACES */
 //-------------------------------------------------------------------------------------------------
-
-
-#endif // __MODULE_H_
-

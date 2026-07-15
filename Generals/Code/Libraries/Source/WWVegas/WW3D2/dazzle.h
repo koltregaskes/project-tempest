@@ -16,12 +16,7 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if defined(_MSC_VER)
 #pragma once
-#endif
-
-#ifndef DAZZLE_H
-#define DAZZLE_H
 
 #include "always.h"
 #include "vector3.h"
@@ -46,9 +41,9 @@ public:
 	StringClass secondary_texture_name;
 	StringClass lensflare_name;
 	float halo_size_pow;
-	float halo_intensity_pow;
 	float halo_intensity;
 	float halo_area;
+	float halo_intensity_pow;
 	float halo_scale_x;
 	float halo_scale_y;
 	float dazzle_size_pow;
@@ -150,8 +145,8 @@ class DazzleTypeClass
 public:
 
 	virtual void Calculate_Intensities(
-		float& dazzle_intensity, 
-		float& dazzle_size, 
+		float& dazzle_intensity,
+		float& dazzle_size,
 		float& halo_intensity,
 		const Vector3& camera_dir,
 		const Vector3& dazzle_dir,
@@ -183,9 +178,9 @@ class DazzleLayerClass {
 	friend DazzleRenderObjClass;
 
 	public:
-	
-		DazzleLayerClass(void);
-		~DazzleLayerClass(void);
+
+		DazzleLayerClass();
+		~DazzleLayerClass();
 
 		// Render all dazzles in this layer (DazzleRenderObj::Render() only sets visibility)
 		void Render(CameraClass* camera);
@@ -236,7 +231,7 @@ public:
 class INIClass;
 
 class DazzleRenderObjClass : public RenderObjClass
-{	
+{
 	friend DazzleLayerClass;
 
 	DazzleRenderObjClass * succ;
@@ -256,6 +251,8 @@ class DazzleRenderObjClass : public RenderObjClass
 	float radius;	// Used to cast rays against
 	unsigned int creation_time;
 
+	static bool	_dazzle_rendering_enabled;
+
 //	static void Draw_Debug_Dazzle(int idx);
 	void vis_render_dazzle(SpecialRenderInfoClass & rinfo);
 
@@ -272,23 +269,23 @@ public:
 	const DazzleRenderObjClass* Succ() const { return succ; }
 
 	/////////////////////////////////////////////////////////////////////////////
-	// Render Object Interface 
+	// Render Object Interface
 	/////////////////////////////////////////////////////////////////////////////
-	virtual RenderObjClass *	Clone(void) const;
-	virtual int						Class_ID(void)	const { return CLASSID_DAZZLE; }
-	
-	virtual void					Render(RenderInfoClass & rinfo);
-	virtual void Special_Render(SpecialRenderInfoClass & rinfo);
-	virtual void 					Set_Transform(const Matrix3D &m); 
-   virtual void					Get_Obj_Space_Bounding_Sphere(SphereClass & sphere) const;
-   virtual void					Get_Obj_Space_Bounding_Box(AABoxClass & box) const;
-	virtual void					Scale(float scale) 															{ radius*=scale; };	
+	virtual RenderObjClass *	Clone() const override;
+	virtual int						Class_ID()	const override { return CLASSID_DAZZLE; }
+
+	virtual void					Render(RenderInfoClass & rinfo) override;
+	virtual void Special_Render(SpecialRenderInfoClass & rinfo) override;
+	virtual void 					Set_Transform(const Matrix3D &m) override;
+   virtual void					Get_Obj_Space_Bounding_Sphere(SphereClass & sphere) const override;
+   virtual void					Get_Obj_Space_Bounding_Box(AABoxClass & box) const override;
+	virtual void					Scale(float scale) override 															{ radius*=scale; };
 
 	void Set_Dazzle_Color(const Vector3& col) { dazzle_color=col; }
 	void Set_Halo_Color(const Vector3& col) { halo_color=col; }
 	void Set_Lensflare_Intensity (float intensity) {lensflare_intensity=intensity;}
 
-	unsigned int					Get_Dazzle_Type(void) { return type; }
+	unsigned int					Get_Dazzle_Type() { return type; }
 
 	// Usually, a DazzleRenderObj adds itself to the appropriate visible list
 	// (determined by the current layer) when it is rendered. This does not
@@ -301,9 +298,9 @@ public:
 	// internally by the Render() function.
 	void Set_Layer(DazzleLayerClass *layer);
 
-	// Persistant object save-load interface
+	// Persistent object save-load interface
 	// Dazzles save their "dazzle-type" and transform
-	virtual const PersistFactoryClass &	Get_Factory (void) const;
+	virtual const PersistFactoryClass &	Get_Factory () const override;
 
 	// Set the static "current layer" variable. This variable is used in the
 	// Render() call so that the dazzle knows which list to add itself to if
@@ -316,11 +313,11 @@ public:
 	static void Init_From_INI(const INIClass* ini);
 	static unsigned Get_Type_ID(const char* name);	// Return the ID of type with given name, or INT_MAX if failed
 	static const char * Get_Type_Name(unsigned int id);	// Return the name of the type with the given ID
-	static DazzleTypeClass* Get_Type_Class(unsigned id);	// Return dazzle type class pointer, or NULL if not found
+	static DazzleTypeClass* Get_Type_Class(unsigned id);	// Return dazzle type class pointer, or null if not found
 																			// The pointer is NOT refcounted - all types are deinitialised
 																			// when exiting the level.
 	static unsigned Get_Lensflare_ID(const char* name);	// Return the ID of lensflare with given name, or INT_MAX if failed
-	static LensflareTypeClass* Get_Lensflare_Class(unsigned id);	// Return lensflare type class pointer, or NULL if not found
+	static LensflareTypeClass* Get_Lensflare_Class(unsigned id);	// Return lensflare type class pointer, or null if not found
 
 	static void Deinit();
 
@@ -328,6 +325,10 @@ public:
 	// visibility determination.  The default behavior will ask the scene which
 	// the dazzle is a member of to compute its visibility.
 	static void Install_Dazzle_Visibility_Handler(const DazzleVisibilityClass * visibility_handler);
+
+	// Globally disable/enable dazzle rendering
+	static void Enable_Dazzle_Rendering(bool onoff) { _dazzle_rendering_enabled = onoff; }
+	static bool Is_Dazzle_Rendering_Enabled() { return _dazzle_rendering_enabled; }
 };
 
 
@@ -348,23 +349,23 @@ public:
 
 /**
 ** DazzlePrototypeClass
-** This description object is generated when reading a W3D_CHUNK_DAZZLE.  It stores the 
+** This description object is generated when reading a W3D_CHUNK_DAZZLE.  It stores the
 ** information needed to construct a particular instance of a dazzle.  Prototypes are
 ** stored in the asset manager and used to construct render objects when needed.
 */
-class DazzlePrototypeClass : public W3DMPO, public PrototypeClass
+class DazzlePrototypeClass : public PrototypeClass
 {
-	W3DMPO_GLUE(DazzlePrototypeClass)
+	W3DMPO_CODE(DazzlePrototypeClass)
 public:
-	DazzlePrototypeClass(void) : DazzleType(0)				{ }
-	
-	virtual const char *			Get_Name(void) const			{ return Name; }
-	virtual int								Get_Class_ID(void) const	{ return RenderObjClass::CLASSID_DAZZLE; }
-	virtual RenderObjClass *	Create(void);
-	virtual void							DeleteSelf()							{ delete this; }
+	DazzlePrototypeClass() : DazzleType(0)				{ }
+
+	virtual const char *			Get_Name() const override { return Name; }
+	virtual int								Get_Class_ID() const override { return RenderObjClass::CLASSID_DAZZLE; }
+	virtual RenderObjClass *	Create() override;
+	virtual void							DeleteSelf() override { delete this; }
 
 	WW3DErrorType					Load_W3D(ChunkLoadClass & cload);
-	
+
 private:
 
 	StringClass				Name;
@@ -374,19 +375,17 @@ private:
 
 /**
 ** DazzleLoaderClass
-** An instance of this class is registered with the asset manager and handles loading W3D_CHUNK_DAZZLE.  
+** An instance of this class is registered with the asset manager and handles loading W3D_CHUNK_DAZZLE.
 ** It creates DazzlePrototypes from the data in the chunk.
 */
 class DazzleLoaderClass : public PrototypeLoaderClass
 {
 public:
-	DazzleLoaderClass(void)														{ }
-	~DazzleLoaderClass(void)													{ }
+	DazzleLoaderClass()														{ }
+	~DazzleLoaderClass()													{ }
 
-	virtual int						Chunk_Type(void)							{ return W3D_CHUNK_DAZZLE; }
-	virtual PrototypeClass *	Load_W3D(ChunkLoadClass & cload);
+	virtual int						Chunk_Type() override { return W3D_CHUNK_DAZZLE; }
+	virtual PrototypeClass *	Load_W3D(ChunkLoadClass & cload) override;
 };
 
 extern DazzleLoaderClass		_DazzleLoader;
-
-#endif

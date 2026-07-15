@@ -29,45 +29,42 @@
 
 #pragma once
 
-#ifndef _W3DDISPLAYSTRINGMANAGER_H_
-#define _W3DDISPLAYSTRINGMANAGER_H_
-
 #include "GameClient/DisplayStringManager.h"
 #include "W3DDevice/GameClient/W3DDisplayString.h"
 
 //-------------------------------------------------------------------------------------------------
 /** Access for creating game managed display strings */
 //-------------------------------------------------------------------------------------------------
+
+#define MAX_GROUPS 10
+
 class W3DDisplayStringManager : public DisplayStringManager
 {
 
 public:
 
-	W3DDisplayStringManager( void );
-	virtual ~W3DDisplayStringManager( void );
+	W3DDisplayStringManager();
+	virtual ~W3DDisplayStringManager() override;
 
 	// Initialize our numeral strings in postProcessLoad
-	virtual void postProcessLoad( void );
+	virtual void postProcessLoad() override;
 
 	/// update method for all our display strings
-	virtual void update( void );
+	virtual void update() override;
 
 	/// allocate a new display string
-	virtual DisplayString *newDisplayString( void );
+	virtual DisplayString *newDisplayString() override;
 
 	/// free a display string
-	virtual void freeDisplayString( DisplayString *string );
-	
-	// This is used to save us a few FPS and storage space. There's no reason to 
+	virtual void freeDisplayString( DisplayString *string ) override;
+
+	// This is used to save us a few FPS and storage space. There's no reason to
 	// duplicate the DisplayString on every drawable when 1 copy will suffice.
-	virtual DisplayString *getGroupNumeralString( Int numeral );
-	virtual DisplayString *getFormationLetterString( void ) { return m_formationLetterDisplayString; };
+	virtual DisplayString *getGroupNumeralString( Int numeral ) override;
+	virtual DisplayString *getFormationLetterString() override { return m_formationLetterDisplayString; };
 
 protected:
-	DisplayString *m_groupNumeralStrings[10];
+	DisplayString *m_groupNumeralStrings[ MAX_GROUPS ];
 	DisplayString *m_formationLetterDisplayString;
 
 };
-
-#endif // _W3DDISPLAYSTRINGMANAGER_H_
-

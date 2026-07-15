@@ -26,9 +26,9 @@
  *                                                                                             *
  *                       Author:: Greg Hjelstrom                                               *
  *                                                                                             *
- *                     $Modtime:: 7/05/01 4:11p                                               $*
+ *                     $Modtime:: 1/19/02 12:57p                                              $*
  *                                                                                             *
- *                    $Revision:: 27                                                          $*
+ *                    $Revision:: 35                                                          $*
  *                                                                                             *
  *---------------------------------------------------------------------------------------------*
  * Functions:                                                                                  *
@@ -103,30 +103,31 @@
 #include "dx8fvf.h"
 #include "sortingrenderer.h"
 #include "visrasterizer.h"
+#include "meshgeometry.h"
 
 
 #define NUM_BOX_VERTS	8
 #define NUM_BOX_FACES	12
 
 // Face Connectivity
-static Vector3i					_BoxFaces[NUM_BOX_FACES] = 
+static TriIndex					_BoxFaces[NUM_BOX_FACES] =
 {
-	Vector3i( 0,1,2 ),		// +z faces
-	Vector3i( 0,2,3 ),		
-	Vector3i( 4,7,6 ),		// -z faces
-	Vector3i( 4,6,5 ),
-	Vector3i( 0,3,7 ),		// +x faces
-	Vector3i( 0,7,4 ),
-	Vector3i( 1,5,6 ),		// -x faces
-	Vector3i( 1,6,2 ),
-	Vector3i( 4,5,1 ),		// +y faces
-	Vector3i( 4,1,0 ),
-	Vector3i( 3,2,6 ),		// -y faces
-	Vector3i( 3,6,7 )
+	TriIndex( 0,1,2 ),		// +z faces
+	TriIndex( 0,2,3 ),
+	TriIndex( 4,7,6 ),		// -z faces
+	TriIndex( 4,6,5 ),
+	TriIndex( 0,3,7 ),		// +x faces
+	TriIndex( 0,7,4 ),
+	TriIndex( 1,5,6 ),		// -x faces
+	TriIndex( 1,6,2 ),
+	TriIndex( 4,5,1 ),		// +y faces
+	TriIndex( 4,1,0 ),
+	TriIndex( 3,2,6 ),		// -y faces
+	TriIndex( 3,6,7 )
 };
 
 // Vertex Positions as a function of the box extents
-static Vector3						_BoxVerts[NUM_BOX_VERTS] = 
+static Vector3						_BoxVerts[NUM_BOX_VERTS] =
 {
 	Vector3(  1.0f, 1.0f, 1.0f ),		// +z ring of 4 verts
 	Vector3( -1.0f, 1.0f, 1.0f ),
@@ -157,7 +158,7 @@ static Vector3						_BoxVertexNormals[NUM_BOX_VERTS] =
 
 bool										BoxRenderObjClass::IsInitted			= false;
 int										BoxRenderObjClass::DisplayMask		= 0;
-static VertexMaterialClass *		_BoxMaterial								= NULL;
+static VertexMaterialClass *		_BoxMaterial								= nullptr;
 static ShaderClass					_BoxShader;
 
 
@@ -178,10 +179,11 @@ static ShaderClass					_BoxShader;
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-BoxRenderObjClass::BoxRenderObjClass(void)
+BoxRenderObjClass::BoxRenderObjClass()
 {
 	memset(Name,0,sizeof(Name));
 	Color.Set(1,1,1);
+	Opacity = 0.25f;
 	ObjSpaceCenter.Set(0,0,0);
 	ObjSpaceExtent.Set(1,1,1);
 }
@@ -207,6 +209,7 @@ BoxRenderObjClass::BoxRenderObjClass(const W3dBoxStruct & def)
 	W3dUtilityClass::Convert_Vector(def.Extent,&ObjSpaceExtent);
 	int col_bits = (def.Attributes & W3D_BOX_ATTRIBUTE_COLLISION_TYPE_MASK) >> W3D_BOX_ATTRIBUTE_COLLISION_TYPE_SHIFT;
 	Set_Collision_Type(col_bits<<1);
+	Opacity = 0.25f;
 }
 
 
@@ -265,7 +268,7 @@ BoxRenderObjClass & BoxRenderObjClass::operator = (const BoxRenderObjClass & tha
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-int BoxRenderObjClass::Get_Num_Polys(void) const
+int BoxRenderObjClass::Get_Num_Polys() const
 {
 	return 12;
 }
@@ -283,7 +286,7 @@ int BoxRenderObjClass::Get_Num_Polys(void) const
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-const char * BoxRenderObjClass::Get_Name(void) const
+const char * BoxRenderObjClass::Get_Name() const
 {
 	return Name;
 }
@@ -303,9 +306,9 @@ const char * BoxRenderObjClass::Get_Name(void) const
  *=============================================================================================*/
 void BoxRenderObjClass::Set_Name(const char * name)
 {
-	WWASSERT(name != NULL);
-	WWASSERT(strlen(name) < 2*W3D_NAME_LEN);
-	strcpy(Name,name);
+	WWASSERT(name != nullptr);
+	size_t nameLen = strlcpy(Name, name, ARRAY_SIZE(Name));
+	(void)nameLen; WWASSERT(nameLen < ARRAY_SIZE(Name));
 }
 
 
@@ -341,14 +344,14 @@ void BoxRenderObjClass::Set_Color(const Vector3 & color)
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-void BoxRenderObjClass::Init(void)
+void BoxRenderObjClass::Init()
 {
 	WWASSERT(IsInitted == false);
 
 	/*
 	** Set up the materials
 	*/
-	WWASSERT(_BoxMaterial == NULL);
+	WWASSERT(_BoxMaterial == nullptr);
 	_BoxMaterial = NEW_REF(VertexMaterialClass,());
 	_BoxMaterial->Set_Ambient(0,0,0);
 	_BoxMaterial->Set_Diffuse(0,0,0);
@@ -357,7 +360,7 @@ void BoxRenderObjClass::Init(void)
 	_BoxMaterial->Set_Opacity(1.0f);		// uses vertex alpha...
 	_BoxMaterial->Set_Shininess(0.0f);
 
-	_BoxShader = ShaderClass::_PresetAlphaSolidShader;
+	_BoxShader = ShaderClass::_PresetAlphaSolidShader; //_PresetAdditiveSolidShader;
 
 	IsInitted = true;
 }
@@ -378,11 +381,11 @@ void BoxRenderObjClass::Init(void)
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-void BoxRenderObjClass::Shutdown(void)
+void BoxRenderObjClass::Shutdown()
 {
 	WWASSERT(IsInitted == true);
 	REF_PTR_RELEASE(_BoxMaterial);
-	
+
 	IsInitted = false;
 }
 
@@ -420,7 +423,7 @@ void BoxRenderObjClass::Set_Box_Display_Mask(int mask)
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-int BoxRenderObjClass::Get_Box_Display_Mask(void)
+int BoxRenderObjClass::Get_Box_Display_Mask()
 {
 	return DisplayMask;
 }
@@ -453,10 +456,10 @@ void BoxRenderObjClass::render_box(RenderInfoClass & rinfo,const Vector3 & cente
 		}
 
 		/*
-		** Dump the box vertices into the sorting dynamic vertex buffer. 
+		** Dump the box vertices into the sorting dynamic vertex buffer.
 		*/
-		DWORD color = DX8Wrapper::Convert_Color(Color,0.25f);
-		
+		DWORD color = DX8Wrapper::Convert_Color(Color,Opacity);
+
 		int buffer_type = BUFFER_TYPE_DYNAMIC_SORTING;
 
 		DynamicVBAccessClass vbaccess(buffer_type,dynamic_fvf_type,NUM_BOX_VERTS);
@@ -471,7 +474,7 @@ void BoxRenderObjClass::render_box(RenderInfoClass & rinfo,const Vector3 & cente
 				vb->x=verts[i][0];
 				vb->y=verts[i][1];
 				vb->z=verts[i][2];
-				
+
 				// Normals
 				vb->nx=_BoxVertexNormals[i][0];
 				vb->ny=_BoxVertexNormals[i][1];
@@ -503,13 +506,13 @@ void BoxRenderObjClass::render_box(RenderInfoClass & rinfo,const Vector3 & cente
 		*/
 		DX8Wrapper::Set_Material(_BoxMaterial);
 		DX8Wrapper::Set_Shader(_BoxShader);
-		DX8Wrapper::Set_Texture(0,NULL);
-		
+		DX8Wrapper::Set_Texture(0,nullptr);
+
 		DX8Wrapper::Set_Index_Buffer(ibaccess,0);
 		DX8Wrapper::Set_Vertex_Buffer(vbaccess);
 
 		SphereClass sphere;
-		Get_Obj_Space_Bounding_Sphere(sphere); 
+		Get_Obj_Space_Bounding_Sphere(sphere);
 
 		DX8Wrapper::Draw_Triangles(buffer_type,0,NUM_BOX_FACES,0,NUM_BOX_VERTS);
 	}
@@ -533,7 +536,7 @@ void BoxRenderObjClass::render_box(RenderInfoClass & rinfo,const Vector3 & cente
 void BoxRenderObjClass::vis_render_box(SpecialRenderInfoClass & rinfo,const Vector3 & center,const Vector3 & extent)
 {
 	if (!IsInitted) return;
-	
+
 	static Vector3 verts[NUM_BOX_VERTS];
 
 	// compute the vertex positions
@@ -563,7 +566,7 @@ void BoxRenderObjClass::vis_render_box(SpecialRenderInfoClass & rinfo,const Vect
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-AABoxRenderObjClass::AABoxRenderObjClass(void)
+AABoxRenderObjClass::AABoxRenderObjClass()
 {
 	update_cached_box();
 }
@@ -661,7 +664,7 @@ AABoxRenderObjClass & AABoxRenderObjClass::operator = (const AABoxRenderObjClass
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-RenderObjClass * AABoxRenderObjClass::Clone(void) const
+RenderObjClass * AABoxRenderObjClass::Clone() const
 {
 	return W3DNEW AABoxRenderObjClass(*this);
 }
@@ -679,7 +682,7 @@ RenderObjClass * AABoxRenderObjClass::Clone(void) const
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-int AABoxRenderObjClass::Class_ID(void) const
+int AABoxRenderObjClass::Class_ID() const
 {
 	return RenderObjClass::CLASSID_AABOX;
 }
@@ -721,7 +724,7 @@ void AABoxRenderObjClass::Render(RenderInfoClass & rinfo)
 void AABoxRenderObjClass::Special_Render(SpecialRenderInfoClass & rinfo)
 {
 	if (rinfo.RenderType == SpecialRenderInfoClass::RENDER_VIS) {
-		WWASSERT(rinfo.VisRasterizer != NULL);
+		WWASSERT(rinfo.VisRasterizer != nullptr);
 		Matrix3D temp(1);
 		temp.Translate(Transform.Get_Translation());
 		rinfo.VisRasterizer->Set_Model_Transform(temp);
@@ -780,7 +783,7 @@ void AABoxRenderObjClass::Set_Position(const Vector3 &v)
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-void AABoxRenderObjClass::update_cached_box(void)
+void AABoxRenderObjClass::update_cached_box()
 {
 	CachedBox.Center = Transform.Get_Translation() + ObjSpaceCenter;
 	CachedBox.Extent = ObjSpaceExtent;
@@ -871,7 +874,7 @@ bool AABoxRenderObjClass::Cast_OBBox(OBBoxCollisionTestClass & boxtest)
 bool AABoxRenderObjClass::Intersect_AABox(AABoxIntersectionTestClass & boxtest)
 {
 	if ((Get_Collision_Type() & boxtest.CollisionType) == 0) return false;
-	return CollisionMath::Intersection_Test(CachedBox,boxtest.Box);	
+	return CollisionMath::Intersection_Test(CachedBox,boxtest.Box);
 }
 
 
@@ -942,7 +945,7 @@ void AABoxRenderObjClass::Get_Obj_Space_Bounding_Box(AABoxClass & box) const
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-OBBoxRenderObjClass::OBBoxRenderObjClass(void)
+OBBoxRenderObjClass::OBBoxRenderObjClass()
 {
 	update_cached_box();
 }
@@ -1040,7 +1043,7 @@ OBBoxRenderObjClass & OBBoxRenderObjClass::operator = (const OBBoxRenderObjClass
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-RenderObjClass * OBBoxRenderObjClass::Clone(void) const
+RenderObjClass * OBBoxRenderObjClass::Clone() const
 {
 	return W3DNEW OBBoxRenderObjClass(*this);
 }
@@ -1058,7 +1061,7 @@ RenderObjClass * OBBoxRenderObjClass::Clone(void) const
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-int OBBoxRenderObjClass::Class_ID(void) const
+int OBBoxRenderObjClass::Class_ID() const
 {
 	return RenderObjClass::CLASSID_OBBOX;
 }
@@ -1078,8 +1081,7 @@ int OBBoxRenderObjClass::Class_ID(void) const
  *=============================================================================================*/
 void OBBoxRenderObjClass::Render(RenderInfoClass & rinfo)
 {
-	Matrix3D tm(Transform);
-	DX8Wrapper::Set_Transform(D3DTS_WORLD,tm);
+	DX8Wrapper::Set_Transform(D3DTS_WORLD,Transform);
 	render_box(rinfo,ObjSpaceCenter,ObjSpaceExtent);
 }
 
@@ -1099,7 +1101,7 @@ void OBBoxRenderObjClass::Render(RenderInfoClass & rinfo)
 void OBBoxRenderObjClass::Special_Render(SpecialRenderInfoClass & rinfo)
 {
 	if (rinfo.RenderType == SpecialRenderInfoClass::RENDER_VIS) {
-		WWASSERT(rinfo.VisRasterizer != NULL);
+		WWASSERT(rinfo.VisRasterizer != nullptr);
 		rinfo.VisRasterizer->Set_Model_Transform(Transform);
 		vis_render_box(rinfo,ObjSpaceCenter,ObjSpaceExtent);
 	}
@@ -1156,7 +1158,7 @@ void OBBoxRenderObjClass::Set_Position(const Vector3 &v)
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-void OBBoxRenderObjClass::update_cached_box(void)
+void OBBoxRenderObjClass::update_cached_box()
 {
 	Matrix3D::Transform_Vector(Transform,ObjSpaceCenter,&CachedBox.Center);
 	CachedBox.Extent.Set(ObjSpaceExtent);
@@ -1248,7 +1250,7 @@ bool OBBoxRenderObjClass::Cast_OBBox(OBBoxCollisionTestClass & boxtest)
 bool OBBoxRenderObjClass::Intersect_AABox(AABoxIntersectionTestClass & boxtest)
 {
 	if ((Get_Collision_Type() & boxtest.CollisionType) == 0) return false;
-	return CollisionMath::Intersection_Test(CachedBox,boxtest.Box);	
+	return CollisionMath::Intersection_Test(CachedBox,boxtest.Box);
 }
 
 
@@ -1319,7 +1321,7 @@ void OBBoxRenderObjClass::Get_Obj_Space_Bounding_Box(AABoxClass & box) const
  * HISTORY:                                                                                    *
  *   1/19/00    gth : Created.                                                                 *
  *=============================================================================================*/
-OBBoxClass & OBBoxRenderObjClass::Get_Box(void)
+OBBoxClass & OBBoxRenderObjClass::Get_Box()
 {
 	Validate_Transform();
 	update_cached_box();
@@ -1344,12 +1346,12 @@ BoxPrototypeClass::BoxPrototypeClass(W3dBoxStruct box)
 	Definition = box;
 }
 
-const char * BoxPrototypeClass::Get_Name(void) const
+const char * BoxPrototypeClass::Get_Name() const
 {
 	return Definition.Name;
 }
 
-int BoxPrototypeClass::Get_Class_ID(void) const
+int BoxPrototypeClass::Get_Class_ID() const
 {
 	if (Definition.Attributes & W3D_BOX_ATTRIBUTE_ORIENTED) {
 		return RenderObjClass::CLASSID_OBBOX;
@@ -1357,8 +1359,8 @@ int BoxPrototypeClass::Get_Class_ID(void) const
 		return RenderObjClass::CLASSID_AABOX;
 	}
 }
-	
-RenderObjClass * BoxPrototypeClass::Create(void)
+
+RenderObjClass * BoxPrototypeClass::Create()
 {
 	if (Definition.Attributes & W3D_BOX_ATTRIBUTE_ORIENTED) {
 		return NEW_REF( OBBoxRenderObjClass, (Definition) );

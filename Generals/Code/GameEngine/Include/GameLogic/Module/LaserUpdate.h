@@ -30,16 +30,13 @@
 
 #pragma once
 
-#ifndef __LASER_UPDATE_H
-#define __LASER_UPDATE_H
-
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "Common/ClientUpdateModule.h"
 
 // FORWARD REFERENCES /////////////////////////////////////////////////////////////////////////////
 class Thing;
 class Vector3;
-enum ParticleSystemID;
+enum ParticleSystemID CPP_11(: Int);
 
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
@@ -48,20 +45,42 @@ class LaserUpdateModuleData : public ClientUpdateModuleData
 public:
 	AsciiString m_particleSystemName;  ///< Used for the muzzle flare while laser active.
 	AsciiString m_parentFireBoneName;  ///< Used to fire laser at specified parent bone position.
-	Bool m_parentFireBoneOnTurret;			///< And used to specifiy where to look for the bone.
+	Bool m_parentFireBoneOnTurret;			///< And used to specify where to look for the bone.
 
 	AsciiString m_targetParticleSystemName;  ///< Used for the target effect while laser active.
 
 	LaserUpdateModuleData();
 	static void buildFieldParse(MultiIniFieldParse& p);
 
-private: 
+private:
 
 };
 
+//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
+class LaserRadiusUpdate
+{
+public:
+	LaserRadiusUpdate();
+
+	void initRadius( Int sizeDeltaFrames );
+	bool updateRadius();
+	void setDecayFrames( UnsignedInt decayFrames );
+	void xfer( Xfer *xfer );
+	Real getWidthScale() const { return m_currentWidthScalar; }
+
+private:
+	Bool m_widening;
+	Bool m_decaying;
+	UnsignedInt m_widenStartFrame;
+	UnsignedInt m_widenFinishFrame;
+	Real m_currentWidthScalar;
+	UnsignedInt m_decayStartFrame;
+	UnsignedInt m_decayFinishFrame;
+};
 
 //-------------------------------------------------------------------------------------------------
-/** The default	update module */
+/** The laser update module */
 //-------------------------------------------------------------------------------------------------
 class LaserUpdate : public ClientUpdateModule
 {
@@ -76,19 +95,21 @@ public:
 
 	//Actually puts the laser in the world.
 	void initLaser( const Object *parent, const Coord3D *startPos, const Coord3D *endPos, Int sizeDeltaFrames = 0 );
-	void setDecayFrames( UnsignedInt decayFrames );
 
-	const Coord3D* getStartPos() { return &m_startPos; }
-	const Coord3D* getEndPos() { return &m_endPos; }
+	const LaserRadiusUpdate& getLaserRadiusUpdate() const { return m_laserRadius; }
+	void setDecayFrames( UnsignedInt decayFrames ) { m_laserRadius.setDecayFrames(decayFrames); }
+	Real getWidthScale() const { return m_laserRadius.getWidthScale(); }
 
+	const Coord3D* getStartPos() const { return &m_startPos; }
+	const Coord3D* getEndPos() const { return &m_endPos; }
+
+	Real getTemplateLaserRadius() const;
 	Real getCurrentLaserRadius() const;
 
 	void setDirty( Bool dirty ) { m_dirty = dirty; }
-	Bool isDirty() { return m_dirty; }
+	Bool isDirty() const { return m_dirty; }
 
-	Real getWidthScale() const { return m_currentWidthScalar; }
-
-	virtual void clientUpdate();
+	virtual void clientUpdate() override;
 
 protected:
 
@@ -98,15 +119,6 @@ protected:
 	Bool m_dirty;
 	ParticleSystemID m_particleSystemID;
 	ParticleSystemID m_targetParticleSystemID;
-	Bool m_widening;
-	Bool m_decaying;
-	UnsignedInt m_widenStartFrame;
-	UnsignedInt m_widenFinishFrame;
-	Real m_currentWidthScalar;
-	UnsignedInt m_decayStartFrame;
-	UnsignedInt m_decayFinishFrame;
+
+	LaserRadiusUpdate m_laserRadius;
 };
-
-
-#endif
-

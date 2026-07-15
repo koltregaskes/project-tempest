@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_BRUSHOPTIONS_H__6B56E20C_582E_4030_A251_879097C8853C__INCLUDED_)
-#define AFX_BRUSHOPTIONS_H__6B56E20C_582E_4030_A251_879097C8853C__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // brushoptions.h : header file
 //
 
@@ -41,7 +37,7 @@ public:
 				FREQ_FEATHER_TICKS=4,
 				MAX_FEATHER=20};
 
-	BrushOptions(CWnd* pParent = NULL);   // standard constructor
+	BrushOptions(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(BrushOptions)
@@ -54,9 +50,9 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(BrushOptions)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	virtual void OnOK(){return;};  //!< Modeless dialogs don't OK, so eat this for modeless.
-	virtual void OnCancel(){return;}; //!< Modeless dialogs don't close on ESC, so eat this for modeless.
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
+	virtual void OnOK() override {return;};  //!< Modeless dialogs don't OK, so eat this for modeless.
+	virtual void OnCancel() override {return;}; //!< Modeless dialogs don't close on ESC, so eat this for modeless.
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -64,7 +60,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(BrushOptions)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnChangeFeatherEdit();
 	afx_msg void OnChangeSizeEdit();
 	afx_msg void OnChangeHeightEdit();
@@ -89,13 +85,11 @@ public:
 
 public:
 
-	virtual void GetPopSliderInfo(const long sliderID, long *pMin, long *pMax, long *pLineSize, long *pInitial);
-	virtual void PopSliderChanged(const long sliderID, long theVal);
-	virtual void PopSliderFinished(const long sliderID, long theVal);
+	virtual void GetPopSliderInfo(const long sliderID, long *pMin, long *pMax, long *pLineSize, long *pInitial) override;
+	virtual void PopSliderChanged(const long sliderID, long theVal) override;
+	virtual void PopSliderFinished(const long sliderID, long theVal) override;
 
 };
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_BRUSHOPTIONS_H__6B56E20C_582E_4030_A251_879097C8853C__INCLUDED_)

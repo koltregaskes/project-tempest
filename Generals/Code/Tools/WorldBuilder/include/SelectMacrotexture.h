@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_SELECTMACROTEXTURE_H__0AB61BFA_3A67_40CB_A38F_7067F6BA352B__INCLUDED_)
-#define AFX_SELECTMACROTEXTURE_H__0AB61BFA_3A67_40CB_A38F_7067F6BA352B__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // SelectMacrotexture.h : header file
 //
 
@@ -32,7 +28,7 @@ class SelectMacrotexture : public CDialog
 {
 // Construction
 public:
-	SelectMacrotexture(CWnd* pParent = NULL);   // standard constructor
+	SelectMacrotexture(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(SelectMacrotexture)
@@ -45,10 +41,10 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(SelectMacrotexture)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult);
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
+	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult) override;
 	//}}AFX_VIRTUAL
-	
+
 protected:
 	CTreeCtrl		m_textureTreeView;
 
@@ -58,12 +54,10 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(SelectMacrotexture)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_SELECTMACROTEXTURE_H__0AB61BFA_3A67_40CB_A38F_7067F6BA352B__INCLUDED_)

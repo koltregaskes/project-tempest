@@ -16,38 +16,32 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* $Header: /Commando/Code/ww3d2/mesh.h 15    8/20/01 9:31a Jani_p $ */
-/*********************************************************************************************** 
- ***                            Confidential - Westwood Studios                              *** 
- *********************************************************************************************** 
- *                                                                                             * 
- *                 Project Name : Commando / G 3D engine                                       * 
- *                                                                                             * 
- *                    File Name : MESH.H                                                       * 
- *                                                                                             * 
- *                   Programmer : Greg Hjelstrom                                               * 
- *                                                                                             * 
- *                   Start Date : 06/11/97                                                     * 
- *                                                                                             * 
- *                  Last Update : June 11, 1997 [GH]                                           * 
- *                                                                                             * 
- *---------------------------------------------------------------------------------------------* 
- * Functions:                                                                                  * 
+/* $Header: /Commando/Code/ww3d2/mesh.h 16    11/07/01 5:50p Jani_p $ */
+/***********************************************************************************************
+ ***                            Confidential - Westwood Studios                              ***
+ ***********************************************************************************************
+ *                                                                                             *
+ *                 Project Name : Commando / G 3D engine                                       *
+ *                                                                                             *
+ *                    File Name : MESH.h                                                       *
+ *                                                                                             *
+ *                   Programmer : Greg Hjelstrom                                               *
+ *                                                                                             *
+ *                   Start Date : 06/11/97                                                     *
+ *                                                                                             *
+ *                  Last Update : June 11, 1997 [GH]                                           *
+ *                                                                                             *
+ *---------------------------------------------------------------------------------------------*
+ * Functions:                                                                                  *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-
-#if defined(_MSC_VER)
 #pragma once
-#endif
-
-#ifndef MESH_H
-#define MESH_H
 
 #include "always.h"
 #include "rendobj.h"
 #include "bittype.h"
 #include "w3derr.h"
-#include "LightEnvironment.h"	//added for 'Generals'
+#include "lightenvironment.h"	//added for 'Generals'
 
 class MeshBuilderClass;
 class HModelClass;
@@ -71,71 +65,71 @@ struct VertexFormatXYZNDUV2;
 /**
 ** MeshClass -- Render3DObject for rendering meshes.
 */
-class MeshClass : public W3DMPO, public RenderObjClass
+class MeshClass : public RenderObjClass
 {
-	W3DMPO_GLUE(MeshClass)
+	W3DMPO_CODE(MeshClass)
 public:
 
-	MeshClass(void);
+	MeshClass();
 	MeshClass(const MeshClass & src);
 	MeshClass & operator = (const MeshClass &);
-	virtual ~MeshClass(void);
+	virtual ~MeshClass() override;
 
 	/////////////////////////////////////////////////////////////////////////////
-	// Render Object Interface 
+	// Render Object Interface
 	/////////////////////////////////////////////////////////////////////////////
-	virtual RenderObjClass *	Clone(void) const;
-	virtual int						Class_ID(void) const { return CLASSID_MESH; }
-	virtual const char *			Get_Name(void) const;
-	virtual void					Set_Name(const char * name);
-	virtual int						Get_Num_Polys(void) const;
-	virtual void					Render(RenderInfoClass & rinfo);
+	virtual RenderObjClass *	Clone() const override;
+	virtual int						Class_ID() const override { return CLASSID_MESH; }
+	virtual const char *			Get_Name() const override;
+	virtual void					Set_Name(const char * name) override;
+	virtual int						Get_Num_Polys() const override;
+	virtual void					Render(RenderInfoClass & rinfo) override;
 	void								Render_Material_Pass(MaterialPassClass * pass,IndexBufferClass * ib);
-	virtual void					Special_Render(SpecialRenderInfoClass & rinfo);
+	virtual void					Special_Render(SpecialRenderInfoClass & rinfo) override;
 
 	/////////////////////////////////////////////////////////////////////////////
 	// Render Object Interface - Collision Detection
-	/////////////////////////////////////////////////////////////////////////////	
-	virtual bool					Cast_Ray(RayCollisionTestClass & raytest);
-	virtual bool					Cast_AABox(AABoxCollisionTestClass & boxtest);
-	virtual bool					Cast_OBBox(OBBoxCollisionTestClass & boxtest);
-	virtual bool					Intersect_AABox(AABoxIntersectionTestClass & boxtest);
-	virtual bool					Intersect_OBBox(OBBoxIntersectionTestClass & boxtest);
-   
+	/////////////////////////////////////////////////////////////////////////////
+	virtual bool					Cast_Ray(RayCollisionTestClass & raytest) override;
+	virtual bool					Cast_AABox(AABoxCollisionTestClass & boxtest) override;
+	virtual bool					Cast_OBBox(OBBoxCollisionTestClass & boxtest) override;
+	virtual bool					Intersect_AABox(AABoxIntersectionTestClass & boxtest) override;
+	virtual bool					Intersect_OBBox(OBBoxIntersectionTestClass & boxtest) override;
+
 	/////////////////////////////////////////////////////////////////////////////
 	// Render Object Interface - Bounding Volumes
 	/////////////////////////////////////////////////////////////////////////////
-	virtual void					Get_Obj_Space_Bounding_Sphere(SphereClass & sphere) const;
-   virtual void					Get_Obj_Space_Bounding_Box(AABoxClass & box) const;
+	virtual void					Get_Obj_Space_Bounding_Sphere(SphereClass & sphere) const override;
+   virtual void					Get_Obj_Space_Bounding_Box(AABoxClass & box) const override;
 
 	/////////////////////////////////////////////////////////////////////////////
 	// Render Object Interface - Attributes, Options, Properties, etc
 	/////////////////////////////////////////////////////////////////////////////
-	virtual void					Scale(float scale);
-	virtual void					Scale(float scalex, float scaley, float scalez);
-	virtual MaterialInfoClass * Get_Material_Info(void);
-	
-   virtual int						Get_Sort_Level(void) const;
-   virtual void					Set_Sort_Level(int level);	
+	virtual void					Scale(float scale) override;
+	virtual void					Scale(float scalex, float scaley, float scalez) override;
+	virtual MaterialInfoClass * Get_Material_Info() override;
+
+   virtual int						Get_Sort_Level() const override;
+   virtual void					Set_Sort_Level(int level) override;
 
 
 	/////////////////////////////////////////////////////////////////////////////
 	// Render Object Interface - Decals
 	/////////////////////////////////////////////////////////////////////////////
-	virtual void					Create_Decal(DecalGeneratorClass * generator);
-	virtual void					Delete_Decal(uint32 decal_id);
-	
+	virtual void					Create_Decal(DecalGeneratorClass * generator) override;
+	virtual void					Delete_Decal(uint32 decal_id) override;
+
 	/////////////////////////////////////////////////////////////////////////////
 	// MeshClass Interface
 	/////////////////////////////////////////////////////////////////////////////
 	WW3DErrorType					Init(const MeshBuilderClass & builder,MaterialInfoClass * matinfo,const char * name,const char * hmodelname);
 	WW3DErrorType					Load_W3D(ChunkLoadClass & cload);
-	void								Generate_Culling_Tree(void);
-	MeshModelClass *				Get_Model(void);
-	MeshModelClass *				Peek_Model(void);
-	uint32							Get_W3D_Flags(void);
-	const char *					Get_User_Text(void) const;
-	int								Get_Draw_Call_Count(void) const;
+	void								Generate_Culling_Tree();
+	MeshModelClass *				Get_Model();
+	MeshModelClass *				Peek_Model();
+	uint32							Get_W3D_Flags();
+	const char *					Get_User_Text() const;
+	int								Get_Draw_Call_Count() const;
 
 	bool								Contains(const Vector3 &point);
 
@@ -147,15 +141,15 @@ public:
 	void								Get_Deformed_Vertices(Vector3 *dst_vert, Vector3 *dst_norm);
 	void								Get_Deformed_Vertices(Vector3 *dst_vert);
 
-	void								Set_Lighting_Environment(LightEnvironmentClass * light_env) { if (light_env) {m_localLightEnv=*light_env;LightEnvironment = &m_localLightEnv;} else {LightEnvironment = NULL;} }
-	LightEnvironmentClass *		Get_Lighting_Environment(void) { return LightEnvironment; }
-	inline float	Get_Alpha_Override(void) { return m_alphaOverride;}
+	void								Set_Lighting_Environment(LightEnvironmentClass * light_env) { if (light_env) {m_localLightEnv=*light_env;LightEnvironment = &m_localLightEnv;} else {LightEnvironment = nullptr;} }
+	LightEnvironmentClass *		Get_Lighting_Environment() { return LightEnvironment; }
+	float	Get_Alpha_Override() { return m_alphaOverride;}
 
 	void								Set_Next_Visible_Skin(MeshClass * next_visible) { NextVisibleSkin = next_visible; }
-	MeshClass *						Peek_Next_Visible_Skin(void) { return NextVisibleSkin; }
+	MeshClass *						Peek_Next_Visible_Skin() { return NextVisibleSkin; }
 
 	void								Set_Base_Vertex_Offset(int base) { BaseVertexOffset = base; }
-	int								Get_Base_Vertex_Offset(void) { return BaseVertexOffset; }
+	int								Get_Base_Vertex_Offset() { return BaseVertexOffset; }
 
 	// Do old .w3d mesh files get fog turned on or off?
 	static bool						Legacy_Meshes_Fogged;
@@ -163,15 +157,19 @@ public:
 	void								Replace_Texture(TextureClass* texture,TextureClass* new_texture);
 	void								Replace_VertexMaterial(VertexMaterialClass* vmat,VertexMaterialClass* new_vmat);
 
-	void								Make_Unique();
-	
+	void								Make_Unique(bool force_meshmdl_clone = false);
+	unsigned							Get_Debug_Id() const { return  MeshDebugId; }
+
+	void								Set_Debugger_Disable(bool b) { IsDisabledByDebugger=b; }
+	bool								Is_Disabled_By_Debugger() const { return IsDisabledByDebugger; }
+
 protected:
 
-	virtual void					Add_Dependencies_To_List (DynamicVectorClass<StringClass> &file_list, bool textures_only = false);
+	virtual void					Add_Dependencies_To_List (DynamicVectorClass<StringClass> &file_list, bool textures_only = false) override;
 
-	virtual void					Update_Cached_Bounding_Volumes(void) const;
+	virtual void					Update_Cached_Bounding_Volumes() const override;
 
-	void								Free(void);
+	void								Free();
 
 	void								install_materials(MeshLoadInfoClass * loadinfo);
 	void								clone_materials(const MeshClass & srcmesh);
@@ -187,10 +185,13 @@ protected:
 	int								BaseVertexOffset;		// offset to our first vertex in whatever vb this mesh is in.
 	MeshClass *						NextVisibleSkin;		// linked list of visible skins
 
+	unsigned							MeshDebugId;
+	bool								IsDisabledByDebugger;
+
 	friend class MeshBuilderClass;
 };
 
-inline MeshModelClass * MeshClass::Peek_Model(void)
+inline MeshModelClass * MeshClass::Peek_Model()
 {
 	return Model;
 }
@@ -201,6 +202,3 @@ inline MeshModelClass * MeshClass::Peek_Model(void)
 // model. This is useful for stuff like making a RenderObjects' polys sort.
 //void Set_MeshModel_Flag(RenderObjClass *robj, MeshModelClass::FlagsType flag, int onoff);
 void Set_MeshModel_Flag(RenderObjClass *robj, int flag, int onoff);
-
-#endif /*MESH_H*/
-

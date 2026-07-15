@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_PLAYERLISTDLG_H__103B4125_78ED_48A8_9DBB_289DDC6B0208__INCLUDED_)
-#define AFX_PLAYERLISTDLG_H__103B4125_78ED_48A8_9DBB_289DDC6B0208__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // playerlistdlg.h : header file
 //
 
@@ -35,7 +31,7 @@ class PlayerListDlg : public CDialog
 {
 // Construction
 public:
-	PlayerListDlg(CWnd* pParent = NULL);   // standard constructor
+	PlayerListDlg(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(PlayerListDlg)
@@ -48,7 +44,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(PlayerListDlg)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -59,8 +55,8 @@ protected:
 	Int					m_curPlayerIdx;
 	CButtonShowColor	m_colorButton;
 
-	void updateTheUI(void);
-	void PopulateColorComboBox(void);
+	void updateTheUI();
+	void PopulateColorComboBox();
 	void SelectColor(RGBColor rgb);
 
 	// Generated message map functions
@@ -69,12 +65,12 @@ protected:
 	afx_msg void OnEditplayer();
 	afx_msg void OnRemoveplayer();
 	afx_msg void OnSelchangePlayers();
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnDblclkPlayers();
 	afx_msg void OnSelchangeAllieslist();
 	afx_msg void OnSelchangeEnemieslist();
-	virtual void OnOK();
-	virtual void OnCancel();
+	virtual void OnOK() override;
+	virtual void OnCancel() override;
 	afx_msg void OnPlayeriscomputer();
 	afx_msg void OnEditchangePlayerfaction();
 	afx_msg void OnChangePlayername();
@@ -88,5 +84,3 @@ protected:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_PLAYERLISTDLG_H__103B4125_78ED_48A8_9DBB_289DDC6B0208__INCLUDED_)

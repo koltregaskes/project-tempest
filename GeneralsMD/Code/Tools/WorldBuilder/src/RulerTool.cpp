@@ -19,70 +19,71 @@
 // RulerTool.cpp
 // Author: Mike Lytle, January 2003
 
-#include "StdAfx.h" 
+
+#include "StdAfx.h"
 #include "resource.h"
 
 #include "RulerTool.h"
 #include "MainFrm.h"
 #include "WorldBuilderDoc.h"
 #include "WorldBuilderView.h"
-#include "WBView3D.h"
+#include "wbview3d.h"
 #include "ObjectTool.h"
 
 
 // Saved off so that static functions can access its members.
-RulerTool*	RulerTool::m_staticThis = NULL;
+RulerTool*	RulerTool::m_staticThis = nullptr;
 
 /// Constructor
-RulerTool::RulerTool(void) :
+RulerTool::RulerTool() :
 Tool(ID_RULER_TOOL, IDC_POINTER)
 {
 	m_downPt3d.set(0.0f, 0.0f, 0.0f);
 	m_rulerType = RULER_LINE;
-	m_View = NULL;
+	m_View = nullptr;
 	m_staticThis = this;
 }
-	
+
 /// Destructor
-RulerTool::~RulerTool(void) 
+RulerTool::~RulerTool()
 {
 }
 
 // Activate.
-void RulerTool::activate() 
+void RulerTool::activate()
 {
 	Tool::activate();
 	CMainFrame::GetMainFrame()->showOptionsDialog(IDD_RULER_OPTIONS);
-	if (m_View != NULL) {
+	if (m_View != nullptr) {
 		// Is it dangerous to assume that the pointer is still good?
 		m_View->doRulerFeedback(m_rulerType);
 	}
 }
 
 // Deactivate.
-void RulerTool::deactivate() 
+void RulerTool::deactivate()
 {
 	Tool::deactivate();
 
-	if (m_View != NULL) {
+	if (m_View != nullptr) {
 		m_View->doRulerFeedback(RULER_NONE);
 	}
 
 }
 
 /** Set the cursor. */
-void RulerTool::setCursor(void) 
+void RulerTool::setCursor()
 {
 	Tool::setCursor();
 }
 
 
 /** Execute the tool on mouse down */
-void RulerTool::mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc) 
+void RulerTool::mouseDown(TTrackingMode m, CPoint viewPt, WbView* pView, CWorldBuilderDoc *pDoc)
 {
 	if (m != TRACK_L) return;
 
-	if (m_View == NULL) {
+	if (m_View == nullptr) {
 		// Save so that when we are done the view can stop drawing the rulers.
 		m_View = pView;
 	}
@@ -99,7 +100,7 @@ void RulerTool::mouseMoved(TTrackingMode m, CPoint viewPt, WbView* pView, CWorld
 {
 	if (m != TRACK_L) return;
 
-	if (m_View == NULL) {
+	if (m_View == nullptr) {
 		// Save so that when we are done the view can stop drawing the rulers.
 		m_View = pView;
 	}
@@ -118,8 +119,8 @@ void RulerTool::mouseMoved(TTrackingMode m, CPoint viewPt, WbView* pView, CWorld
 		pView->Invalidate();
 	} else { //m_rulerType == RULER_LINE
 		Coord3D diff;
-		diff.set(&cpt);
-		diff.sub(&m_downPt3d);
+		diff.set(cpt);
+		diff.sub(m_downPt3d);
 		m_savedLength = diff.length();
 		RulerOptions::setWidth(m_savedLength);
 		pView->doRulerFeedback(RULER_LINE);
@@ -160,7 +161,7 @@ Bool RulerTool::switchType()
 	} else {
 		m_staticThis->m_rulerType = RULER_LINE;
 	}
-	if (m_staticThis->m_View != NULL) {
+	if (m_staticThis->m_View != nullptr) {
 		m_staticThis->m_View->doRulerFeedback(m_staticThis->m_rulerType);
 	}
 
@@ -176,7 +177,7 @@ int	RulerTool::getType()
 	return (m_staticThis->m_rulerType);
 }
 
-Real RulerTool::getLength(void)
+Real RulerTool::getLength()
 {
 	if (m_staticThis) {
 		return m_staticThis->m_savedLength;

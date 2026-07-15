@@ -29,15 +29,12 @@
 
 #pragma once
 
-#ifndef __STEALTH_UPDATE_H_
-#define __STEALTH_UPDATE_H_
-
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "GameLogic/Module/UpdateModule.h"
 
 // FORWARD REFERENCES /////////////////////////////////////////////////////////////////////////////
 class Thing;
-enum StealthLookType;
+enum StealthLookType CPP_11(: Int);
 class FXList;
 
 enum
@@ -52,7 +49,7 @@ enum
 };
 
 #ifdef DEFINE_STEALTHLEVEL_NAMES
-static const char *TheStealthLevelNames[] = 
+static const char *const TheStealthLevelNames[] =
 {
 	"ATTACKING",
 	"MOVING",
@@ -60,7 +57,7 @@ static const char *TheStealthLevelNames[] =
 	"FIRING_PRIMARY",
 	"FIRING_SECONDARY",
 	"FIRING_TERTIARY",
-	NULL
+	nullptr
 };
 #endif
 
@@ -72,7 +69,7 @@ class StealthUpdateModuleData : public UpdateModuleData
 public:
 	UnsignedInt		m_stealthDelay;
 	UnsignedInt		m_stealthLevel;
-	UnsignedInt   m_hintDetectableStates;
+	ObjectStatusMaskType	m_hintDetectableStates;
 	Real					m_stealthSpeed;
 	Real					m_friendlyOpacityMin;
 	Real					m_friendlyOpacityMax;
@@ -88,14 +85,10 @@ public:
 
 	StealthUpdateModuleData()
 	{
-		//Added By Sadullah Nader
-		//Initialization(s) inserted
-		m_disguiseFX = NULL;
-		m_disguiseRevealFX = NULL;
-		//
+		m_disguiseFX = nullptr;
+		m_disguiseRevealFX = nullptr;
 		m_stealthDelay		= UINT_MAX;
 		m_stealthLevel		= 0;
-		m_hintDetectableStates = 0;
 		m_stealthSpeed		= 0.0f;
 		m_friendlyOpacityMin = 0.5f;
 		m_friendlyOpacityMax = 1.0f;
@@ -124,13 +117,15 @@ public:
 	StealthUpdate( Thing *thing, const ModuleData* moduleData );
 	// virtual destructor prototype provided by memory pool declaration
 
-	virtual UpdateSleepTime update();
+	virtual StealthUpdate* getStealth() override { return this; }
+
+	virtual UpdateSleepTime update() override;
 
 	//Still gets called, even if held -ML
-	virtual DisabledMaskType getDisabledTypesToProcess() const { return MAKE_DISABLED_MASK( DISABLED_HELD ); }
+	virtual DisabledMaskType getDisabledTypesToProcess() const override { return MAKE_DISABLED_MASK( DISABLED_HELD ); }
 
 	// ??? ugh
-	Bool isDisguised() const { return m_disguiseAsTemplate != NULL; }
+	Bool isDisguised() const { return m_disguiseAsTemplate != nullptr; }
 	Int getDisguisedPlayerIndex() const { return m_disguiseAsPlayerIndex; }
 	const ThingTemplate *getDisguisedTemplate() { return m_disguiseAsTemplate; }
 	void markAsDetected( UnsignedInt numFrames = 0 );
@@ -144,7 +139,7 @@ protected:
 	Bool canDisguise() const { return getStealthUpdateModuleData()->m_teamDisguised; }
 	Real getRevealDistanceFromTarget() const { return getStealthUpdateModuleData()->m_revealDistanceFromTarget; }
 	Bool allowedToStealth() const;
-	void hintDetectableWhileUnstealthed( void ) ;
+	void hintDetectableWhileUnstealthed() ;
 
 	void changeVisualDisguise();
 
@@ -154,7 +149,7 @@ private:
 	UnsignedInt						m_stealthAllowedFrame;
 	UnsignedInt						m_detectionExpiresFrame;
 	Bool									m_enabled;
-	
+
 	Real                  m_pulsePhaseRate;
 	Real                  m_pulsePhase;
 
@@ -170,7 +165,3 @@ private:
 	Bool									m_xferRestoreDisguise;			//Tells us we need to restore our disguise
 
 };
-
-
-#endif 
-

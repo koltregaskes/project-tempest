@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_WBFRAMEWND_H__83965AA4_8750_11D5_8CE0_00010297BBAC__INCLUDED_)
-#define AFX_WBFRAMEWND_H__83965AA4_8750_11D5_8CE0_00010297BBAC__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // WBFrameWnd.h : header file
 //
 
@@ -45,14 +41,14 @@ public:
 	public:
 	virtual BOOL LoadFrame(UINT nIDResource,
 				DWORD dwDefaultStyle = WS_OVERLAPPEDWINDOW | FWS_ADDTOTITLE,
-				CWnd* pParentWnd = NULL,
-				CCreateContext* pContext = NULL);
+				CWnd* pParentWnd = nullptr,
+				CCreateContext* pContext = nullptr) override;
 	// ClassWizard generated virtual function overrides
 	//}}AFX_VIRTUAL
 
 // Implementation
 protected:
-	virtual ~CWBFrameWnd();
+	virtual ~CWBFrameWnd() override;
 
 	// Generated message map functions
 	//{{AFX_MSG(CWBFrameWnd)
@@ -74,15 +70,15 @@ public:
 // Overrides
 	virtual BOOL LoadFrame(UINT nIDResource,
 				DWORD dwDefaultStyle = WS_OVERLAPPEDWINDOW | FWS_ADDTOTITLE,
-				CWnd* pParentWnd = NULL,
-				CCreateContext* pContext = NULL);
+				CWnd* pParentWnd = nullptr,
+				CCreateContext* pContext = nullptr) override;
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CWB3dFrameWnd)
 	public:
 	//}}AFX_VIRTUAL
 // Implementation
 protected:
-	virtual ~CWB3dFrameWnd();
+	virtual ~CWB3dFrameWnd() override;
 	// Generated message map functions
 	//{{AFX_MSG(CWB3dFrameWnd)
 	afx_msg void OnMove(int x, int y);
@@ -96,11 +92,9 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
-								
+
 
 /////////////////////////////////////////////////////////////////////////////
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_WBFRAMEWND_H__83965AA4_8750_11D5_8CE0_00010297BBAC__INCLUDED_)

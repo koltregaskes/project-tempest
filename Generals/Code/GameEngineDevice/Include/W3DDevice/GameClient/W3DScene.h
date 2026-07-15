@@ -33,23 +33,21 @@
 
 #pragma once
 
-#ifndef __W3DSCENE_H_
-#define __W3DSCENE_H_
-
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
-#include "WW3D2/Scene.h"
-#include "WW3D2/RInfo.h"
-#include "WW3D2/Coltest.h"
+#include "WW3D2/scene.h"
+#include "WW3D2/rinfo.h"
+#include "WW3D2/coltest.h"
 #include "WW3D2/lightenvironment.h"
+
 ///////////////////////////////////////////////////////////////////////////////
 // PROTOTYPES /////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 class W3DDynamicLight;
 class LightClass;
 class Drawable;
-enum CustomScenePassModes;
+enum CustomScenePassModes CPP_11(: Int);
 class MaterialPassClass;
 class W3DShroudMaterialPassClass;
 class W3DMaskMaterialPassClass;
@@ -64,18 +62,18 @@ class RTS3DScene : public SimpleSceneClass, public SubsystemInterface
 public:
 
 	RTS3DScene();  ///< RTSScene constructor
-	~RTS3DScene();  ///< RTSScene desctructor
+	virtual ~RTS3DScene() override;  ///< RTSScene destructor
 
 	/// ray picking against objects in scene
 	Bool castRay(RayCollisionTestClass & raytest, Bool testAll, Int collisionType);
 
 	/// customizable renderer for the RTS3DScene
-	virtual void	Customized_Render( RenderInfoClass &rinfo );
-	virtual void	Visibility_Check(CameraClass * camera);
-	virtual void  Render(RenderInfoClass & rinfo);
+	virtual void	Customized_Render( RenderInfoClass &rinfo ) override;
+	virtual void	Visibility_Check(CameraClass * camera) override;
+	virtual void  Render(RenderInfoClass & rinfo) override;
 
 	void setCustomPassMode (CustomScenePassModes mode) {m_customPassMode = mode;}
-	CustomScenePassModes getCustomPassMode (void)	{return m_customPassMode;}
+	CustomScenePassModes getCustomPassMode ()	{return m_customPassMode;}
 
 	void Flush(RenderInfoClass & rinfo);	//draw queued up models.
 	/// Drawing control method
@@ -85,29 +83,29 @@ public:
 	void renderSpecificDrawables(RenderInfoClass &rinfo, Int numDrawables, Drawable **theDrawables) ;
 
 	/// Lighting methods
-	void				addDynamicLight(W3DDynamicLight * obj);
-	void				removeDynamicLight(W3DDynamicLight * obj);
-	RefRenderObjListIterator *		createLightsIterator(void);
-	void					destroyLightsIterator(RefRenderObjListIterator * it);
-	RefRenderObjListClass				*getDynamicLights(void) {return &m_dynamicLightList;};
-	W3DDynamicLight *getADynamicLight(void);
-	void				setGlobalLight(LightClass *pLight,Int lightIndex=0);
-	LightEnvironmentClass &getDefaultLightEnv(void) {return m_defaultLightEnv;}
+	void addDynamicLight(W3DDynamicLight * obj);
+	void removeDynamicLight(W3DDynamicLight * obj);
+	RefRenderObjListIterator *createLightsIterator();
+	void destroyLightsIterator(RefRenderObjListIterator * it);
+	RefRenderObjListClass *getDynamicLights() {return &m_dynamicLightList;};
+	W3DDynamicLight *getADynamicLight();
+	void setGlobalLight(LightClass *pLight,Int lightIndex=0);
+	LightEnvironmentClass &getDefaultLightEnv() {return m_defaultLightEnv;}
 
-	void init() {}
-	void update() {}
-	void draw();
-	void reset(){}
+	virtual void init() override {}
+	virtual void update() override {}
+	virtual void draw() override;
+	virtual void reset() override {}
 	void doRender(CameraClass * cam);
 
 protected:
-	void	renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, Int localPlayerIndex);
-	void	updateFixedLightEnvironments(RenderInfoClass & rinfo);
+	void renderOneObject(RenderInfoClass &rinfo, RenderObjClass *robj, Int localPlayerIndex);
+	void updateFixedLightEnvironments(RenderInfoClass & rinfo);
 	void flushTranslucentObjects(RenderInfoClass & rinfo);
 	void flushOccludedObjects(RenderInfoClass & rinfo);
 	void flagOccludedObjects(CameraClass * camera);
 	void flushOccludedObjectsIntoStencil(RenderInfoClass & rinfo);
-	void updatePlayerColorPasses(void);
+	void updatePlayerColorPasses();
 
 protected:
 	RefRenderObjListClass	m_dynamicLightList;
@@ -135,10 +133,10 @@ protected:
 	RenderObjClass **m_nonOccludersOrOccludees;	///<objects which are neither bockers or blockees (small rocks, shrubs, etc.).
 	Int m_numPotentialOccluders;
 	Int m_numPotentialOccludees;
-	Int m_numNonOccluderOrOccludee;	
+	Int m_numNonOccluderOrOccludee;
 
 	CameraClass *m_camera;
-};  // end class RTS3DScene
+};
 
 //-----------------------------------------------------------------------------
 // RTS2DScene
@@ -147,25 +145,24 @@ protected:
 //-----------------------------------------------------------------------------
 class RTS2DScene : public SimpleSceneClass, public SubsystemInterface
 {
-
 public:
 
 	RTS2DScene();
-	~RTS2DScene();
+	virtual ~RTS2DScene() override;
 
 	/// customizable renderer for the RTS2DScene
-	virtual void Customized_Render( RenderInfoClass &rinfo );
-	void init() {}
-	void update() {}
-	void draw();
-	void reset(){}
+	virtual void Customized_Render( RenderInfoClass &rinfo ) override;
+	virtual void init() override {}
+	virtual void update() override {}
+	virtual void draw() override;
+	virtual void reset() override {}
 	void doRender(CameraClass * cam);
-	
+
 protected:
+
 	RenderObjClass *m_status;
 	CameraClass *m_camera;
-
-};  // end class RTS2DScene
+};
 
 //-----------------------------------------------------------------------------
 // RTS3DInterfaceScene
@@ -173,19 +170,12 @@ protected:
 /** Scene management for 3D interface overlay on top of 3D scene */
 //-----------------------------------------------------------------------------
 class RTS3DInterfaceScene : public SimpleSceneClass
-
 {
-
 public:
 
 	RTS3DInterfaceScene();
-	~RTS3DInterfaceScene();
+	virtual ~RTS3DInterfaceScene() override;
 
 	/// customizable renderer for the RTS3DInterfaceScene
-	virtual void Customized_Render( RenderInfoClass &rinfo );
-
-protected:
-
-};  // end class RTS3DInterfaceScene
-
-#endif  // end __W3DSCENE_H_
+	virtual void Customized_Render( RenderInfoClass &rinfo ) override;
+};

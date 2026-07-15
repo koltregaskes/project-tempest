@@ -24,12 +24,12 @@
 
 // FILE: Player.cpp /////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
-//                                                                          
-//                       Westwood Studios Pacific.                          
-//                                                                          
-//                       Confidential Information                           
-//                Copyright (C) 2001 - All Rights Reserved                  
-//                                                                          
+//
+//                       Westwood Studios Pacific.
+//
+//                       Confidential Information
+//                Copyright (C) 2001 - All Rights Reserved
+//
 //-----------------------------------------------------------------------------
 //
 // Project:   RTS3
@@ -42,7 +42,7 @@
 //
 //-----------------------------------------------------------------------------
 
-#include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
+#include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
 #define DEFINE_SCIENCE_AVAILABILITY_NAMES
 
@@ -96,16 +96,13 @@
 #include "GameLogic/Module/SpecialPowerModule.h"
 #include "GameLogic/Module/SupplyTruckAIUpdate.h"
 #include "GameLogic/Module/BattlePlanUpdate.h"
+#include "GameLogic/Module/ProductionUpdate.h"
 #include "GameLogic/VictoryConditions.h"
 
+#include "GameNetwork/GameInfo.h"
 
-#ifdef _INTERNAL
-// for occasional debugging...
-//#pragma optimize("", off)
-//#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
-#endif
 
-//Grey for neutral.  
+//Grey for neutral.
 #define NEUTRAL_PLAYER_COLOR 0xffffffff
 
 // ------------------------------------------------------------------------------------------------
@@ -113,7 +110,7 @@ class ClosestKindOfData
 {
 public:
 
-	ClosestKindOfData( void );
+	ClosestKindOfData();
 
 	//In
 	KindOfMaskType m_setKindOf;
@@ -127,12 +124,12 @@ public:
 };
 
 // ------------------------------------------------------------------------------------------------
-ClosestKindOfData::ClosestKindOfData( void )
+ClosestKindOfData::ClosestKindOfData()
 {
 	m_setKindOf.clear();
 	m_clearKindOf.clear();
-	m_source = NULL;
-	m_closest = NULL;
+	m_source = nullptr;
+	m_closest = nullptr;
 	m_closestDistSq = FLT_MAX;
 }
 
@@ -150,7 +147,7 @@ static void findClosestKindOf( Object *obj, void *userData )
 	{
 		closestData->m_closest = obj;
 		closestData->m_closestDistSq = distSq;
-	} 
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -163,7 +160,7 @@ static void findClosestKindOf( Object *obj, void *userData )
 AsciiString kindofMaskAsAsciiString(KindOfMaskType m)
 {
 	AsciiString s;
-	const char** kindofNames = KindOfMaskType::getBitNames();
+	const char* const* kindofNames = KindOfMaskType::getBitNames();
 	for (Int i=KINDOF_FIRST; i<KINDOF_COUNT; ++i)
 	{
 		if (m.test(i))
@@ -177,9 +174,9 @@ AsciiString kindofMaskAsAsciiString(KindOfMaskType m)
 		s = "KINDOF_INVALID";
 	return s;
 }
-void dumpBattlePlanBonuses(const BattlePlanBonuses *b, AsciiString name, const Player *p, const Object *o, AsciiString fname, Int line, Bool doDebugLog)
+void dumpBattlePlanBonuses(const BattlePlanBonusesData *b, AsciiString name, const Player *p, const Object *o, AsciiString fname, Int line, Bool doDebugLog)
 {
-	CRCDEBUG_LOG(("dumpBattlePlanBonuses() %s:%d %s\n  Player %d(%ls) object %d(%s) armor:%g/%8.8X bombardment:%d, holdTheLine:%d, searchAndDestroy:%d sight:%g/%8.8X, valid:%s invalid:%s\n",
+	CRCDEBUG_LOG(("dumpBattlePlanBonuses() %s:%d %s\n  Player %d(%ls) object %d(%s) armor:%g/%8.8X bombardment:%d, holdTheLine:%d, searchAndDestroy:%d sight:%g/%8.8X, valid:%s invalid:%s",
 		fname.str(), line, name.str(),
 		(p)?p->getPlayerIndex():-1, (p)?((Player *)p)->getPlayerDisplayName().str():L"<No Name>", (o)?o->getID():-1, (o)?o->getTemplate()->getName().str():"<No Name>",
 		b->m_armorScalar, AS_INT(b->m_armorScalar),
@@ -189,7 +186,7 @@ void dumpBattlePlanBonuses(const BattlePlanBonuses *b, AsciiString name, const P
 		kindofMaskAsAsciiString(b->m_invalidKindOf).str()));
 	if (!doDebugLog)
 		return;
-	DEBUG_LOG(("dumpBattlePlanBonuses() %s:%d %s\n  Player %d(%ls) object %d(%s) armor:%g/%8.8X bombardment:%d, holdTheLine:%d, searchAndDestroy:%d sight:%g/%8.8X, valid:%s invalid:%s\n",
+	DEBUG_LOG(("dumpBattlePlanBonuses() %s:%d %s\n  Player %d(%ls) object %d(%s) armor:%g/%8.8X bombardment:%d, holdTheLine:%d, searchAndDestroy:%d sight:%g/%8.8X, valid:%s invalid:%s",
 		fname.str(), line, name.str(),
 		(p)?p->getPlayerIndex():-1, (p)?((Player *)p)->getPlayerDisplayName().str():L"<No Name>", (o)?o->getID():-1, (o)?o->getTemplate()->getName().str():"<No Name>",
 		b->m_armorScalar, AS_INT(b->m_armorScalar),
@@ -205,20 +202,20 @@ void dumpBattlePlanBonuses(const BattlePlanBonuses *b, AsciiString name, const P
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
-PlayerRelationMap::PlayerRelationMap( void )
+PlayerRelationMap::PlayerRelationMap()
 {
 
-}  // end PlayerRelationMap
+}
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
-PlayerRelationMap::~PlayerRelationMap( void )
+PlayerRelationMap::~PlayerRelationMap()
 {
 
 	// make sure the data is cleared
 	m_map.clear();
 
-}  // end ~PlayerRelationmap
+}
 
 // ------------------------------------------------------------------------------------------------
 /** CRC */
@@ -226,12 +223,12 @@ PlayerRelationMap::~PlayerRelationMap( void )
 void PlayerRelationMap::crc( Xfer *xfer )
 {
 
-}  // end crc
+}
 
 // ------------------------------------------------------------------------------------------------
 /** Xfer method
 	* Version Info:
-	* 1: Initial version 
+	* 1: Initial version
 	*/
 // ------------------------------------------------------------------------------------------------
 void PlayerRelationMap::xfer( Xfer *xfer )
@@ -256,7 +253,7 @@ void PlayerRelationMap::xfer( Xfer *xfer )
 		// go through all player relations
 		for( playerRelationIt = m_map.begin(); playerRelationIt != m_map.end(); ++playerRelationIt )
 		{
-		
+
 			// write player index
 			playerIndex = (*playerRelationIt).first;
 			xfer->xferInt( &playerIndex );
@@ -265,12 +262,12 @@ void PlayerRelationMap::xfer( Xfer *xfer )
 			r = (*playerRelationIt).second;
 			xfer->xferUser( &r, sizeof( Relationship ) );
 
-		}  // end for, playerRelationIt
-					
-	}  // end if, save
+		}
+
+	}
 	else
 	{
-			
+
 		for( UnsignedShort i = 0; i < playerRelationCount; ++i )
 		{
 
@@ -282,20 +279,20 @@ void PlayerRelationMap::xfer( Xfer *xfer )
 
 			// assign relationship
 			m_map[ playerIndex ] = r;
-				
-		}  // end for, i
 
-	}  // end else, load
+		}
 
-}  // end xfer
+	}
+
+}
 
 // ------------------------------------------------------------------------------------------------
 /** Load post process */
 // ------------------------------------------------------------------------------------------------
-void PlayerRelationMap::loadPostProcess( void )
+void PlayerRelationMap::loadPostProcess()
 {
 
-}  // end loadPostProcess
+}
 
 //=============================================================================
 Player::Player( Int playerIndex )
@@ -309,45 +306,38 @@ Player::Player( Int playerIndex )
 	m_playerRelations = newInstance(PlayerRelationMap);
 	m_teamRelations = newInstance(TeamRelationMap);
 
-	m_upgradeList = NULL;
-	m_pBuildList = NULL;
-#if !defined(_PLAYTEST)
-	m_ai = NULL;
-#endif
-	m_resourceGatheringManager = NULL;
-	m_defaultTeam = NULL;
+	m_upgradeList = nullptr;
+	m_pBuildList = nullptr;
+	m_ai = nullptr;
+	m_resourceGatheringManager = nullptr;
+	m_defaultTeam = nullptr;
 	m_radarCount = 0;
 	m_disableProofRadarCount = 0;
 	m_radarDisabled = FALSE;
 	m_bombardBattlePlans = 0;
 	m_holdTheLineBattlePlans = 0;
 	m_searchAndDestroyBattlePlans = 0;
-	m_upgradesInProgress = 0;
-	m_upgradesCompleted = 0;
-	m_tunnelSystem = NULL;
-	m_playerTemplate = NULL;
+	m_tunnelSystem = nullptr;
+	m_playerTemplate = nullptr;
 	m_visionSpiedMask = PLAYERMASK_NONE;
-	m_battlePlanBonuses = NULL;
+	m_battlePlanBonuses = nullptr;
 	m_skillPointsModifier = 1.0f;
-	//Added By Sadullah 
-	//Initializations inserted
 	m_canBuildUnits = TRUE;
 	m_canBuildBase  = TRUE;
 	m_cashBountyPercent = 0.0f;
 	m_color = 0;
-	m_currentSelection = NULL;
+	m_currentSelection = nullptr;
 	m_rankLevel = 0;
 	m_sciencePurchasePoints = 0;
-	m_side = 0;
+	m_side = nullptr;
 	m_skillPoints = 0;
 	Int i;
-	m_upgradeList = NULL;
+	m_upgradeList = nullptr;
 	for(i = 0; i < NUM_HOTKEY_SQUADS; i++)
 	{
-		m_squads[i] = NULL;
+		m_squads[i] = nullptr;
 	}
-	//
-	for (i = 0; i < MAX_PLAYER_COUNT; ++i) 
+	for (i = 0; i < MAX_PLAYER_COUNT; ++i)
 	{
 		m_attackedBy[i] = false;
 		m_visionSpiedBy[i] = 0;
@@ -355,7 +345,7 @@ Player::Player( Int playerIndex )
 	m_attackedFrame = 0;
 
 	m_unitsShouldHunt = FALSE;
-	init( NULL );
+	init( nullptr );
 
 }
 
@@ -363,7 +353,7 @@ Player::Player( Int playerIndex )
 void Player::init(const PlayerTemplate* pt)
 {
 
-	DEBUG_ASSERTCRASH(m_playerTeamPrototypes.size() == 0, ("Player::m_playerTeamPrototypes is not empty at game start!\n"));
+	DEBUG_ASSERTCRASH(m_playerTeamPrototypes.empty(), ("Player::m_playerTeamPrototypes is not empty at game start!"));
 	m_skillPointsModifier = 1.0f;
 	m_attackedFrame = 0;
 
@@ -377,57 +367,37 @@ void Player::init(const PlayerTemplate* pt)
 	m_bombardBattlePlans = 0;
 	m_holdTheLineBattlePlans = 0;
 	m_searchAndDestroyBattlePlans = 0;
-	if( m_battlePlanBonuses )
-	{
-		m_battlePlanBonuses->deleteInstance();
-		m_battlePlanBonuses = NULL;
-	}
+
+	deleteInstance(m_battlePlanBonuses);
+	m_battlePlanBonuses = nullptr;
 
 	deleteUpgradeList();
 
 	m_energy.init(this);
 	m_stats.init();
-	if (m_pBuildList != NULL) 
-	{
-		m_pBuildList->deleteInstance();
-		m_pBuildList = NULL;
-	}
-	m_defaultTeam = NULL;
 
-#if !defined(_PLAYTEST)
-	if (m_ai)
-	{
-		m_ai->deleteInstance();
-	}
-	m_ai = NULL;
-#endif
+	deleteInstance(m_pBuildList);
+	m_pBuildList = nullptr;
 
-	if( m_resourceGatheringManager )
-	{
-		m_resourceGatheringManager->deleteInstance();
-		m_resourceGatheringManager = NULL;
-	}
+	m_defaultTeam = nullptr;
+
+	deleteInstance(m_ai);
+	m_ai = nullptr;
+
+	deleteInstance(m_resourceGatheringManager);
+	m_resourceGatheringManager = nullptr;
 
 	for (Int i = 0; i < NUM_HOTKEY_SQUADS; ++i) {
-		if (m_squads[i] != NULL) {
-			m_squads[i]->deleteInstance();
-			m_squads[i] = NULL;
-		}
-		m_squads[i] = newInstance(Squad);	
+		deleteInstance(m_squads[i]);
+		m_squads[i] = newInstance(Squad);
 	}
 
-	if (m_currentSelection != NULL) {
-		m_currentSelection->deleteInstance() ;
-		m_currentSelection = NULL;
-	}
+	deleteInstance(m_currentSelection);
 	m_currentSelection = newInstance(Squad);
-	
-	if( m_tunnelSystem )
-	{
-		m_tunnelSystem->deleteInstance();
-		m_tunnelSystem = NULL;
-	}
-	
+
+	deleteInstance(m_tunnelSystem);
+	m_tunnelSystem = nullptr;
+
 	m_canBuildBase = true;
 	m_canBuildUnits = true;
 	m_observer = false;
@@ -436,7 +406,7 @@ void Player::init(const PlayerTemplate* pt)
 
 	m_unitsShouldHunt = FALSE;
 
-#if defined(_DEBUG) || defined(_INTERNAL)
+#if defined(RTS_DEBUG)
 	m_DEMO_ignorePrereqs = FALSE;
 	m_DEMO_freeBuild = FALSE;
 	m_DEMO_instantBuild = FALSE;
@@ -458,7 +428,16 @@ void Player::init(const PlayerTemplate* pt)
 
 		if( m_money.countMoney() == 0 )
 		{
-			m_money.deposit( TheGlobalData->m_defaultStartingCash, FALSE );
+			// TheSuperHackers @bugfix Now correctly deposits the money and fixes its audio and academy issues.
+			// Note that copying the entire Money class instead would also copy the player index inside of it.
+			if ( TheGameInfo )
+			{
+				m_money.deposit( TheGameInfo->getStartingCash().countMoney(), FALSE, FALSE );
+			}
+			else
+			{
+				m_money.deposit( TheGlobalData->m_defaultStartingCash.countMoney(), FALSE, FALSE );
+			}
 		}
 
 		m_playerDisplayName.clear();
@@ -498,63 +477,51 @@ void Player::init(const PlayerTemplate* pt)
 	resetRank();
 	m_sciencesDisabled.clear();
 	m_sciencesHidden.clear();
-
-	{
-		SpecialPowerReadyTimerListIterator it = m_specialPowerReadyTimerList.begin();
-		while(it != m_specialPowerReadyTimerList.end())
-		{
-			SpecialPowerReadyTimerType *sprt = &(*it);
-			it = m_specialPowerReadyTimerList.erase( it );
-			if(sprt)
-				sprt->clear();
-		}
-	}
+	m_specialPowerReadyTimerList.clear();
 
 	KindOfPercentProductionChangeListIt it = m_kindOfPercentProductionChangeList.begin();
 	while(it != m_kindOfPercentProductionChangeList.end())
 	{
 		KindOfPercentProductionChange *tof = *it;
 		it = m_kindOfPercentProductionChangeList.erase( it );
-		if(tof)
-			tof->deleteInstance();
+		deleteInstance(tof);
 	}
 
+	//Always off at the beginning of a game! Only GameLogic::update has
+	//the power to turn it on. Don't want to cause desyncs!
+	m_logicalRetaliationModeEnabled = FALSE;
 }
 
 //=============================================================================
 Player::~Player()
 {
-	m_defaultTeam = NULL;
-	m_playerTemplate = NULL;
+	m_defaultTeam = nullptr;
+	m_playerTemplate = nullptr;
 
-	for( PlayerTeamList::iterator it = m_playerTeamPrototypes.begin(); 
+	for( PlayerTeamList::iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it)
 	{
-		(*it)->friend_setOwningPlayer(NULL);
+		(*it)->friend_setOwningPlayer(nullptr);
 	}
 	m_playerTeamPrototypes.clear();	// empty, but don't free the contents
 
 	// delete the relation maps (the destructor clears the actual map if any data is present)
-	m_teamRelations->deleteInstance();
-	m_playerRelations->deleteInstance();
+	deleteInstance(m_teamRelations);
+	m_teamRelations = nullptr;
+
+	deleteInstance(m_playerRelations);
+	m_playerRelations = nullptr;
 
 	for (Int i = 0; i < NUM_HOTKEY_SQUADS; ++i) {
-		if (m_squads[i] != NULL) {
-			m_squads[i]->deleteInstance();
-			m_squads[i] = NULL;
-		}
+		deleteInstance(m_squads[i]);
+		m_squads[i] = nullptr;
 	}
 
-	if (m_currentSelection != NULL) {
-		m_currentSelection->deleteInstance();
-		m_currentSelection = NULL;
-	}
+	deleteInstance(m_currentSelection);
+	m_currentSelection = nullptr;
 
-	if( m_battlePlanBonuses )
-	{
-		m_battlePlanBonuses->deleteInstance();
-		m_battlePlanBonuses = NULL;
-	}
+	deleteInstance(m_battlePlanBonuses);
+	m_battlePlanBonuses = nullptr;
 }
 
 //=============================================================================
@@ -567,18 +534,18 @@ Relationship Player::getRelationship(const Team *that) const
 		// do we have an override for that particular team? if so, return it.
 		if (!m_teamRelations->m_map.empty())
 		{
-			TeamRelationMapType::const_iterator it = m_teamRelations->m_map.find(that->getID());			
+			TeamRelationMapType::const_iterator it = m_teamRelations->m_map.find(that->getID());
 			if (it != m_teamRelations->m_map.end())
 			{
 				return (*it).second;
 			}
 		}
-		
+
 		// hummm... well, do we have something for that team's player?
 		if (!m_playerRelations->m_map.empty())
 		{
 			const Player* thatPlayer = that->getControllingPlayer();
-			if (thatPlayer != NULL)
+			if (thatPlayer != nullptr)
 			{
 				PlayerRelationMapType::const_iterator it = m_playerRelations->m_map.find(thatPlayer->getPlayerIndex());
 				if (it != m_playerRelations->m_map.end())
@@ -594,7 +561,7 @@ Relationship Player::getRelationship(const Team *that) const
 //=============================================================================
 void Player::setPlayerRelationship(const Player *that, Relationship r)
 {
-	if (that != NULL)
+	if (that != nullptr)
 	{
 		// note that this creates the entry if it doesn't exist.
 		m_playerRelations->m_map[that->getPlayerIndex()] = r;
@@ -606,7 +573,7 @@ Bool Player::removePlayerRelationship(const Player *that)
 {
 	if (!m_playerRelations->m_map.empty())
 	{
-		if (that == NULL)
+		if (that == nullptr)
 		{
 			m_playerRelations->m_map.clear();
 			return true;
@@ -627,7 +594,7 @@ Bool Player::removePlayerRelationship(const Player *that)
 //=============================================================================
 void Player::setTeamRelationship(const Team *that, Relationship r)
 {
-	if (that != NULL)
+	if (that != nullptr)
 	{
 		// note that this creates the entry if it doesn't exist.
 		m_teamRelations->m_map[that->getID()] = r;
@@ -639,7 +606,7 @@ Bool Player::removeTeamRelationship(const Team *that)
 {
 	if (!m_teamRelations->m_map.empty())
 	{
-		if (that == NULL)
+		if (that == nullptr)
 		{
 			m_teamRelations->m_map.clear();
 			return true;
@@ -661,26 +628,23 @@ Bool Player::removeTeamRelationship(const Team *that)
 void Player::setBuildList(BuildListInfo *pBuildList)
 {
 
-	if (m_pBuildList != NULL) 
-	{
-		m_pBuildList->deleteInstance();
-	}
+	deleteInstance(m_pBuildList);
 	m_pBuildList = pBuildList;
 
-} 
+}
 
 //=============================================================================
 void Player::addToBuildList(Object *obj)
 {
 	BuildListInfo *newInfo = newInstance( BuildListInfo );
-	newInfo->setObjectID(obj->getID());	
+	newInfo->setObjectID(obj->getID());
 	newInfo->setTemplateName(obj->getTemplate()->getName());
 	newInfo->setLocation(*obj->getPosition());
 	newInfo->setAngle(obj->getOrientation());
-	newInfo->setNumRebuilds(0);	 // Can't rebuild. 
+	newInfo->setNumRebuilds(0);	 // Can't rebuild.
 	newInfo->setNextBuildList(m_pBuildList);
 	m_pBuildList = newInfo;
-} 
+}
 
 //=============================================================================
 void Player::addToPriorityBuildList(AsciiString templateName, Coord3D *pos, Real angle)
@@ -690,18 +654,16 @@ void Player::addToPriorityBuildList(AsciiString templateName, Coord3D *pos, Real
 	newInfo->setLocation(*pos);
 	newInfo->setAngle(angle);
 	newInfo->markPriorityBuild();
-	newInfo->setNumRebuilds(1);	 // Build once. 
+	newInfo->setNumRebuilds(1);	 // Build once.
 	newInfo->setNextBuildList(m_pBuildList);
 	m_pBuildList = newInfo;
-} 
+}
 
 //=============================================================================
 void Player::update()
 {
-#if !defined(_PLAYTEST)
 	if (m_ai)
 		m_ai->update();
-#endif
 
 	// Allow the teams this player owns to update themselves.
 
@@ -715,15 +677,23 @@ void Player::update()
 			team->updateGenericScripts();
 		}
 	}
+
+#if !(RETAIL_COMPATIBLE_CRC || PRESERVE_TUNNEL_HEAL_STACKING)
+	// TheSuperHackers @bugfix Stubbjax 26/09/2025 The Tunnel System now heals
+	// all units once per frame instead of once per frame per Tunnel Network.
+	TunnelTracker* tunnelSystem = getTunnelSystem();
+	if (tunnelSystem)
+		tunnelSystem->healObjects();
+#endif
+
+	m_money.updateIncomeBucket();
 }
 
 //=============================================================================
 void Player::newMap()
 {
-#if !defined(_PLAYTEST)
 	if (m_ai)
 		m_ai->newMap();
-#endif
 }
 
 //=============================================================================
@@ -731,12 +701,8 @@ void Player::setPlayerType(PlayerType t, Bool skirmish)
 {
 	m_playerType = t;
 
-#if !defined(_PLAYTEST)
-	if (m_ai)
-	{
-		m_ai->deleteInstance();
-	}
-	m_ai = NULL;
+	deleteInstance(m_ai);
+	m_ai = nullptr;
 
 	if (t == PLAYER_COMPUTER)
 	{
@@ -748,13 +714,12 @@ void Player::setPlayerType(PlayerType t, Bool skirmish)
 			m_ai = newInstance(AIPlayer)( this );
 		}
 	}
-#endif
 }
 
 //=============================================================================
 // This is called from PlayerList->newGame()
 //
-void Player::setDefaultTeam(void) {
+void Player::setDefaultTeam() {
 	AsciiString tname;
 	tname.set("team");
 	tname.concat(m_playerName);
@@ -767,14 +732,21 @@ void Player::setDefaultTeam(void) {
 }
 
 //=============================================================================
+void Player::deletePlayerAI()
+{
+	deleteInstance(m_ai);
+	m_ai = nullptr;
+}
+
+//=============================================================================
 // This is called from PlayerList->newGame()
 //
 void Player::initFromDict(const Dict* d)
 {
 	AsciiString tmplname = d->getAsciiString(TheKey_playerFaction);
 	const PlayerTemplate* pt = ThePlayerTemplateStore->findPlayerTemplate(NAMEKEY(tmplname));
-	DEBUG_ASSERTCRASH(pt != NULL, ("PlayerTemplate %s not found -- this is an obsolete map (please open and resave in WB)\n",tmplname.str()));
-	
+	DEBUG_ASSERTCRASH(pt != nullptr, ("PlayerTemplate %s not found -- this is an obsolete map (please open and resave in WB)",tmplname.str()));
+
 	init(pt);
 
 	m_playerDisplayName = d->getUnicodeString(TheKey_playerDisplayName);
@@ -796,7 +768,7 @@ void Player::initFromDict(const Dict* d)
 		{
 			AsciiString spTemplateName = TheSidesList->getSkirmishSideInfo(spIdx)->getDict()->getAsciiString(TheKey_playerFaction);
 			const PlayerTemplate* spt = ThePlayerTemplateStore->findPlayerTemplate(NAMEKEY(spTemplateName));
-			if (spt && spt->getSide() == getSide()) 
+			if (spt && spt->getSide() == getSide())
 			{
 				skirmish = true;
 				break;
@@ -837,12 +809,12 @@ void Player::initFromDict(const Dict* d)
 
 				ScriptList *scripts = TheSidesList->getSkirmishSideInfo(i)->getScriptList()->duplicateAndQualify(
 							qualifier, qualTemplatePlayerName, pname);
-				if (TheSidesList->getSideInfo(getPlayerIndex())->getScriptList()) {
-					TheSidesList->getSideInfo(getPlayerIndex())->getScriptList()->deleteInstance();
-				}
+
+				deleteInstance(TheSidesList->getSideInfo(getPlayerIndex())->getScriptList());
 				TheSidesList->getSideInfo(getPlayerIndex())->setScriptList(scripts);
-				TheSidesList->getSkirmishSideInfo(i)->getScriptList()->deleteInstance();
-				TheSidesList->getSkirmishSideInfo(i)->setScriptList(NULL);
+
+				deleteInstance(TheSidesList->getSkirmishSideInfo(i)->getScriptList());
+				TheSidesList->getSkirmishSideInfo(i)->setScriptList(nullptr);
 			}
 
 		}
@@ -874,11 +846,9 @@ void Player::initFromDict(const Dict* d)
 		if (exists) {
 			difficulty = (GameDifficulty) diffInt;
 		}
-#if !defined(_PLAYTEST)
 		if (m_ai) {
 			m_ai->setAIDifficulty(difficulty);
 		}
-#endif
 
 		if (!found) {
 			DEBUG_CRASH(("Could not find skirmish player for side %s", mySide.str()));
@@ -888,12 +858,10 @@ void Player::initFromDict(const Dict* d)
 			qualifier.format("%d", m_mpStartIndex);
 			ScriptList *scripts = TheSidesList->getSkirmishSideInfo(skirmishNdx)->getScriptList()->duplicateAndQualify(
 						qualifier, qualTemplatePlayerName, pname);
-			ScriptList* slist = TheSidesList->getSideInfo(getPlayerIndex())->getScriptList();
-			if (slist) 
-			{
-				slist->deleteInstance();
-			}
+
+			deleteInstance(TheSidesList->getSideInfo(getPlayerIndex())->getScriptList());
 			TheSidesList->getSideInfo(getPlayerIndex())->setScriptList(scripts);
+
 			for (i=0; i<TheSidesList->getNumTeams(); i++) {
 				if (TheSidesList->getTeamInfo(i)->getDict()->getAsciiString(TheKey_teamOwner) == pname)
 				{
@@ -909,7 +877,7 @@ void Player::initFromDict(const Dict* d)
 				if (TheSidesList->getSkirmishTeamInfo(i)->getDict()->getAsciiString(TheKey_teamOwner) == originalPlayerName)
 				{
 					Dict teamDict(*TheSidesList->getSkirmishTeamInfo(i)->getDict());
-					AsciiString teamName = teamDict.getAsciiString(TheKey_teamName); 
+					AsciiString teamName = teamDict.getAsciiString(TheKey_teamName);
 					AsciiString newName;
 					newName.format("%s%d", teamDict.getAsciiString(TheKey_teamName).str(), m_mpStartIndex);
 
@@ -918,7 +886,7 @@ void Player::initFromDict(const Dict* d)
 					teamDict.setAsciiString(TheKey_teamName, newName);
 					// qualify scripts.
 
-					NameKeyType nameKeys[] = 
+					NameKeyType nameKeys[] =
 					{
 						TheKey_teamOnCreateScript,
 						TheKey_teamOnIdleScript,
@@ -958,20 +926,13 @@ void Player::initFromDict(const Dict* d)
 					TheSidesList->addTeam(&teamDict);
 				}
 			}
-		}						 
-	}																																 
-	if( m_resourceGatheringManager )
-	{
-		m_resourceGatheringManager->deleteInstance();
-		m_resourceGatheringManager = NULL;
+		}
 	}
+
+	deleteInstance(m_resourceGatheringManager);
 	m_resourceGatheringManager = newInstance(ResourceGatheringManager);
 
-	if( m_tunnelSystem )
-	{
-		m_tunnelSystem->deleteInstance();
-		m_tunnelSystem = NULL;
-	}
+	deleteInstance(m_tunnelSystem);
 	m_tunnelSystem = newInstance(TunnelTracker);
 
 	m_handicap.readFromDict(d);
@@ -979,10 +940,10 @@ void Player::initFromDict(const Dict* d)
 	/// @todo Ack!  the todo in PlayerList::reset() mentioning the need for a Player::reset() really needs to get done.
 	m_playerRelations->m_map.clear(); // For now, it has been decided to just fix this one.  Dear god me must reset.
 	m_teamRelations->m_map.clear(); // For now, it has been decided to just fix this one.  Dear god me must reset.
-	
+
 	Int i;
 	for ( i = 0; i < MAX_PLAYER_COUNT; ++i ) // For now, it has been decided to just fix this one.  Dear god me must reset.
-	{ 
+	{
 		m_attackedBy[i] = false;
 		m_visionSpiedBy[i] = 0;
 	}
@@ -1006,40 +967,33 @@ void Player::initFromDict(const Dict* d)
 		m_money.deposit(m);
 
 	for ( i = 0; i < NUM_HOTKEY_SQUADS; ++i ) {
-		if (m_squads[i] != NULL)
-		{
-			m_squads[i]->deleteInstance();
-			m_squads[i] = NULL;
-		}
+		deleteInstance(m_squads[i]);
 		m_squads[i] = newInstance( Squad );
 	}
 
-	if (m_currentSelection != NULL) {
-		m_currentSelection->deleteInstance();
-		m_currentSelection = NULL;
-	}
+	deleteInstance(m_currentSelection);
 	m_currentSelection = newInstance( Squad );
 }
 
 //=============================================================================
-void Player::becomingTeamMember(Object *obj, Bool yes) 
-{ 
+void Player::becomingTeamMember(Object *obj, Bool yes)
+{
 	if (!obj)
-		return;	
+		return;
 
 	// energy production/consumption hooks, note we ignore things that are UNDER_CONSTRUCTION
-	if( BitTest( obj->getStatusBits(), OBJECT_STATUS_UNDER_CONSTRUCTION ) == FALSE )
+	if( !obj->getStatusBits().test( OBJECT_STATUS_UNDER_CONSTRUCTION ) )
 	{
 		obj->friend_adjustPowerForPlayer(yes);
-	}  // end if
-		
+	}
+
 	// when we capture a building, we need to see if there's an AutoDepositUpdate hooked to it,
 	// if so, award the cash bonus
 	if(this != ThePlayerList->getNeutralPlayer() && yes)
 	{
 		NameKeyType key_AutoDepositUpdate = NAMEKEY("AutoDepositUpdate");
 		AutoDepositUpdate *adu = (AutoDepositUpdate *)obj->findUpdateModule(key_AutoDepositUpdate);
-		if (adu != NULL) {
+		if (adu != nullptr) {
 			adu->awardInitialCaptureBonus( this );
 		}
 	}
@@ -1054,13 +1008,13 @@ void Player::becomingTeamMember(Object *obj, Bool yes)
 		else
 		{
 			//We are leaving a team with active battle plans so remove them now.
-			removeBattlePlanBonusesForObject( obj ); 
+			removeBattlePlanBonusesForObject( obj );
 		}
 	}
-	
 
-	if (obj->isKindOf(KINDOF_DOZER) 
-			&& obj->getAIUpdateInterface() 
+
+	if (obj->isKindOf(KINDOF_DOZER)
+			&& obj->getAIUpdateInterface()
 			&& obj->getAIUpdateInterface()->isIdle())
 	{
 		// Need to remove it from the pick a peasant button
@@ -1092,12 +1046,12 @@ void Player::becomingLocalPlayer(Bool yes)
 			{
 				// Added support for updating the perceptions of garrisoned buildings containing enemy stealth units.
 				// When changing teams, it is necessary to update this information.
+				Bool requireRadarRefresh = false;
 				ContainModuleInterface *contain = object->getContain();
 				if( contain )
 				{
 					contain->recalcApparentControllingPlayer();
-					TheRadar->removeObject( object );
-					TheRadar->addObject( object );
+					requireRadarRefresh = true;
 				}
 
 				if( object->isKindOf( KINDOF_DISGUISER ) )
@@ -1107,8 +1061,7 @@ void Player::becomingLocalPlayer(Bool yes)
 					Drawable *draw = object->getDrawable();
 					if( draw )
 					{
-						static NameKeyType key_StealthUpdate = NAMEKEY( "StealthUpdate" );
-						StealthUpdate *update = (StealthUpdate*)object->findUpdateModule( key_StealthUpdate );
+						StealthUpdate *update = object->getStealth();
 						if( update && update->isDisguised() )
 						{
 							Player *disguisedPlayer = ThePlayerList->getNthPlayer( update->getDisguisedPlayerIndex() );
@@ -1128,13 +1081,18 @@ void Player::becomingLocalPlayer(Bool yes)
 								else
 									draw->setIndicatorColor( object->getIndicatorColor() );
 							}
-							TheRadar->removeObject( object );
-							TheRadar->addObject( object );
+							requireRadarRefresh = true;
 						}
 					}
 				}
+
+				if (requireRadarRefresh)
+				{
+					TheRadar->removeObject( object );
+					TheRadar->addObject( object );
+				}
 			}
-			iter->deleteInstance();
+			deleteInstance(iter);
 		}
 	}
 	else
@@ -1146,13 +1104,9 @@ void Player::becomingLocalPlayer(Bool yes)
 //-------------------------------------------------------------------------------------------------
 /** Is this player a skirmish ai player? */
 //-------------------------------------------------------------------------------------------------
-Bool Player::isSkirmishAIPlayer( void )
+Bool Player::isSkirmishAIPlayer()
 {
-#if !defined(_PLAYTEST)
-	return m_ai?m_ai->isSkirmishAI():false; 
-#else
-	return FALSE;
-#endif
+	return m_ai ? m_ai->isSkirmishAI() : false;
 }
 
 
@@ -1168,65 +1122,352 @@ void Player::computeSuperweaponTarget(const SpecialPowerTemplate *power, Coord3D
 }
 
 //-------------------------------------------------------------------------------------------------
-/** Get this player's current enemy. NOTE - Can be NULL. */
+/** Get this player's current enemy. NOTE - Can be nullptr. */
 //-------------------------------------------------------------------------------------------------
-Player  *Player::getCurrentEnemy( void )
+Player  *Player::getCurrentEnemy()
 {
-#if !defined(_PLAYTEST)
-	return m_ai?m_ai->getAiEnemy():NULL; 
-#else
-	return NULL;
-#endif
+	return m_ai?m_ai->getAiEnemy():nullptr;
 }
 
 //-------------------------------------------------------------------------------------------------
-/** return the player's command center. 
-		if he has none, return null. 
-		if he has multiple, return one arbitrarily. */
+// PlayerObjectFindInfo is used to find a player's object. For example, we iterate through
+// to find a player's command center, or a specific building capable of firing the specified
+// special power.
+//
+// if he has none, return null.
+// if he has multiple, return one arbitrarily.
 //-------------------------------------------------------------------------------------------------
 
-	struct FCCInfo
+//-------------------------------------------------------------------------------------------------
+// Iterator data struct
+//-------------------------------------------------------------------------------------------------
+struct PlayerObjectFindInfo
+{
+	Player* player;
+	Object* obj;
+	SpecialPowerType spType;
+	const ThingTemplate *thing;
+	UnsignedInt lowestReadyFrame;
+	UnsignedInt highestPercentage;
+	UnsignedInt numReady;
+};
+
+//-------------------------------------------------------------------------------------------------
+// Iterator function
+// Find the first available command center that is naturally ours (not captured from enemy).
+//-------------------------------------------------------------------------------------------------
+static void doFindCommandCenter(Object* obj, void* userData)
+{
+	PlayerObjectFindInfo* info = (PlayerObjectFindInfo*)userData;
+
+	if (info->obj == nullptr
+			&& obj->isKindOf(KINDOF_COMMANDCENTER)
+			&& obj->getTemplate()->getDefaultOwningSide() == info->player->getSide()
+			&& !obj->testStatus(OBJECT_STATUS_UNDER_CONSTRUCTION)
+			&& !obj->testStatus(OBJECT_STATUS_SOLD))
 	{
-		Player* player;
-		Object* cmdCenter;
-	};
+		info->obj = obj;
+	}
+}
 
-	static void doFindCommandCenter(Object* obj, void* userData)
+//-------------------------------------------------------------------------------------------------
+// Iterator function
+// Find first object capable of firing specified special power right now.
+//-------------------------------------------------------------------------------------------------
+static void doFindSpecialPowerSourceObject( Object *obj, void *userData )
+{
+	PlayerObjectFindInfo* info = (PlayerObjectFindInfo*)userData;
+
+	if( info->lowestReadyFrame == 0 )
 	{
-		if (!obj)
-			return;
-
-		FCCInfo* info = (FCCInfo*)userData;
-
-		if (info->cmdCenter == NULL 
-				&& obj->isKindOf(KINDOF_COMMANDCENTER)
-				&& obj->getTemplate()->getDefaultOwningSide() == info->player->getSide()
-				&& !obj->testStatus(OBJECT_STATUS_UNDER_CONSTRUCTION)
-				&& !obj->testStatus(OBJECT_STATUS_SOLD))
+		//We already found the best case scenario, so no need to iterate any more.
+		return;
+	}
+	if( !obj->testStatus( OBJECT_STATUS_UNDER_CONSTRUCTION )
+			&& !obj->testStatus( OBJECT_STATUS_SOLD )
+			&& !obj->isEffectivelyDead() )
+	{
+		if( info->spType == SPECIAL_INVALID && obj->hasAnySpecialPower() )
 		{
-			info->cmdCenter = obj;
+			//We just care about find an object that has *any* shortcut capable special power.
+			//Iterate through the special power modules and look for one.
+			SpecialPowerModuleInterface *spmInterface = obj->findAnyShortcutSpecialPowerModuleInterface();
+			if( spmInterface && !spmInterface->isScriptOnly() )
+			{
+				info->obj = obj;
+				info->lowestReadyFrame = 0;
+				return;
+			}
+		}
+		else if( obj->hasSpecialPower( info->spType ) )
+		{
+			SpecialPowerModuleInterface *spmInterface = obj->findSpecialPowerModuleInterface( info->spType );
+			if( spmInterface && !spmInterface->isScriptOnly() )
+			{
+				UnsignedInt readyFrame = spmInterface->getReadyFrame();
+
+#if defined(RTS_DEBUG) || defined(_ALLOW_DEBUG_CHEATS_IN_RELEASE)
+				// Everything is ready if timers are debug off'd
+				if( ! TheGlobalData->m_specialPowerUsesDelay )
+					readyFrame = 0;
+#endif
+				// A disabled guy should only be considered as a last resort.  We need it to be counted
+				// so that a disabled button can appear on the shortcut.
+				if( obj->isDisabled() )
+					readyFrame = UINT_MAX - 10;
+
+				if( readyFrame < TheGameLogic->getFrame())
+				{
+					//This special power is ready now and matches, so simply return the
+					//first one.
+					info->obj = obj;
+					info->lowestReadyFrame = 0;
+					return;
+				}
+				else if( readyFrame < info->lowestReadyFrame )
+				{
+					//This special power isn't ready, but it is going to be ready sooner than any others
+					//we checked (or it's the first one we checked).
+					info->obj = obj;
+					info->lowestReadyFrame = readyFrame;
+					return;
+				}
+			}
 		}
 	}
+}
 
+//-------------------------------------------------------------------------------------------------
+// Iterator function
+// Count number of specified special powers that are ready to fire now.
+//-------------------------------------------------------------------------------------------------
+static void doCountSpecialPowersReady( Object *obj, void *userData )
+{
+	PlayerObjectFindInfo* info = (PlayerObjectFindInfo*)userData;
+
+	if( !obj->testStatus( OBJECT_STATUS_UNDER_CONSTRUCTION )
+			&& !obj->testStatus( OBJECT_STATUS_SOLD )
+			&& !obj->isEffectivelyDead() )
+	{
+		if( obj->hasSpecialPower( info->spType ) )
+		{
+			SpecialPowerModuleInterface *spmInterface = obj->findSpecialPowerModuleInterface( info->spType );
+			if( spmInterface && !spmInterface->isScriptOnly() )
+			{
+
+	      if( spmInterface->getSpecialPowerTemplate()->isSharedNSync() && info->numReady == 1 )
+				{
+					//Shared powers don't stack after the first one is counted.
+					return;
+				}
+
+				UnsignedInt readyFrame = spmInterface->getReadyFrame();
+
+#if defined(RTS_DEBUG) || defined(_ALLOW_DEBUG_CHEATS_IN_RELEASE)
+				// Everything is ready if timers are debug off'd
+				if( ! TheGlobalData->m_specialPowerUsesDelay )
+					readyFrame = 0;
+#endif
+
+				// A disabled guy should only be considered as a last resort.  We do not want him counted here
+				// so that Disabled guys do not go in to the number on the shortcut button.
+				if( obj->isDisabled() )
+					readyFrame = UINT_MAX - 10;
+
+				if( readyFrame < TheGameLogic->getFrame())
+				{
+					//This special power is ready now and matches, so simply return the
+					//first one.
+					info->numReady++;
+				}
+			}
+		}
+	}
+}
+
+//-------------------------------------------------------------------------------------------------
+static void doFindMostReadyWeaponForThing( Object *obj, void *userData )
+{
+	PlayerObjectFindInfo* info = (PlayerObjectFindInfo*)userData;
+
+	if( info->highestPercentage >= 100 )
+	{
+		//We already found the best case scenario, so no need to iterate any more.
+		return;
+	}
+
+	if( info->thing && info->thing->isEquivalentTo( obj->getTemplate() ) )
+	{
+		if( !obj->testStatus( OBJECT_STATUS_UNDER_CONSTRUCTION )
+				&& !obj->testStatus( OBJECT_STATUS_SOLD )
+				&& !obj->isEffectivelyDead() )
+		{
+			if( obj->hasAnyWeapon() )
+			{
+				UnsignedInt percentage = obj->getMostPercentReadyToFireAnyWeapon();
+				if( percentage > info->highestPercentage )
+				{
+					//This weapon is more ready than any others we've checked.
+					info->obj = obj;
+					info->highestPercentage = percentage;
+					return;
+				}
+			}
+		}
+	}
+}
+
+//-------------------------------------------------------------------------------------------------
+static void doFindMostReadySpecialPowerForThing( Object *obj, void *userData )
+{
+	PlayerObjectFindInfo* info = (PlayerObjectFindInfo*)userData;
+
+	if( info->highestPercentage >= 100 )
+	{
+		//We already found the best case scenario, so no need to iterate any more.
+		return;
+	}
+
+	if( info->thing && info->thing->isEquivalentTo( obj->getTemplate() ) )
+	{
+		if( !obj->testStatus( OBJECT_STATUS_UNDER_CONSTRUCTION )
+				&& !obj->testStatus( OBJECT_STATUS_SOLD )
+				&& !obj->isEffectivelyDead() )
+		{
+			// search the modules for the one with the matching template
+			for( BehaviorModule** m = obj->getBehaviorModules(); *m; ++m )
+			{
+				SpecialPowerModuleInterface* sp = (*m)->getSpecialPower();
+				if (!sp)
+					continue;
+
+				UnsignedInt percentage = sp->getPercentReady();
+				if( percentage > info->highestPercentage )
+				{
+					//This weapon is more ready than any others we've checked.
+					info->obj = obj;
+					info->highestPercentage = percentage;
+				}
+			}
+		}
+	}
+}
+
+//-------------------------------------------------------------------------------------------------
+static void doFindExistingObjectWithThingTemplate( Object *obj, void *userData )
+{
+	PlayerObjectFindInfo* info = (PlayerObjectFindInfo*)userData;
+
+	if( info->obj )
+	{
+		//We already found a matching obj, so return
+		return;
+	}
+
+	if( info->thing && info->thing->isEquivalentTo( obj->getTemplate() ) )
+	{
+		if( !obj->testStatus( OBJECT_STATUS_UNDER_CONSTRUCTION )
+				&& !obj->testStatus( OBJECT_STATUS_SOLD )
+				&& !obj->isEffectivelyDead() )
+		{
+			//We found one.
+			info->obj = obj;
+		}
+	}
+}
+
+//-------------------------------------------------------------------------------------------------
 Object* Player::findNaturalCommandCenter()
 {
-	FCCInfo info;
+	PlayerObjectFindInfo info;
 	info.player = this;
-	info.cmdCenter = NULL;
+	info.obj = nullptr;
 	iterateObjects(doFindCommandCenter, &info);
-	return info.cmdCenter;
+	return info.obj;
+}
+
+//-------------------------------------------------------------------------------------------------
+Object* Player::findMostReadyShortcutSpecialPowerOfType( SpecialPowerType spType )
+{
+	PlayerObjectFindInfo info;
+	info.player = this;
+	info.obj = nullptr;
+	info.spType = spType;
+	info.lowestReadyFrame = 0xffffffff;
+	iterateObjects( doFindSpecialPowerSourceObject, &info );
+	return info.obj;
+}
+
+//-------------------------------------------------------------------------------------------------
+Object* Player::findMostReadyShortcutWeaponForThing( const ThingTemplate *thing, UnsignedInt &mostReadyPercentage )
+{
+	PlayerObjectFindInfo info;
+	info.player = this;
+	info.obj = nullptr;
+	info.thing = thing;
+	info.highestPercentage = 0;
+	iterateObjects( doFindMostReadyWeaponForThing, &info );
+	mostReadyPercentage = info.highestPercentage;
+	return info.obj;
+}
+
+//-------------------------------------------------------------------------------------------------
+Object* Player::findMostReadyShortcutSpecialPowerForThing( const ThingTemplate *thing, UnsignedInt &mostReadyPercentage )
+{
+	PlayerObjectFindInfo info;
+	info.player = this;
+	info.obj = nullptr;
+	info.thing = thing;
+	info.highestPercentage = 0;
+	iterateObjects( doFindMostReadySpecialPowerForThing, &info );
+	mostReadyPercentage = info.highestPercentage;
+	return info.obj;
+}
+
+//-------------------------------------------------------------------------------------------------
+Object* Player::findAnyExistingObjectWithThingTemplate( const ThingTemplate *thing )
+{
+	PlayerObjectFindInfo info;
+	info.player = this;
+	info.obj = nullptr;
+	info.thing = thing;
+	iterateObjects( doFindExistingObjectWithThingTemplate, &info );
+	return info.obj;
+}
+
+//-------------------------------------------------------------------------------------------------
+// Finds a short-cut firing special power of any type arbitrarily.
+//-------------------------------------------------------------------------------------------------
+Bool Player::hasAnyShortcutSpecialPower()
+{
+	PlayerObjectFindInfo info;
+	info.player = this;
+	info.obj = nullptr;
+	info.spType = SPECIAL_INVALID; //Invalid dictates that we don't care about the type.
+	info.lowestReadyFrame = 0xffffffff;
+	iterateObjects( doFindSpecialPowerSourceObject, &info );
+	return info.obj;
+}
+
+//-------------------------------------------------------------------------------------------------
+Int Player::countReadyShortcutSpecialPowersOfType( SpecialPowerType spType )
+{
+	PlayerObjectFindInfo info;
+	info.spType = spType;
+	info.numReady = 0;
+	iterateObjects( doCountSpecialPowersReady, &info );
+	return info.numReady;
 }
 
 //-------------------------------------------------------------------------------------------------
 /** Difficulty level for this player */
 //-------------------------------------------------------------------------------------------------
-GameDifficulty Player::getPlayerDifficulty(void) const
+GameDifficulty Player::getPlayerDifficulty() const
 {
-#if !defined(_PLAYTEST)
-	if (m_ai) {
+	if (m_ai)
+	{
 		return m_ai->getAIDifficulty();
 	}
-#endif
 	return TheScriptEngine->getGlobalDifficulty();
 }
 
@@ -1235,11 +1476,7 @@ GameDifficulty Player::getPlayerDifficulty(void) const
 //-------------------------------------------------------------------------------------------------
 Bool Player::checkBridges(Object *unit, Waypoint *way)
 {
-#if !defined(_PLAYTEST)
-	return m_ai?m_ai->checkBridges(unit, way):false; 
-#else
-	return FALSE;
-#endif
+	return m_ai?m_ai->checkBridges(unit, way):false;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1247,11 +1484,7 @@ Bool Player::checkBridges(Object *unit, Waypoint *way)
 //-------------------------------------------------------------------------------------------------
 Bool Player::getAiBaseCenter(Coord3D *pos)
 {
-#if !defined(_PLAYTEST)
-	return m_ai?m_ai->getBaseCenter(pos):false; 
-#else
-	return FALSE;
-#endif
+	return m_ai?m_ai->getBaseCenter(pos):false;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1259,11 +1492,10 @@ Bool Player::getAiBaseCenter(Coord3D *pos)
 //-------------------------------------------------------------------------------------------------
 void Player::repairStructure(ObjectID structureID)
 {
-#if !defined(_PLAYTEST)
-	if (m_ai) {
-		m_ai->repairStructure(structureID); 
+	if (m_ai)
+	{
+		m_ai->repairStructure(structureID);
 	}
-#endif
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1271,19 +1503,17 @@ void Player::repairStructure(ObjectID structureID)
 //-------------------------------------------------------------------------------------------------
 void Player::onUnitCreated( Object *factory, Object *unit )
 {
-	// When a a unit is completed, it becomes "real" as far as scripting is 
+	// When a a unit is completed, it becomes "real" as far as scripting is
 	// concerned. jba.
 	TheScriptEngine->notifyOfObjectCreationOrDestruction();
 
 	// increment our scorekeeper
 	m_scoreKeeper.addObjectBuilt(unit);
 
-#if !defined(_PLAYTEST)
 	// ai notification callback
 	if( m_ai )
 		m_ai->onUnitProduced( factory, unit );
-#endif
-}  // end onUnitCreated
+}
 
 
 //-------------------------------------------------------------------------------------------------
@@ -1295,18 +1525,18 @@ Bool Player::isSupplySourceSafe( Int minSupplies )
 	if( m_ai )
 		return m_ai->isSupplySourceSafe( minSupplies );
 	return true;
-}  // isSupplySourceSafe
+}
 
 //-------------------------------------------------------------------------------------------------
 /** Is a supply source attacked? */
 //-------------------------------------------------------------------------------------------------
-Bool Player::isSupplySourceAttacked( void )
+Bool Player::isSupplySourceAttacked()
 {
 	// ai query
 	if( m_ai )
-		return m_ai->isSupplySourceAttacked( );
+		return m_ai->isSupplySourceAttacked();
 	return false;
-}  // isSupplySourceSafe
+}
 
 //-------------------------------------------------------------------------------------------------
 /** Set delay between team production */
@@ -1316,7 +1546,7 @@ void Player::setTeamDelaySeconds(Int delay  )
 	// ai action
 	if( m_ai )
 		m_ai->setTeamDelaySeconds( delay );
-}  // guardSupplyCenter
+}
 
 //-------------------------------------------------------------------------------------------------
 /** Guard supply center */
@@ -1326,7 +1556,7 @@ void Player::guardSupplyCenter( Team *team, Int minSupplies  )
 	// ai action
 	if( m_ai )
 		m_ai->guardSupplyCenter( team, minSupplies );
-}  // guardSupplyCenter
+}
 
 //-------------------------------------------------------------------------------------------------
 /** A team is about to be destroyed */
@@ -1336,22 +1566,26 @@ void Player::preTeamDestroy( const Team *team )
 	// ai notification callback
 	if( m_ai )
 		m_ai->aiPreTeamDestroy( team );
-}  // preTeamDestroy
+
+	// TheSuperHackers @bugfix Mauller/Xezon 03/05/2025 Clear the default team to prevent dangling pointer usage
+	if( m_defaultTeam == team )
+		m_defaultTeam = nullptr;
+}
 
 //-------------------------------------------------------------------------------------------------
-/// a structuer was just created, but is under construction
+/// a structure was just created, but is under construction
 //-------------------------------------------------------------------------------------------------
 void Player::onStructureCreated( Object *builder, Object *structure )
 {
 
-}  // end onStructureCreated
+}
 
 //-------------------------------------------------------------------------------------------------
 /// a structure that was under construction has become completed
 //-------------------------------------------------------------------------------------------------
 void Player::onStructureConstructionComplete( Object *builder, Object *structure, Bool isRebuild )
 {
-	// When a a structure is completed, it becomes "real" as far as scripting is 
+	// When a a structure is completed, it becomes "real" as far as scripting is
 	// concerned. jba.
 	TheScriptEngine->notifyOfObjectCreationOrDestruction();
 
@@ -1368,19 +1602,17 @@ void Player::onStructureConstructionComplete( Object *builder, Object *structure
 
 	structure->friend_adjustPowerForPlayer(TRUE);
 
-#if !defined(_PLAYTEST)
 	// ai notification callback
 	if( m_ai )
 		m_ai->onStructureProduced( builder, structure );
-#endif
 
 	// the GUI needs to re-evaluate the information being displayed to the user now
 	if( TheControlBar )
 		TheControlBar->markUIDirty();
-	
+
 	// This object may require us to play some EVA sounds.
 	Player *localPlayer = ThePlayerList->getLocalPlayer();
-	if (localPlayer == structure->getControllingPlayer() || localPlayer->getRelationship(structure->getTeam()) != ENEMIES) 
+	if (localPlayer == structure->getControllingPlayer() || localPlayer->getRelationship(structure->getTeam()) != ENEMIES)
 		return;
 
 	// We need to play some EVA sounds.
@@ -1389,22 +1621,22 @@ void Player::onStructureConstructionComplete( Object *builder, Object *structure
 
 	if (structure->hasSpecialPower(SPECIAL_NEUTRON_MISSILE))
 		TheEva->setShouldPlay(EVA_SuperweaponDetected_Nuke);
-		
+
 	if (structure->hasSpecialPower(SPECIAL_SCUD_STORM))
 		TheEva->setShouldPlay(EVA_SuperweaponDetected_ScudStorm);
 
-}  // end onStructureConstructionComplete
+}
 
 //=============================================================================
 void Player::onStructureUndone(Object *structure)
 {
 	m_scoreKeeper.removeObjectBuilt(structure);
-} // end onStructureUndone
+}
 
 //=============================================================================
 void Player::addTeamToList(TeamPrototype* team)
 {
-	for( PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin(); 
+	for( PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it )
 	{
 		if (team == *it)
@@ -1417,7 +1649,7 @@ void Player::addTeamToList(TeamPrototype* team)
 //=============================================================================
 void Player::removeTeamFromList(TeamPrototype* team)
 {
-	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin();
 			it != m_playerTeamPrototypes.end(); ++it)
 	{
 		if (team == *it)
@@ -1431,19 +1663,19 @@ void Player::removeTeamFromList(TeamPrototype* team)
 //=============================================================================
 void Player::healAllObjects()
 {
-	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it)
-	{	
+	{
 		(*it)->healAllObjects();
 	}
 }
 
 //=============================================================================
-void Player::iterateObjects( ObjectIterateFunc func, void *userData )
+void Player::iterateObjects( ObjectIterateFunc func, void *userData ) const
 {
-	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it)
-	{	
+	{
 		(*it)->iterateObjects( func, userData );
 	}
 }
@@ -1456,22 +1688,22 @@ void Player::countObjectsByThingTemplate(Int numTmplates, const ThingTemplate* c
 	for (i = 0; i < numTmplates; ++i)
 		counts[i] = 0;
 
-	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin(); 
-			 it != m_playerTeamPrototypes.end(); 
+	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin();
+			 it != m_playerTeamPrototypes.end();
 			 ++it)
-	{	
+	{
 		(*it)->countObjectsByThingTemplate(numTmplates, things, ignoreDead, counts, ignoreUnderConstruction);
 	}
 }
 
 //=============================================================================
-Int Player::countBuildings(void)
+Int Player::countBuildings()
 {
 	int retVal = 0;
 
-	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it)
-	{	
+	{
 		retVal += (*it)->countBuildings();
 	}
 	return retVal;
@@ -1482,9 +1714,9 @@ Int Player::countObjects(KindOfMaskType setMask, KindOfMaskType clearMask)
 {
 	int retVal = 0;
 
-	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it)
-	{	
+	{
 		retVal += (*it)->countObjects(setMask, clearMask);
 	}
 	return retVal;
@@ -1493,8 +1725,8 @@ Int Player::countObjects(KindOfMaskType setMask, KindOfMaskType clearMask)
 //=============================================================================
 Object *Player::findClosestByKindOf( Object *queryObject, KindOfMaskType setMask, KindOfMaskType clearMask )
 {
-	if( queryObject == NULL )
-		return NULL; 
+	if( queryObject == nullptr )
+		return nullptr;
 
 	ClosestKindOfData data;
 	data.m_setKindOf = setMask;
@@ -1508,11 +1740,11 @@ Object *Player::findClosestByKindOf( Object *queryObject, KindOfMaskType setMask
 }
 
 //=============================================================================
-Bool Player::hasAnyBuildings(void) const
+Bool Player::hasAnyBuildings() const
 {
-	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it)
-	{	
+	{
 		if ((*it)->hasAnyBuildings()) {
 			return true;
 		}
@@ -1523,9 +1755,9 @@ Bool Player::hasAnyBuildings(void) const
 //=============================================================================
 Bool Player::hasAnyBuildings(KindOfMaskType kindOf) const
 {
-	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it)
-	{	
+	{
 		if ((*it)->hasAnyBuildings(kindOf)) {
 			return true;
 		}
@@ -1534,11 +1766,11 @@ Bool Player::hasAnyBuildings(KindOfMaskType kindOf) const
 }
 
 //=============================================================================
-Bool Player::hasAnyUnits(void) const
+Bool Player::hasAnyUnits() const
 {
-	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it)
-	{	
+	{
 		if ((*it)->hasAnyUnits()) {
 			return true;
 		}
@@ -1547,11 +1779,11 @@ Bool Player::hasAnyUnits(void) const
 }
 
 //=============================================================================
-Bool Player::hasAnyObjects(void) const
+Bool Player::hasAnyObjects() const
 {
-	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it)
-	{	
+	{
 		if ((*it)->hasAnyObjects()) {
 			return true;
 		}
@@ -1560,11 +1792,11 @@ Bool Player::hasAnyObjects(void) const
 }
 
 //=============================================================================
-Bool Player::hasAnyBuildFacility(void) const
+Bool Player::hasAnyBuildFacility() const
 {
-	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it)
-	{	
+	{
 		if ((*it)->hasAnyBuildFacility())
 			return true;
 	}
@@ -1572,11 +1804,11 @@ Bool Player::hasAnyBuildFacility(void) const
 }
 
 //=============================================================================
-void Player::updateTeamStates(void) 
+void Player::updateTeamStates()
 {
-	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::const_iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it)
-	{	
+	{
 		(*it)->updateState();
 	}
 }
@@ -1607,41 +1839,41 @@ UnsignedInt Player::getSupplyBoxValue()
 }
 
 //=============================================================================
-Real Player::getProductionCostChangePercent( AsciiString buildTemplateName ) const 
-{ 
+Real Player::getProductionCostChangePercent( AsciiString buildTemplateName ) const
+{
   ProductionChangeMap::const_iterator it = m_productionCostChanges.find(NAMEKEY(buildTemplateName));
-  if (it != m_productionCostChanges.end()) 
+  if (it != m_productionCostChanges.end())
 	{
 		return (*it).second;
 	}
-	
+
 	return 0.0f;
-}	
+}
 
 //=============================================================================
-Real Player::getProductionTimeChangePercent( AsciiString buildTemplateName ) const 
-{ 
+Real Player::getProductionTimeChangePercent( AsciiString buildTemplateName ) const
+{
   ProductionChangeMap::const_iterator it = m_productionTimeChanges.find(NAMEKEY(buildTemplateName));
-  if (it != m_productionTimeChanges.end()) 
+  if (it != m_productionTimeChanges.end())
 	{
 		return (*it).second;
 	}
-	
+
 	return 0.0f;
-}	
+}
 
 //=============================================================================
-VeterancyLevel Player::getProductionVeterancyLevel( AsciiString buildTemplateName ) const 
-{ 
+VeterancyLevel Player::getProductionVeterancyLevel( AsciiString buildTemplateName ) const
+{
 	NameKeyType templateNameKey = NAMEKEY(buildTemplateName);
   ProductionVeterancyMap::const_iterator it = m_productionVeterancyLevels.find(templateNameKey);
-  if (it != m_productionVeterancyLevels.end()) 
+  if (it != m_productionVeterancyLevels.end())
 	{
 		return (*it).second;
 	}
-	
+
 	return LEVEL_FIRST;
-}	
+}
 
 //=============================================================================
 void Player::friend_setSkillset(Int skillSet)
@@ -1658,14 +1890,14 @@ void Player::setUnitsShouldHunt(Bool unitsShouldHunt, CommandSourceType source)
 
 	Coord3D pos;
 	ThePartitionManager->getMostValuableLocation(getPlayerIndex(), ALLOW_ENEMIES, VOT_CashValue, &pos);
-	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it) {
 		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance()) {
 			Team *team = iter.cur();
 			if (!team) {
 				continue;
 			}
-			
+
 			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance()) {
 				Object *obj = iterObj.cur();
 				if (!obj) {
@@ -1684,7 +1916,7 @@ void Player::setUnitsShouldHunt(Bool unitsShouldHunt, CommandSourceType source)
 				obj->leaveGroup();
 				AIUpdateInterface *ai = obj->getAIUpdateInterface();
 				if (ai) {
-					if (unitsShouldHunt) {	
+					if (unitsShouldHunt) {
 						ai->aiHunt(source);
 					} else {
 						ai->aiIdle(source);
@@ -1696,9 +1928,10 @@ void Player::setUnitsShouldHunt(Bool unitsShouldHunt, CommandSourceType source)
 }
 
 //=============================================================================
-void Player::killPlayer(void)
+void Player::killPlayer()
 {
-	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin(); it != m_playerTeamPrototypes.end(); ++it) {
+	PlayerTeamList::iterator it = m_playerTeamPrototypes.begin();
+	for (; it != m_playerTeamPrototypes.end(); ++it) {
 		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance()) {
 			Team *team = iter.cur();
 			if (!team) {
@@ -1728,7 +1961,29 @@ void Player::killPlayer(void)
 	}
 	if (isLocalPlayer() && !TheGameLogic->isInShellGame())
 	{
+		// TheSuperHackers @bugfix helmutbuhler 29/03/2025
+		// Avoid multiplayer mismatch on surrender in team games when owning a base structure that has
+		// been cleared of infantry before, by disabling this bugged logic.
+		//
+		// Note that becomingLocalPlayer calls recalcApparentControllingPlayer on all objects with a
+		// contain, which does two things:
+		//   1. Reset the teams of all objects with empty contains
+		//   2. Update m_hideGarrisonedStateFromNonallies
+		//
+		// Likely, the original intent was to reveal hidden garrisoned buildings for the new observer.
+		// But this does not appear to work anyway, so this call is useless.
+		//
+		// There is another bug: The Contain modules keep track of the object's team before any units
+		// got inside. And that team does not get updated when the player is killed and the units
+		// transfer to another team. That means resetting the team sets it to neutral, and when this
+		// is done only for the local player, then a mismatch occurs.
+		//
+		// When fixing disguises for observers or fixing the team bug in the Contain classes, then this
+		// code can be used again.
+#if 0
 		becomingLocalPlayer(TRUE); // recalc disguises, etc
+#endif
+
 		if (TheControlBar )
 		{
 			if (isPlayerActive())
@@ -1749,26 +2004,38 @@ void Player::killPlayer(void)
 //=============================================================================
 void Player::setObjectsEnabled(AsciiString templateTypeToAffect, Bool enable)
 {
-	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it) {
 		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance()) {
 			Team *team = iter.cur();
 			if (!team) {
 				continue;
 			}
-			
+
 			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance()) {
 				Object *obj = iterObj.cur();
 				if (!obj) {
 					continue;
 				}
 
-				if (obj->getTemplate()->getName().compare(templateTypeToAffect) == 0) 
+				if (obj->getTemplate()->getName().compare(templateTypeToAffect) == 0)
 				{
 					obj->setScriptStatus( OBJECT_STATUS_SCRIPT_DISABLED, !enable );
 				}
 			}
 		}
+	}
+}
+
+//=============================================================================
+static void cancelUpgradeInProduction(Object* obj, void* userData)
+{
+	const UpgradeTemplate* upgradeTemplate = static_cast<const UpgradeTemplate*>(userData);
+	ProductionUpdateInterface* pui = ProductionUpdate::getProductionUpdateInterfaceFromObject(obj);
+
+	if (pui && pui->isUpgradeInQueue(upgradeTemplate))
+	{
+		pui->cancelUpgrade(upgradeTemplate);
 	}
 }
 
@@ -1780,27 +2047,54 @@ void Player::transferAssetsFromThat(Player *that)
 		return;
 	}
 
+#if !RETAIL_COMPATIBLE_CRC
+	// TheSuperHackers @bugfix Stubbjax 03/02/2026 Cancel any in-progress player upgrades 'that'
+	// player currently has in progress that 'this' player already has in progress or completed.
+	std::vector<const UpgradeTemplate*> upgradesToCancel;
+	for (Upgrade* upgrade = that->m_upgradeList; upgrade; upgrade = upgrade->friend_getNext())
+	{
+		const UpgradeTemplate* upgradeTemplate = upgrade->getTemplate();
+
+		if (upgrade->getStatus() == UPGRADE_STATUS_IN_PRODUCTION
+			&& upgradeTemplate->getUpgradeType() == UPGRADE_TYPE_PLAYER
+			&& (hasUpgradeComplete(upgradeTemplate) || hasUpgradeInProduction(upgradeTemplate)))
+		{
+			upgradesToCancel.push_back(upgradeTemplate);
+		}
+	}
+
+	for (std::vector<const UpgradeTemplate*>::iterator cancelIt = upgradesToCancel.begin(); cancelIt != upgradesToCancel.end(); ++cancelIt)
+	{
+		const UpgradeTemplate* upgradeTemplate = *cancelIt;
+		that->iterateObjects(cancelUpgradeInProduction, const_cast<UpgradeTemplate*>(upgradeTemplate));
+	}
+
+	// TheSuperHackers @bugfix Stubbjax 03/02/2026 Ensure the in-progress upgrade mask is copied from 'that'
+	// player to 'this' player to prevent duplicate player upgrades being purchased.
+	m_upgradesInProgress.set(that->m_upgradesInProgress);
+#endif
+
 	std::list<Object *> objsToTransfer;
 
 	// let's not transfer beacons
 	const ThingTemplate *beaconTemplate = TheThingFactory->findTemplate( that->getPlayerTemplate()->getBeaconTemplate() );
 
 	// transfer all his units.
-	for (PlayerTeamList::iterator it = that->m_playerTeamPrototypes.begin(); 
-			 it != that->m_playerTeamPrototypes.end(); ++it) 
+	for (PlayerTeamList::iterator it = that->m_playerTeamPrototypes.begin();
+			 it != that->m_playerTeamPrototypes.end(); ++it)
 	{
-		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance()) 
+		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance())
 		{
 			Team *team = iter.cur();
-			if (!team) 
+			if (!team)
 			{
 				continue;
 			}
-			
-			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance()) 
+
+			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance())
 			{
 				Object *obj = iterObj.cur();
-				if (!obj || obj->getTemplate()->isEquivalentTo(beaconTemplate))  // don't transfer NULL objs or beacons
+				if (!obj || obj->getTemplate()->isEquivalentTo(beaconTemplate))  // don't transfer nullptr objs or beacons
 				{
 					continue;
 				}
@@ -1816,14 +2110,14 @@ void Player::transferAssetsFromThat(Player *that)
 	// transfer all his money
 	UnsignedInt allMoney = that->getMoney()->countMoney();
 	that->getMoney()->withdraw(allMoney);
-	getMoney()->deposit(allMoney);
+	getMoney()->deposit(allMoney, TRUE, FALSE);
 }
 
 //=============================================================================
 void Player::garrisonAllUnits(CommandSourceType source)
 {
 	PartitionFilterAcceptByKindOf f1(MAKE_KINDOF_MASK(KINDOF_STRUCTURE), KINDOFMASK_NONE);
-	PartitionFilter *filters[] = { &f1, NULL };
+	PartitionFilter *filters[] = { &f1, nullptr };
 
 	Coord3D pos = {50.0, 50.0, 50.0};
 /// @todo srj -- we should really use iterateAllObjects() here instead, but I have no time to
@@ -1831,14 +2125,14 @@ void Player::garrisonAllUnits(CommandSourceType source)
 	ObjectIterator *iterBuilding = ThePartitionManager->iterateObjectsInRange(&pos, 1e9f, FROM_CENTER_3D, filters, ITER_SORTED_NEAR_TO_FAR);
 	MemoryPoolObjectHolder hold(iterBuilding);
 
-	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it) {
 		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance()) {
 			Team *team = iter.cur();
 			if (!team) {
 				continue;
 			}
-			
+
 			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance()) {
 				Object *obj = iterObj.cur();
 				if (!obj) {
@@ -1850,7 +2144,7 @@ void Player::garrisonAllUnits(CommandSourceType source)
 					continue;
 				}
 
-				for (Object *theBuilding = iterBuilding->first(); theBuilding; theBuilding = iterBuilding->next()) 
+				for (Object *theBuilding = iterBuilding->first(); theBuilding; theBuilding = iterBuilding->next())
 				{
 					ContainModuleInterface *contain = theBuilding->getContain();
 					if (contain)
@@ -1875,14 +2169,14 @@ void Player::garrisonAllUnits(CommandSourceType source)
 //=============================================================================
 void Player::ungarrisonAllUnits(CommandSourceType source)
 {
-	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it) {
 		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance()) {
 			Team *team = iter.cur();
 			if (!team) {
 				continue;
 			}
-			
+
 			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance()) {
 				Object *obj = iterObj.cur();
 				if (!obj) {
@@ -1909,16 +2203,16 @@ void Player::ungarrisonAllUnits(CommandSourceType source)
 //=============================================================================
 void Player::setUnitsShouldIdleOrResume(Bool idle)
 {
-	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin(); 
-			 it != m_playerTeamPrototypes.end(); ++it) 
+	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin();
+			 it != m_playerTeamPrototypes.end(); ++it)
 	{
-		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance()) 
+		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance())
 		{
 			Team *team = iter.cur();
 			if (!team)
 				continue;
-			
-			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance()) 
+
+			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance())
 			{
 				Object *obj = iterObj.cur();
 				if (!obj)
@@ -1952,16 +2246,16 @@ void Player::setUnitsShouldIdleOrResume(Bool idle)
 }
 
 //=============================================================================
-void Player::sellEverythingUnderTheSun(void)
+void Player::sellEverythingUnderTheSun()
 {
-	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin(); 
+	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin();
 			 it != m_playerTeamPrototypes.end(); ++it) {
 		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance()) {
 			Team *team = iter.cur();
 			if (!team) {
 				continue;
 			}
-			
+
 			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance()) {
 				Object *obj = iterObj.cur();
 				if (!obj) {
@@ -1970,7 +2264,7 @@ void Player::sellEverythingUnderTheSun(void)
 
 				// sell the object
 				TheBuildAssistant->sellObject( obj );
-			}			
+			}
 		}
 	}
 }
@@ -1991,78 +2285,71 @@ Bool Player::allowedToBuild(const ThingTemplate *tmplate) const
 }
 
 //=============================================================================
-void Player::buildSpecificTeam( TeamPrototype *teamProto) 
+void Player::buildSpecificTeam( TeamPrototype *teamProto)
 {
-#if !defined(_PLAYTEST)
-	if (m_ai) {
+	if (m_ai)
+	{
 		// Do a priority build.
 		m_ai->buildSpecificAITeam(teamProto, true);
 	}
-#endif
 }
 
 //=============================================================================
-void Player::buildBaseDefense(Bool flank) 
+void Player::buildBaseDefense(Bool flank)
 {
-#if !defined(_PLAYTEST)
-	if (m_ai) {
+	if (m_ai)
+	{
 		// Do a priority build.
 		m_ai->buildAIBaseDefense(flank);
 	}
-#endif
 }
 
 //=============================================================================
-void Player::buildBaseDefenseStructure(const AsciiString &thingName, Bool flank) 
+void Player::buildBaseDefenseStructure(const AsciiString &thingName, Bool flank)
 {
-#if !defined(_PLAYTEST)
-	if (m_ai) {
+	if (m_ai)
+	{
 		// Do a priority build.
 		m_ai->buildAIBaseDefenseStructure(thingName, flank);
 	}
-#endif
 }
 
 //=============================================================================
-void Player::buildSpecificBuilding(const AsciiString &thingName) 
+void Player::buildSpecificBuilding(const AsciiString &thingName)
 {
-#if !defined(_PLAYTEST)
-	if (m_ai) {
+	if (m_ai)
+	{
 		// Do a priority build.
 		m_ai->buildSpecificAIBuilding(thingName);
 	}
-#endif
 }
 
 //=============================================================================
-void Player::buildBySupplies(Int minimumCash, const AsciiString &thingName) 
+void Player::buildBySupplies(Int minimumCash, const AsciiString &thingName)
 {
-#if !defined(_PLAYTEST)
-	if (m_ai) {
+	if (m_ai)
+	{
 		m_ai->buildBySupplies(minimumCash, thingName);
 	}
-#endif
 }
 
 //=============================================================================
-void Player::buildUpgrade( const AsciiString &upgrade) 
+void Player::buildUpgrade( const AsciiString &upgrade)
 {
-#if !defined(_PLAYTEST)
-	if (m_ai) {
+	if (m_ai)
+	{
 		m_ai->buildUpgrade(upgrade);
 	}
-#endif
 }
 
 //=============================================================================
-void Player::recruitSpecificTeam( TeamPrototype *teamProto, Real recruitRadius) 
+void Player::recruitSpecificTeam( TeamPrototype *teamProto, Real recruitRadius)
 {
-#if !defined(_PLAYTEST)
-	if (m_ai) {
+	if (m_ai)
+	{
 		// Do a priority build.
 		m_ai->recruitSpecificAITeam(teamProto, recruitRadius);
 	}
-#endif
 }
 
 //=============================================================================
@@ -2076,8 +2363,13 @@ void Player::doBountyForKill(const Object* killer, const Object* victim)
 		return;
 
 	Int costToBuild = victim->getTemplate()->calcCostToBuild(victim->getControllingPlayer());
+#if RETAIL_COMPATIBLE_CRC
 	Int bounty = REAL_TO_INT_CEIL(costToBuild * m_cashBountyPercent);
-	
+#else
+	// TheSuperHackers @bugfix Stubbjax 20/02/2026 Subtract epsilon to ensure bounty is rounded up correctly.
+	Int bounty = ceil((costToBuild * m_cashBountyPercent) - WWMATH_EPSILON);
+#endif
+
 	if( bounty )
 	{
 
@@ -2089,7 +2381,7 @@ void Player::doBountyForKill(const Object* killer, const Object* victim)
 		moneyString.format( TheGameText->fetch( "GUI:AddCash" ), bounty );
 		Coord3D pos;
 		pos.zero();
-		pos.add( killer->getPosition() );
+		pos.add( *killer->getPosition() );
 		pos.z += 10.0f; //add a little z to make it show up above the unit.
 		TheInGameUI->addFloatingText( moneyString, &pos, GameMakeColor( 255, 255, 0, 255 ) );
 	}
@@ -2136,10 +2428,10 @@ Bool Player::addSkillPointsForKill(const Object* killer, const Object* victim)
 	// srj sez: per dustin, no experience (et al) for killing things under construction.
 	if (victim->testStatus(OBJECT_STATUS_UNDER_CONSTRUCTION))
 		return false;
-	
+
 	Int victimLevel = victim->getVeterancyLevel();
 	Int skillValue = victim->getTemplate()->getSkillPointValue(victimLevel);
-	
+
 	return addSkillPoints(skillValue);
 }
 
@@ -2174,21 +2466,21 @@ Bool Player::addScience(ScienceType science)
 	if (hasScience(science))
 		return false;
 
-	//DEBUG_LOG(("Adding Science %s\n",TheScienceStore->getInternalNameForScience(science).str()));
+	//DEBUG_LOG(("Adding Science %s",TheScienceStore->getInternalNameForScience(science).str()));
 
 	m_sciences.push_back(science);
 
 	// 'wake up' any special powers controlled by, well, stuff
-	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin(); 
-			 it != m_playerTeamPrototypes.end(); ++it) 
+	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin();
+			 it != m_playerTeamPrototypes.end(); ++it)
 	{
-		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance()) 
+		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance())
 		{
 			Team *team = iter.cur();
 			if (!team)
 				continue;
-			
-			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance()) 
+
+			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance())
 			{
 				Object *obj = iterObj.cur();
 				if (!obj)
@@ -2216,20 +2508,20 @@ Bool Player::addScience(ScienceType science)
 
 	// notify the script engine
 	TheScriptEngine->notifyOfAcquiredScience(getPlayerIndex(), science);
-	
+
 	return true;
 }
 
 //=============================================================================
 void Player::addSciencePurchasePoints(Int delta)
 {
-	//DEBUG_LOG(("Adding SciencePurchasePoints %d -> %d\n",m_sciencePurchasePoints,m_sciencePurchasePoints+delta));
+	//DEBUG_LOG(("Adding SciencePurchasePoints %d -> %d",m_sciencePurchasePoints,m_sciencePurchasePoints+delta));
 	Int oldSPP = m_sciencePurchasePoints;
 	m_sciencePurchasePoints += delta;
 	if (m_sciencePurchasePoints < 0)
 		m_sciencePurchasePoints = 0;
 
-	if (oldSPP != m_sciencePurchasePoints && TheControlBar != NULL)
+	if (oldSPP != m_sciencePurchasePoints && TheControlBar != nullptr)
 		TheControlBar->onPlayerSciencePurchasePointsChanged(this);
 
 }
@@ -2239,7 +2531,7 @@ Bool Player::attemptToPurchaseScience(ScienceType science)
 {
 	if (!isCapableOfPurchasingScience(science))
 	{
-		DEBUG_CRASH(("isCapableOfPurchasingScience: need other prereqs/points to purchase, request is ignored!\n"));
+		DEBUG_CRASH(("isCapableOfPurchasingScience: need other prereqs/points to purchase, request is ignored!"));
 		return false;
 	}
 
@@ -2254,7 +2546,7 @@ Bool Player::grantScience(ScienceType science)
 {
 	if (!TheScienceStore->isScienceGrantable(science))
 	{
-		DEBUG_CRASH(("Cannot grant science %s, since it is marked as nonGrantable.\n",TheScienceStore->getInternalNameForScience(science).str()));
+		DEBUG_CRASH(("Cannot grant science %s, since it is marked as nonGrantable.",TheScienceStore->getInternalNameForScience(science).str()));
 		return false;	// it's not grantable, so tough, can't have it, even via this method.
 	}
 
@@ -2314,7 +2606,7 @@ void Player::resetRank()
 /// returns TRUE if rank level really changed.
 Bool Player::setRankLevel(Int newLevel)
 {
-	if (newLevel < 1) 
+	if (newLevel < 1)
 		newLevel = 1;
 	else if (newLevel > TheRankInfoStore->getRankLevelCount())
 		newLevel = TheRankInfoStore->getRankLevelCount();
@@ -2325,7 +2617,7 @@ Bool Player::setRankLevel(Int newLevel)
 	if (newLevel == m_rankLevel)
 		return false;
 
-	//DEBUG_LOG(("Set Rank Level %d -> %d\n",m_rankLevel,newLevel));
+	//DEBUG_LOG(("Set Rank Level %d -> %d",m_rankLevel,newLevel));
 
 	Int oldSPP = m_sciencePurchasePoints;
 
@@ -2364,9 +2656,9 @@ Bool Player::setRankLevel(Int newLevel)
 	m_rankLevel = newLevel;
 
 	DEBUG_ASSERTCRASH(m_skillPoints >= m_levelDown && m_skillPoints < m_levelUp, ("hmm, wrong"));
-	//DEBUG_LOG(("Rank %d, Skill %d, down %d, up %d\n",m_rankLevel,m_skillPoints, m_levelDown, m_levelUp));
+	//DEBUG_LOG(("Rank %d, Skill %d, down %d, up %d",m_rankLevel,m_skillPoints, m_levelDown, m_levelUp));
 
-	if (TheControlBar != NULL)
+	if (TheControlBar != nullptr)
 	{
 		if( m_levelUp )
 		{
@@ -2481,10 +2773,10 @@ Bool Player::canBuild(const ThingTemplate *tmplate) const
 
 	if (tmplate->getBuildable() == BSTATUS_IGNORE_PREREQUISITES)
 		return true;
-	
+
 	if (tmplate->getBuildable() == BSTATUS_ONLY_BY_AI && getPlayerType() != PLAYER_COMPUTER)
 		return false;
-	
+
 	// else BSTATUS tmplate->getBuildable() == BSTATUS_YES
 	{
 
@@ -2497,7 +2789,7 @@ Bool Player::canBuild(const ThingTemplate *tmplate) const
 				prereqsOK = false;
 		}
 
-#if defined(_DEBUG) || defined(_INTERNAL)
+#if defined(RTS_DEBUG)
 		if (ignoresPrereqs())
 			prereqsOK = true;
 #endif
@@ -2523,7 +2815,7 @@ Bool Player::canAffordBuild( const ThingTemplate *whatToBuild ) const
 }
 
 //=================================================================================================
-void Player::deleteUpgradeList( void )
+void Player::deleteUpgradeList()
 {
 	Upgrade *next;
 
@@ -2532,16 +2824,16 @@ void Player::deleteUpgradeList( void )
 	{
 
 		next = m_upgradeList->friend_getNext();
-		m_upgradeList->deleteInstance();
+		deleteInstance(m_upgradeList);
 		m_upgradeList = next;
 
-	}  // end while
+	}
 
 	// This doesn't call removeUpgrade, so clear these ourselves.
-	m_upgradesInProgress = 0;
-	m_upgradesCompleted = 0;
+	m_upgradesInProgress.clear();
+	m_upgradesCompleted.clear();
 
-}  // end deleteUpgradeList
+}
 
 //=================================================================================================
 /** Find an upgrade in our list of upgrades with matching name key */
@@ -2554,27 +2846,27 @@ Upgrade *Player::findUpgrade( const UpgradeTemplate *upgradeTemplate )
 		if( upgrade->getTemplate() == upgradeTemplate )
 			return upgrade;
 
-	return NULL;
-	
-}  // end findUpgrade
+	return nullptr;
+
+}
 
 //=================================================================================================
 /** Does the player have this completed upgrade */
 //=================================================================================================
-Bool Player::hasUpgradeComplete( const UpgradeTemplate *upgradeTemplate )
+Bool Player::hasUpgradeComplete( const UpgradeTemplate *upgradeTemplate ) const
 {
-	Int64 testMask = upgradeTemplate->getUpgradeMask();
+	const UpgradeMaskType& testMask = upgradeTemplate->getUpgradeMask();
 	return hasUpgradeComplete( testMask );
-} 
+}
 
 //=================================================================================================
-/** 
+/**
 	Does the player have this completed upgrade.  This form is exposed so Objects can do quick lookups.
 */
 //=================================================================================================
-Bool Player::hasUpgradeComplete( Int64 testMask )
+Bool Player::hasUpgradeComplete( const UpgradeMaskType& testMask ) const
 {
-	return BitTest( m_upgradesCompleted, testMask );
+	return m_upgradesCompleted.testForAll( testMask );
 }
 
 //=================================================================================================
@@ -2582,8 +2874,8 @@ Bool Player::hasUpgradeComplete( Int64 testMask )
 //=================================================================================================
 Bool Player::hasUpgradeInProduction( const UpgradeTemplate *upgradeTemplate )
 {
-	Int64 testMask = upgradeTemplate->getUpgradeMask();
-	return BitTest( m_upgradesInProgress, testMask );
+	const UpgradeMaskType& testMask = upgradeTemplate->getUpgradeMask();
+	return m_upgradesInProgress.testForAll( testMask );
 }
 
 //=================================================================================================
@@ -2594,61 +2886,61 @@ Upgrade *Player::addUpgrade( const UpgradeTemplate *upgradeTemplate, UpgradeStat
 	Upgrade *u = findUpgrade( upgradeTemplate );
 
 	// if no upgrade instance found, make a new one
-	if( u == NULL )
+	if( u == nullptr )
 	{
 
 		// make new one
 		u = newInstance(Upgrade)( upgradeTemplate );
-	
-		// tie to list	
-		u->friend_setPrev( NULL );
+
+		// tie to list
+		u->friend_setPrev( nullptr );
 		u->friend_setNext( m_upgradeList );
 		if( m_upgradeList )
 			m_upgradeList->friend_setPrev( u );
 		m_upgradeList = u;
 
-	}  // end if
+	}
 
 	// set the new status for the upgrade
 	u->setStatus( status );
 
 	// Update our Bitmasks
-	Int64 newMask = upgradeTemplate->getUpgradeMask();
+	const UpgradeMaskType& newMask = upgradeTemplate->getUpgradeMask();
 	if( status == UPGRADE_STATUS_IN_PRODUCTION )
 	{
-		BitSet( m_upgradesInProgress, newMask );
+		m_upgradesInProgress.set( newMask );
 	}
 	else if( status == UPGRADE_STATUS_COMPLETE )
 	{
-		BitClear( m_upgradesInProgress, newMask );
-		BitSet( m_upgradesCompleted, newMask );
+		m_upgradesInProgress.clear( newMask );
+		m_upgradesCompleted.set( newMask );
 		onUpgradeCompleted( upgradeTemplate );
 	}
 
 	return u;
 
-}  // end addUpgrade
+}
 
 //=================================================================================================
-/** 
-	An upgrade just finished, do things like tell all objects to recheck UpgradeModules 
-*/  
+/**
+	An upgrade just finished, do things like tell all objects to recheck UpgradeModules
+*/
 void Player::onUpgradeCompleted( const UpgradeTemplate *upgradeTemplate )
 {
-	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin(); 
-			 it != m_playerTeamPrototypes.end(); ++it) 
+	for (PlayerTeamList::iterator it = m_playerTeamPrototypes.begin();
+			 it != m_playerTeamPrototypes.end(); ++it)
 	{
-		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance()) 
+		for (DLINK_ITERATOR<Team> iter = (*it)->iterate_TeamInstanceList(); !iter.done(); iter.advance())
 		{
 			Team *team = iter.cur();
-			if( team == NULL ) 
+			if( team == nullptr )
 			{
 				continue;
 			}
-			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance()) 
+			for (DLINK_ITERATOR<Object> iterObj = team->iterate_TeamMemberList(); !iterObj.done(); iterObj.advance())
 			{
 				Object *obj = iterObj.cur();
-				if( obj == NULL ) 
+				if( obj == nullptr )
 				{
 					continue;
 				}
@@ -2668,7 +2960,7 @@ void Player::onUpgradeCompleted( const UpgradeTemplate *upgradeTemplate )
 void Player::removeUpgrade( const UpgradeTemplate *upgradeTemplate )
 {
 	Upgrade *upgrade = findUpgrade( upgradeTemplate );
-	
+
 	if( upgrade )
 	{
 		if( upgrade->friend_getNext() )
@@ -2679,32 +2971,32 @@ void Player::removeUpgrade( const UpgradeTemplate *upgradeTemplate )
 			m_upgradeList = upgrade->friend_getNext();
 
 		// Clear this upgrade's bits from our mind
-		Int64 oldMask = upgradeTemplate->getUpgradeMask();
-		BitClear( m_upgradesInProgress, oldMask );
-		BitClear( m_upgradesCompleted, oldMask );
+		const UpgradeMaskType& oldMask = upgradeTemplate->getUpgradeMask();
+		m_upgradesInProgress.clear( oldMask );
+		m_upgradesCompleted.clear( oldMask );
 
 		if( upgrade->getStatus() == UPGRADE_STATUS_COMPLETE )
 			onUpgradeRemoved();
 
-	}  // end if
-
-}  // end removeUpgrade
+		deleteInstance(upgrade);
+	}
+}
 
 
 //-------------------------------------------------------------------------------------------------
-Bool Player::okToPlayRadarEdgeSound( void )
+Bool Player::okToPlayRadarEdgeSound()
 {
 	return (
-		! TheVictoryConditions->hasSinglePlayerBeenDefeated( this ) 
-		&& ! m_isPlayerDead 
+		! TheVictoryConditions->hasSinglePlayerBeenDefeated( this )
+		&& ! m_isPlayerDead
 		&& ! TheInGameUI->isClientQuiet()
-		&& TheGameLogic->isInGameLogicUpdate() 
+		&& TheGameLogic->isInGameLogicUpdate()
 		&& TheGameLogic->getFrame() > 0 );
 
 }
 
 //-------------------------------------------------------------------------------------------------
-/** The parameter object has just aquired a radar */
+/** The parameter object has just acquired a radar */
 //-------------------------------------------------------------------------------------------------
 void Player::addRadar( Bool disableProof )
 {
@@ -2723,7 +3015,7 @@ void Player::addRadar( Bool disableProof )
 		soundToPlay.setPlayerIndex(getPlayerIndex());
 		TheAudio->addAudioEvent(&soundToPlay);
 	}
-}  // end addRadar
+}
 
 //-------------------------------------------------------------------------------------------------
 /** The parameter object has is taking its radar away from the player */
@@ -2733,20 +3025,20 @@ void Player::removeRadar( Bool disableProof )
 	Bool hadRadar = hasRadar();
 
 	// decrement count
-	DEBUG_ASSERTCRASH( m_radarCount > 0, ("removeRadar: An Object is taking its radar away, but the player radar count says they don't have radar!\n") );
+	DEBUG_ASSERTCRASH( m_radarCount > 0, ("removeRadar: An Object is taking its radar away, but the player radar count says they don't have radar!") );
 	--m_radarCount;
 
 	if( disableProof )
 		--m_disableProofRadarCount;// Disable proof is also in the normal refcount
 
-	if( hadRadar && !hasRadar()	&& okToPlayRadarEdgeSound() ) 
+	if( hadRadar && !hasRadar()	&& okToPlayRadarEdgeSound() )
 	{
 		// This player just lost radar, so play the "You lost Radar!" sound
 		AudioEventRTS soundToPlay = TheAudio->getMiscAudio()->m_radarOfflineSound;
 		soundToPlay.setPlayerIndex(getPlayerIndex());
 		TheAudio->addAudioEvent(&soundToPlay);
 	}
-}  // end removeRadar
+}
 
 //-------------------------------------------------------------------------------------------------
 void Player::disableRadar()
@@ -2754,8 +3046,8 @@ void Player::disableRadar()
 	Bool hadRadar = hasRadar();
 	m_radarDisabled = TRUE;
 
-	if( hadRadar  
-		&& !hasRadar() && okToPlayRadarEdgeSound() ) 
+	if( hadRadar
+		&& !hasRadar() && okToPlayRadarEdgeSound() )
 	{
 		// This player just lost radar, so play the "You lost Radar!" sound
 		AudioEventRTS soundToPlay = TheAudio->getMiscAudio()->m_radarOfflineSound;
@@ -2770,7 +3062,7 @@ void Player::enableRadar()
 	Bool hadRadar = hasRadar();
 	m_radarDisabled = FALSE;
 
-	if( !hadRadar && hasRadar() && okToPlayRadarEdgeSound() )  
+	if( !hadRadar && hasRadar() && okToPlayRadarEdgeSound() )
 	{
 		// This player just got radar, so play the "You have Radar!" sound
 		AudioEventRTS soundToPlay = TheAudio->getMiscAudio()->m_radarOnlineSound;
@@ -2822,7 +3114,7 @@ void Player::onPowerBrownOutChange( Bool brownOut )
 
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
-// SEVERAL OBJECTS (LIKE MULTIPLE COMMAND CENTERS) MAY HAVE MATCHING SETS OF SPECIAL POWERS 
+// SEVERAL OBJECTS (LIKE MULTIPLE COMMAND CENTERS) MAY HAVE MATCHING SETS OF SPECIAL POWERS
 // THIS KEEPS THEM IN SYNC SO IT LOOKS LIKE EACH SPECIAL POWER IS SHARED BETWEEN ALL
 
 void Player::addNewSharedSpecialPowerTimer( const SpecialPowerTemplate *temp, UnsignedInt frame )
@@ -2922,10 +3214,10 @@ void Player::friend_applyDifficultyBonusesForObject(Object* obj, Bool apply) con
 			BodyModuleInterface* body = obj->getBodyModule();
 			if (apply)
 				body->setMaxHealth(body->getMaxHealth() * healthFactor, PRESERVE_RATIO);
-			else 
+			else
 				body->setMaxHealth(body->getMaxHealth() / healthFactor, PRESERVE_RATIO);
 		}
-		static const WeaponBonusConditionType wbonus[PLAYERTYPE_COUNT][DIFFICULTY_COUNT] = 
+		static const WeaponBonusConditionType wbonus[PLAYERTYPE_COUNT][DIFFICULTY_COUNT] =
 		{
 			{
 				WEAPONBONUSCONDITION_SOLO_HUMAN_EASY,
@@ -2964,10 +3256,9 @@ Bool Player::doesObjectQualifyForBattlePlan( Object *obj ) const
 }
 
 //-------------------------------------------------------------------------------------------------
-// note, bonus is an in-out parm.
-void Player::changeBattlePlan( BattlePlanStatus plan, Int delta, BattlePlanBonuses *bonus )
+void Player::changeBattlePlan( BattlePlanStatus plan, Int delta, const BattlePlanBonusesData *bonus )
 {
-	DUMPBATTLEPLANBONUSES(bonus, this, NULL);
+	DUMPBATTLEPLANBONUSES(bonus, this, nullptr);
 	Bool addBonus = false;
 	Bool removeBonus = false;
 	switch( plan )
@@ -3019,22 +3310,24 @@ void Player::changeBattlePlan( BattlePlanStatus plan, Int delta, BattlePlanBonus
 	else if( removeBonus )
 	{
 		//First, inverse the bonuses
-		bonus->m_armorScalar				= 1.0f / __max( bonus->m_armorScalar, 0.01f );
-		bonus->m_sightRangeScalar		= 1.0f / __max( bonus->m_sightRangeScalar, 0.01f );
-		if( bonus->m_bombardment > 0 )
+		BattlePlanBonusesData invertedBonus = *bonus;
+
+		invertedBonus.m_armorScalar = 1.0f / __max(bonus->m_armorScalar, 0.01f);
+		invertedBonus.m_sightRangeScalar = 1.0f / __max(bonus->m_sightRangeScalar, 0.01f);
+		if (invertedBonus.m_bombardment > 0)
 		{
-			bonus->m_bombardment			= -1;
+			invertedBonus.m_bombardment = -1;
 		}
-		if( bonus->m_holdTheLine > 0 )
+		if (invertedBonus.m_holdTheLine > 0)
 		{
-			bonus->m_holdTheLine			= -1;	
+			invertedBonus.m_holdTheLine = -1;
 		}
-		if( bonus->m_searchAndDestroy > 0 )
+		if (invertedBonus.m_searchAndDestroy > 0)
 		{
-			bonus->m_searchAndDestroy	= -1;
+			invertedBonus.m_searchAndDestroy = -1;
 		}
 
-		applyBattlePlanBonusesForPlayerObjects( bonus );
+		applyBattlePlanBonusesForPlayerObjects(&invertedBonus);
 	}
 }
 
@@ -3062,11 +3355,11 @@ Int Player::getBattlePlansActiveSpecific( BattlePlanStatus plan ) const
 //------------------------------------------------------------------------------------------------
 static void localApplyBattlePlanBonusesToObject( Object *obj, void *userData )
 {
-	const BattlePlanBonuses* bonus = (const BattlePlanBonuses*)userData;
+	const BattlePlanBonusesData* bonus = static_cast<const BattlePlanBonusesData*>(userData);
 	Object *objectToValidate = obj;
 	Object *objectToModify = obj;
 
-	DEBUG_LOG(("localApplyBattlePlanBonusesToObject() - looking at object %d (%s)\n",
+	DEBUG_LOG(("localApplyBattlePlanBonusesToObject() - looking at object %d (%s)",
 		(objectToValidate)?objectToValidate->getID():INVALID_ID,
 		(objectToValidate)?objectToValidate->getTemplate()->getName().str():"<No Object>"));
 
@@ -3076,30 +3369,30 @@ static void localApplyBattlePlanBonusesToObject( Object *obj, void *userData )
 	if( isProjectile )
 	{
 		objectToValidate = TheGameLogic->findObjectByID( obj->getProducerID() );
-		DEBUG_LOG(("Object is a projectile - looking at object %d (%s) instead\n",
+		DEBUG_LOG(("Object is a projectile - looking at object %d (%s) instead",
 			(objectToValidate)?objectToValidate->getID():INVALID_ID,
 			(objectToValidate)?objectToValidate->getTemplate()->getName().str():"<No Object>"));
 	}
 	if( objectToValidate && objectToValidate->isAnyKindOf( bonus->m_validKindOf ) )
 	{
-		DEBUG_LOG(("Is valid kindof\n"));
+		DEBUG_LOG(("Is valid kindof"));
 		if( !objectToValidate->isAnyKindOf( bonus->m_invalidKindOf ) )
 		{
-			DEBUG_LOG(("Is not invalid kindof\n"));
+			DEBUG_LOG(("Is not invalid kindof"));
 			//Quite the trek eh? Now we can apply the bonuses!
 			if( !isProjectile )
 			{
-				DEBUG_LOG(("Is not projectile.  Armor scalar is %g\n", bonus->m_armorScalar));
+				DEBUG_LOG(("Is not projectile.  Armor scalar is %g", bonus->m_armorScalar));
 				//Really important to not apply certain bonuses like health augmentation to projectiles!
 				if( bonus->m_armorScalar != 1.0f )
 				{
 					BodyModuleInterface *body = objectToModify->getBodyModule();
 					body->applyDamageScalar( bonus->m_armorScalar );
-					CRCDEBUG_LOG(("Applying armor scalar of %g (%8.8X) to object %d (%ls) owned by player %d\n",
+					CRCDEBUG_LOG(("Applying armor scalar of %g (%8.8X) to object %d (%ls) owned by player %d",
 						bonus->m_armorScalar, AS_INT(bonus->m_armorScalar), objectToModify->getID(),
 						objectToModify->getTemplate()->getDisplayName().str(),
 						objectToModify->getControllingPlayer()->getPlayerIndex()));
-					DEBUG_LOG(("After apply, armor scalar is %g\n", body->getDamageScalar()));
+					DEBUG_LOG(("After apply, armor scalar is %g", body->getDamageScalar()));
 				}
 				if( bonus->m_sightRangeScalar != 1.0f )
 				{
@@ -3141,7 +3434,7 @@ static void localApplyBattlePlanBonusesToObject( Object *obj, void *userData )
 //-------------------------------------------------------------------------------------------------
 void Player::applyBattlePlanBonusesForObject( Object *obj ) const
 {
-	localApplyBattlePlanBonusesToObject( obj, m_battlePlanBonuses );
+	localApplyBattlePlanBonusesToObject( obj, static_cast<BattlePlanBonusesData*>(m_battlePlanBonuses) );
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -3149,39 +3442,38 @@ void Player::applyBattlePlanBonusesForObject( Object *obj ) const
 //-------------------------------------------------------------------------------------------------
 void Player::removeBattlePlanBonusesForObject( Object *obj ) const
 {
-	//Copy bonuses, and invert them.
-	BattlePlanBonuses* bonus = newInstance(BattlePlanBonuses);
-	*bonus = *m_battlePlanBonuses;
-	bonus->m_armorScalar					= 1.0f / __max( bonus->m_armorScalar, 0.01f );
-	bonus->m_sightRangeScalar			= 1.0f / __max( bonus->m_sightRangeScalar, 0.01f );
-	bonus->m_bombardment					= -ALL_PLANS; //Safe to remove as it clears the weapon bonus flag
-	bonus->m_searchAndDestroy			= -ALL_PLANS; //Safe to remove as it clears the weapon bonus flag
-	bonus->m_holdTheLine					= -ALL_PLANS; //Safe to remove as it clears the weapon bonus flag
+	//Create inverted bonuses.
+	BattlePlanBonusesData bonus;
+	bonus.m_armorScalar = 1.0f / __max( m_battlePlanBonuses->m_armorScalar, 0.01f );
+	bonus.m_sightRangeScalar = 1.0f / __max( m_battlePlanBonuses->m_sightRangeScalar, 0.01f );
+	bonus.m_bombardment = -ALL_PLANS; //Safe to remove as it clears the weapon bonus flag
+	bonus.m_searchAndDestroy = -ALL_PLANS; //Safe to remove as it clears the weapon bonus flag
+	bonus.m_holdTheLine = -ALL_PLANS; //Safe to remove as it clears the weapon bonus flag
+	bonus.m_validKindOf = m_battlePlanBonuses->m_validKindOf;
+	bonus.m_invalidKindOf = m_battlePlanBonuses->m_invalidKindOf;
 
-	DUMPBATTLEPLANBONUSES(bonus, this, obj);
-	localApplyBattlePlanBonusesToObject( obj, bonus );
-
-	bonus->deleteInstance();
+	DUMPBATTLEPLANBONUSES(&bonus, this, obj);
+	localApplyBattlePlanBonusesToObject( obj, &bonus );
 }
 
 //-------------------------------------------------------------------------------------------------
 //Battle plan bonuses changing, so apply to all of our objects!
 //-------------------------------------------------------------------------------------------------
-void Player::applyBattlePlanBonusesForPlayerObjects( const BattlePlanBonuses *bonus )
+void Player::applyBattlePlanBonusesForPlayerObjects( const BattlePlanBonusesData *bonus )
 {
-	DUMPBATTLEPLANBONUSES(bonus, this, NULL);
+	DUMPBATTLEPLANBONUSES(bonus, this, nullptr);
 
 	//Only allocate the battle plan bonuses if we actually use it!
 	if( !m_battlePlanBonuses )
 	{
-		DEBUG_LOG(("Allocating new m_battlePlanBonuses\n"));
-		m_battlePlanBonuses = newInstance( BattlePlanBonuses );	
-		*m_battlePlanBonuses = *bonus;
+		DEBUG_LOG(("Allocating new m_battlePlanBonuses"));
+		m_battlePlanBonuses = newInstance( BattlePlanBonuses );
+		*static_cast<BattlePlanBonusesData*>(m_battlePlanBonuses) = *bonus;
 	}
 	else
 	{
-		DEBUG_LOG(("Adding bonus into existing m_battlePlanBonuses\n"));
-		DUMPBATTLEPLANBONUSES(m_battlePlanBonuses, this, NULL);
+		DEBUG_LOG(("Adding bonus into existing m_battlePlanBonuses"));
+		DUMPBATTLEPLANBONUSES(m_battlePlanBonuses, this, nullptr);
 		//Just apply the differences by multiplying the scalars together (kindofs won't change)
 		//These bonuses are used for new objects that are created or objects that are transferred
 		//to our team.
@@ -3195,15 +3487,24 @@ void Player::applyBattlePlanBonusesForPlayerObjects( const BattlePlanBonuses *bo
 		m_battlePlanBonuses->m_searchAndDestroy			=	 MAX( 0, m_battlePlanBonuses->m_searchAndDestroy );
 	}
 
-	DUMPBATTLEPLANBONUSES(m_battlePlanBonuses, this, NULL);
-	iterateObjects( localApplyBattlePlanBonusesToObject, (void*)bonus );
+	DUMPBATTLEPLANBONUSES(m_battlePlanBonuses, this, nullptr);
+#if RETAIL_COMPATIBLE_CRC
+	iterateObjects( localApplyBattlePlanBonusesToObject, const_cast<BattlePlanBonusesData *>(bonus) );
+#else
+	// TheSuperHackers @bugfix Stubbjax 05/02/2026 Apply all bonuses the player has rather than just the most recent.
+	BattlePlanBonusesData newBonus = *m_battlePlanBonuses;
+	newBonus.m_armorScalar = bonus->m_armorScalar;
+	newBonus.m_sightRangeScalar = bonus->m_sightRangeScalar;
+
+	iterateObjects(localApplyBattlePlanBonusesToObject, &newBonus);
+#endif
 }
 
 
 //-------------------------------------------------------------------------------------------------
 /** Create a hotkey team based on this GameMessage */
 //-------------------------------------------------------------------------------------------------
-void Player::processCreateTeamGameMessage(Int hotkeyNum, GameMessage *msg) {
+void Player::processCreateTeamGameMessage(Int hotkeyNum, const GameMessage *msg) {
 	// GameMessage arguments are the object ID's of the objects that are to be in this team.
 
 	if ((hotkeyNum < 0) || (hotkeyNum >= NUM_HOTKEY_SQUADS)) {
@@ -3217,7 +3518,7 @@ void Player::processCreateTeamGameMessage(Int hotkeyNum, GameMessage *msg) {
 	for (UnsignedByte i = 0; i < numArgs; ++i) {
 		ObjectID objID = msg->getArgument(i)->objectID;
 		Object *obj = TheGameLogic->findObjectByID(objID);
-		if (obj != NULL) {
+		if (obj != nullptr) {
 			// first, remove it from any other hotkey squads it is in.
 			removeObjectFromHotkeySquad(obj);
 			m_squads[hotkeyNum]->addObject(obj);
@@ -3228,13 +3529,13 @@ void Player::processCreateTeamGameMessage(Int hotkeyNum, GameMessage *msg) {
 //-------------------------------------------------------------------------------------------------
 /** Select a hotkey team based on this GameMessage */
 //-------------------------------------------------------------------------------------------------
-void Player::processSelectTeamGameMessage(Int hotkeyNum, GameMessage *msg) {
+void Player::processSelectTeamGameMessage(Int hotkeyNum) {
 	if ((hotkeyNum < 0) || (hotkeyNum >= NUM_HOTKEY_SQUADS)) {
 		DEBUG_CRASH(("processSelectTeamGameMessage got an invalid hotkey number"));
 		return;
 	}
 
-	if (m_squads[hotkeyNum] == NULL) {
+	if (m_squads[hotkeyNum] == nullptr) {
 		return;
 	}
 
@@ -3242,7 +3543,7 @@ void Player::processSelectTeamGameMessage(Int hotkeyNum, GameMessage *msg) {
 
 	VecObjectPtr objectList = m_squads[hotkeyNum]->getLiveObjects();
 	Int numObjs = objectList.size();
-	
+
 	for (Int i = 0; i < numObjs; ++i) {
 		m_currentSelection->addObject(objectList[i]);
 	}
@@ -3251,17 +3552,17 @@ void Player::processSelectTeamGameMessage(Int hotkeyNum, GameMessage *msg) {
 //-------------------------------------------------------------------------------------------------
 /** Select a hotkey team based on this GameMessage */
 //-------------------------------------------------------------------------------------------------
-void Player::processAddTeamGameMessage(Int hotkeyNum, GameMessage *msg) {
+void Player::processAddTeamGameMessage(Int hotkeyNum) {
 	if ((hotkeyNum < 0) || (hotkeyNum >= NUM_HOTKEY_SQUADS)) {
 		DEBUG_CRASH(("processAddTeamGameMessage got an invalid hotkey number"));
 		return;
 	}
 
-	if (m_squads[hotkeyNum] == NULL) {
+	if (m_squads[hotkeyNum] == nullptr) {
 		return;
 	}
 
-	if (m_currentSelection == NULL) {
+	if (m_currentSelection == nullptr) {
 		m_currentSelection = newInstance( Squad );
 	}
 
@@ -3277,7 +3578,7 @@ void Player::processAddTeamGameMessage(Int hotkeyNum, GameMessage *msg) {
 /** Select a hotkey team based on this GameMessage */
 //-------------------------------------------------------------------------------------------------
 void Player::getCurrentSelectionAsAIGroup(AIGroup *group) {
-	if (m_currentSelection != NULL) {
+	if (m_currentSelection != nullptr) {
 		m_currentSelection->aiGroupFromSquad(group);
 	}
 }
@@ -3286,13 +3587,13 @@ void Player::getCurrentSelectionAsAIGroup(AIGroup *group) {
 /** Select a hotkey team based on this GameMessage */
 //-------------------------------------------------------------------------------------------------
 void Player::setCurrentlySelectedAIGroup(AIGroup *group) {
-	if (m_currentSelection == NULL) {
+	if (m_currentSelection == nullptr) {
 		m_currentSelection = newInstance( Squad );
 	}
 
 	m_currentSelection->clearSquad();
 
-	if (group != NULL) {
+	if (group != nullptr) {
 		m_currentSelection->squadFromAIGroup(group, true);
 	}
 }
@@ -3300,12 +3601,12 @@ void Player::setCurrentlySelectedAIGroup(AIGroup *group) {
 //-------------------------------------------------------------------------------------------------
 /** Select a hotkey team based on this GameMessage */
 //-------------------------------------------------------------------------------------------------
-Squad *Player::getHotkeySquad(Int squadNumber) 
+Squad *Player::getHotkeySquad(Int squadNumber)
 {
 	if ((squadNumber >= 0) && (squadNumber < NUM_HOTKEY_SQUADS)) {
 		return m_squads[squadNumber];
 	}
-	return NULL;
+	return nullptr;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -3341,14 +3642,14 @@ void Player::removeObjectFromHotkeySquad(Object *objToRemove)
 /** Select a hotkey team based on this GameMessage */
 //-------------------------------------------------------------------------------------------------
 void Player::addAIGroupToCurrentSelection(AIGroup *group) {
-	if (group == NULL) {
+	if (group == nullptr) {
 		return;
 	}
 
-	if (m_currentSelection == NULL) {
+	if (m_currentSelection == nullptr) {
 		m_currentSelection = newInstance( Squad );
 	}
-	
+
 	VecObjectID objectIDVec = group->getAllIDs();
 	Int numObjs = objectIDVec.size();
 	for (Int i = 0; i < numObjs; ++i) {
@@ -3364,7 +3665,7 @@ void Player::addKindOfProductionCostChange(	KindOfMaskType kindOf, Real percent 
 	KindOfPercentProductionChangeListIt it = m_kindOfPercentProductionChangeList.begin();
 	while(it != m_kindOfPercentProductionChangeList.end())
 	{
-		
+
 		KindOfPercentProductionChange *tof = *it;
 		if( tof->m_percent == percent && tof->m_kindOf == kindOf)
 		{
@@ -3372,7 +3673,7 @@ void Player::addKindOfProductionCostChange(	KindOfMaskType kindOf, Real percent 
 			return;
 		}
 		++it;
-	}	
+	}
 
 	KindOfPercentProductionChange *newTof = newInstance( KindOfPercentProductionChange );
 	newTof->m_kindOf = kindOf;
@@ -3390,7 +3691,7 @@ void Player::removeKindOfProductionCostChange(	KindOfMaskType kindOf, Real perce
 	KindOfPercentProductionChangeListIt it = m_kindOfPercentProductionChangeList.begin();
 	while(it != m_kindOfPercentProductionChangeList.end())
 	{
-		
+
 		KindOfPercentProductionChange* tof = *it;
 		if( tof->m_percent == percent && tof->m_kindOf == kindOf)
 		{
@@ -3398,14 +3699,13 @@ void Player::removeKindOfProductionCostChange(	KindOfMaskType kindOf, Real perce
 			if(tof->m_ref == 0)
 			{
 				m_kindOfPercentProductionChangeList.erase( it );
-				if(tof)
-					tof->deleteInstance();
+				deleteInstance(tof);
 			}
 			return;
 		}
 		++it;
 	}
-	DEBUG_ASSERTCRASH(FALSE, ("removeKindOfProductionCostChange was called with kindOf=%d and percent=%f. We could not find the entry in the list with these variables. CLH.",kindOf, percent));
+	DEBUG_CRASH(("removeKindOfProductionCostChange was called with kindOf=%d and percent=%f. We could not find the entry in the list with these variables. CLH.",kindOf, percent));
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -3417,7 +3717,7 @@ Real Player::getProductionCostChangeBasedOnKindOf( KindOfMaskType kindOf ) const
 	KindOfPercentProductionChangeListIt it = m_kindOfPercentProductionChangeList.begin();
 	while(it != m_kindOfPercentProductionChangeList.end())
 	{
-		
+
 		KindOfPercentProductionChange *tof = *it;
 		if(TEST_KINDOFMASK_MULTI(kindOf, tof->m_kindOf, KINDOFMASK_NONE))
 		{
@@ -3459,7 +3759,7 @@ static void callHandleShroud( Object *obj, void * )
 // ------------------------------------------------------------------------------------------------
 void Player::setUnitsVisionSpied( Bool setting, PlayerIndex byWhom )
 {
-	Bool needRefresh = FALSE; // If this setting is an edge trigger on the reference count, I need 
+	Bool needRefresh = FALSE; // If this setting is an edge trigger on the reference count, I need
 	// to tell all of my guys to handleShroud so they will start/stop looking for the new team.
 
 	if( setting )
@@ -3478,7 +3778,7 @@ void Player::setUnitsVisionSpied( Bool setting, PlayerIndex byWhom )
 	if( needRefresh )
 	{
 		PlayerMaskType workingMask = 0;
-		for (Int i = 0; i < MAX_PLAYER_COUNT; ++i) 
+		for (Int i = 0; i < MAX_PLAYER_COUNT; ++i)
 		{
 			if( m_visionSpiedBy[i] > 0 )
 				BitSet( workingMask, ( 1 << i ) );
@@ -3488,7 +3788,7 @@ void Player::setUnitsVisionSpied( Bool setting, PlayerIndex byWhom )
 
 		m_visionSpiedMask = workingMask;
 
-		iterateObjects( callHandleShroud, NULL );
+		iterateObjects( callHandleShroud, nullptr );
 	}
 }
 
@@ -3499,30 +3799,30 @@ PlayerMaskType Player::getVisionSpiedMask() const
 }
 
 // ------------------------------------------------------------------------------------------------
-Bool Player::isPlayerObserver(void) const
+Bool Player::isPlayerObserver() const
 {
 	return m_observer;
 }
 
 // ------------------------------------------------------------------------------------------------
-Bool Player::isPlayerDead(void) const
+Bool Player::isPlayerDead() const
 {
 	return m_isPlayerDead;
 }
 
 // ------------------------------------------------------------------------------------------------
-Bool Player::isPlayerActive(void) const
+Bool Player::isPlayerActive() const
 {
 	return !m_observer && !m_isPlayerDead;
 }
 
 // ------------------------------------------------------------------------------------------------
-Bool Player::isPlayableSide( void ) const
+Bool Player::isPlayableSide() const
 {
 
 	return m_playerTemplate ? m_playerTemplate->isPlayableSide() : FALSE;
-	
-}  // end isPlayableSide
+
+}
 
 // ------------------------------------------------------------------------------------------------
 /** CRC */
@@ -3530,12 +3830,12 @@ Bool Player::isPlayableSide( void ) const
 void Player::crc( Xfer *xfer )
 {
 	// Player battle plan bonuses
-	Bool battlePlanBonus = m_battlePlanBonuses != NULL;
+	Bool battlePlanBonus = m_battlePlanBonuses != nullptr;
 	xfer->xferBool( &battlePlanBonus );
-	CRCDEBUG_LOG(("Player %d[%ls] %s battle plans\n", m_playerIndex, m_playerDisplayName.str(), (battlePlanBonus)?"has":"doesn't have"));
+	CRCDEBUG_LOG(("Player %d[%ls] %s battle plans", m_playerIndex, m_playerDisplayName.str(), (battlePlanBonus)?"has":"doesn't have"));
 	if( m_battlePlanBonuses )
 	{
-		CRCDUMPBATTLEPLANBONUSES(m_battlePlanBonuses, this, NULL);
+		CRCDUMPBATTLEPLANBONUSES(m_battlePlanBonuses, this, nullptr);
 		xfer->xferReal( &m_battlePlanBonuses->m_armorScalar );
 		xfer->xferReal( &m_battlePlanBonuses->m_sightRangeScalar );
 		xfer->xferInt( &m_battlePlanBonuses->m_bombardment );
@@ -3544,14 +3844,14 @@ void Player::crc( Xfer *xfer )
 		m_battlePlanBonuses->m_validKindOf.xfer(xfer);
 		m_battlePlanBonuses->m_invalidKindOf.xfer(xfer);
 	}
-	
+
 	// People have reported memory hacking their points.  That would work since
 	// buttons are authoritative, and these points just unhided buttons.
 	// Same cheat principle as pulling NeedScience off your Generals buttons.
 	xfer->xferInt( &m_skillPoints );
 	xfer->xferInt( &m_sciencePurchasePoints );
-	
-}  // end crc
+
+}
 
 // ------------------------------------------------------------------------------------------------
 /** Xfer Method
@@ -3611,9 +3911,9 @@ void Player::xfer( Xfer *xfer )
 			// xfer upgrade data
 			xfer->xferSnapshot( upgrade );
 
-		}  // end for, upgrade
+		}
 
-	}  // end if, save
+	}
 	else
 	{
 		const UpgradeTemplate *upgradeTemplate;
@@ -3626,25 +3926,25 @@ void Player::xfer( Xfer *xfer )
 
 			// find template for this upgrade
 			upgradeTemplate = TheUpgradeCenter->findUpgrade( upgradeName );
-			
+
 			// sanity
-			if( upgradeTemplate == NULL )
+			if( upgradeTemplate == nullptr )
 			{
 
-				DEBUG_CRASH(( "Player::xfer - Unable to find upgrade '%s'\n", upgradeName.str() ));
+				DEBUG_CRASH(( "Player::xfer - Unable to find upgrade '%s'", upgradeName.str() ));
 				throw SC_INVALID_DATA;
 
-			}  // end if
+			}
 
 			// add upgrade to player, the status is invalid, but that's OK cause we're about to xfer it
 			upgrade = addUpgrade( upgradeTemplate, UPGRADE_STATUS_INVALID );
 
 			// xfer upgrade data
 			xfer->xferSnapshot( upgrade );
-						
-		}  // end for, i
 
-	}  // end else, load
+		}
+
+	}
 
 	// radar info
 	xfer->xferInt( &m_radarCount );
@@ -3680,9 +3980,9 @@ void Player::xfer( Xfer *xfer )
 			prototypeID = prototype->getID();
 			xfer->xferUser( &prototypeID, sizeof( TeamPrototypeID ) );
 
-		}  // end for
+		}
 
-	}  // end if, save
+	}
 	else
 	{
 
@@ -3700,20 +4000,20 @@ void Player::xfer( Xfer *xfer )
 			prototype = TheTeamFactory->findTeamPrototypeByID( prototypeID );
 
 			// sanity
-			if( prototype == NULL )
+			if( prototype == nullptr )
 			{
 
-				DEBUG_CRASH(( "Player::xfer - Unable to find team prototype by id\n" ));
+				DEBUG_CRASH(( "Player::xfer - Unable to find team prototype by id" ));
 				throw SC_INVALID_DATA;
 
-			}  // end if
+			}
 
 			// put in list
 			m_playerTeamPrototypes.push_back( prototype );
 
-		}  // end for, i
+		}
 
-	}  // end else, load
+	}
 
 	// build list info
 	UnsignedShort buildListInfoCount = 0;
@@ -3728,7 +4028,7 @@ void Player::xfer( Xfer *xfer )
 		for( buildListInfo = m_pBuildList; buildListInfo; buildListInfo = buildListInfo->getNext() )
 			xfer->xferSnapshot( buildListInfo );
 
-	}  // end if, save
+	}
 	else
 	{
 
@@ -3736,82 +4036,76 @@ void Player::xfer( Xfer *xfer )
 		// destroy any build list that we got from loading the bare bones map, note that deleting
 		// the head of these structures automatically deletes any links attached
 		//
-		if( m_pBuildList)
-			m_pBuildList->deleteInstance();
-		m_pBuildList = NULL;
+		deleteInstance(m_pBuildList);
+		m_pBuildList = nullptr;
 
 		// read each build list info
 		for( UnsignedShort i = 0; i < buildListInfoCount; ++i )
 		{
 
 			// allocate new build list
-			buildListInfo = newInstance( BuildListInfo );	
-			buildListInfo->setNextBuildList( NULL );
+			buildListInfo = newInstance( BuildListInfo );
+			buildListInfo->setNextBuildList( nullptr );
 
 			// attach to the *end* of the list in the player
-			if( m_pBuildList == NULL )
+			if( m_pBuildList == nullptr )
 				m_pBuildList = buildListInfo;
 			else
 			{
 				BuildListInfo *last = m_pBuildList;
 
-				while( last->getNext() != NULL )
+				while( last->getNext() != nullptr )
 					last = last->getNext();
 
 				last->setNextBuildList( buildListInfo );
 
-			}  // end else
+			}
 
 			// xfer data
 			xfer->xferSnapshot( buildListInfo );
 
-		}  // end for,i
+		}
 
-	}  // end else, load
+	}
 
-#if !defined(_PLAYTEST)
 	// ai player data
 	Bool aiPlayerPresent = m_ai ? TRUE : FALSE;
 	xfer->xferBool( &aiPlayerPresent );
-	if( (aiPlayerPresent == TRUE && m_ai == NULL) || (aiPlayerPresent == FALSE && m_ai != NULL) )
+	if( (aiPlayerPresent == TRUE && m_ai == nullptr) || (aiPlayerPresent == FALSE && m_ai != nullptr) )
 	{
 
-		DEBUG_CRASH(( "Player::xfer - m_ai present/missing mismatch\n" ));
-		throw SC_INVALID_DATA;;
+		DEBUG_CRASH(( "Player::xfer - m_ai present/missing mismatch" ));
+		throw SC_INVALID_DATA;
 
-	}  // end if
+	}
 	if( m_ai )
 		xfer->xferSnapshot( m_ai );
-#else
-	Bool aiPlayerPresent = FALSE;
-	xfer->xferBool( &aiPlayerPresent );
-#endif
 
 	// resource gathering manager
 	Bool resourceGatheringManagerPresent = m_resourceGatheringManager ? TRUE : FALSE;
 	xfer->xferBool( &resourceGatheringManagerPresent );
-	if( (resourceGatheringManagerPresent == TRUE && m_resourceGatheringManager == NULL) ||	
-			(resourceGatheringManagerPresent == FALSE && m_resourceGatheringManager != NULL ) )
+	if( (resourceGatheringManagerPresent == TRUE && m_resourceGatheringManager == nullptr) ||
+			(resourceGatheringManagerPresent == FALSE && m_resourceGatheringManager != nullptr ) )
 	{
 
-		DEBUG_CRASH(( "Player::xfer - m_resourceGatheringManager present/missing mismatch\n" ));
+		DEBUG_CRASH(( "Player::xfer - m_resourceGatheringManager present/missing mismatch" ));
 		throw SC_INVALID_DATA;
 
-	}  // end if
+	}
 	if( m_resourceGatheringManager )
 		xfer->xferSnapshot( m_resourceGatheringManager );
 
 	// tunnel tracking system
 	Bool tunnelTrackerPresent = m_tunnelSystem ? TRUE : FALSE;
 	xfer->xferBool( &tunnelTrackerPresent );
-	if( (tunnelTrackerPresent == TRUE && m_tunnelSystem == NULL) ||
-			(tunnelTrackerPresent == FALSE && m_tunnelSystem != NULL) )
+	if( (tunnelTrackerPresent == TRUE && m_tunnelSystem == nullptr) ||
+			(tunnelTrackerPresent == FALSE && m_tunnelSystem != nullptr) )
 	{
 
-		DEBUG_CRASH(( "Player::xfer - m_tunnelSystem present/missing mismatch\n" ));
+		DEBUG_CRASH(( "Player::xfer - m_tunnelSystem present/missing mismatch" ));
 		throw SC_INVALID_DATA;
 
-	}  // end if
+	}
 	if( m_tunnelSystem )
 		xfer->xferSnapshot( m_tunnelSystem );
 
@@ -3897,11 +4191,11 @@ void Player::xfer( Xfer *xfer )
 	// observer
 	xfer->xferBool( &m_observer );
 
-	if (version >= 2) 
+	if (version >= 2)
 	{
 		// current skill point modifier value
 		xfer->xferReal( &m_skillPointsModifier);
-	} 
+	}
 	else
 	{
 		m_skillPointsModifier = 1.0f;
@@ -3930,7 +4224,7 @@ void Player::xfer( Xfer *xfer )
 	// score keeper
 	xfer->xferSnapshot( &m_scoreKeeper );
 
-	
+
 
 
 
@@ -3961,27 +4255,27 @@ void Player::xfer( Xfer *xfer )
 			// ref
 			xfer->xferUnsignedInt( &entry->m_ref );
 
-		}  // end for
+		}
 
-	}  // end if, save
+	}
 	else
 	{
 
 		// sanity, list must be empty right now
-		if( m_kindOfPercentProductionChangeList.size() != 0 )
+		if( !m_kindOfPercentProductionChangeList.empty() )
 		{
 
-			DEBUG_CRASH(( "Player::xfer - m_kindOfPercentProductionChangeList should be empty but is not\n" ));
+			DEBUG_CRASH(( "Player::xfer - m_kindOfPercentProductionChangeList should be empty but is not" ));
 			throw SC_INVALID_DATA;
 
-		}  // end if
+		}
 
 		// read each entry
 		for( UnsignedInt i = 0; i < percentProductionChangeCount; ++i )
 		{
 
 			// allocate new entry
-			entry = newInstance( KindOfPercentProductionChange );	
+			entry = newInstance( KindOfPercentProductionChange );
 
 			// read data
 			entry->m_kindOf.xfer(xfer);
@@ -3991,9 +4285,9 @@ void Player::xfer( Xfer *xfer )
 			// put at end of list
 			m_kindOfPercentProductionChangeList.push_back( entry );
 
-		}  // end for i
+		}
 
-	}  // end else, load
+	}
 
 
 
@@ -4021,16 +4315,16 @@ void Player::xfer( Xfer *xfer )
 		}
 		else
 		{
-			if( m_specialPowerReadyTimerList.size() != 0 ) // sanity, list must be empty right now
+			if( !m_specialPowerReadyTimerList.empty() ) // sanity, list must be empty right now
 			{
-				DEBUG_CRASH(( "Player::xfer - m_specialPowerReadyTimerList should be empty but is not\n" ));
+				DEBUG_CRASH(( "Player::xfer - m_specialPowerReadyTimerList should be empty but is not" ));
 				throw SC_INVALID_DATA;
-			}  // end if
+			}
 
 			// read each entry
 			for( UnsignedInt i = 0; i < timerListSize; ++i )
 			{
-				SpecialPowerReadyTimerType timer;	
+				SpecialPowerReadyTimerType timer;
 
 				// read data
 				xfer->xferUnsignedInt( &timer.m_templateID );
@@ -4039,7 +4333,7 @@ void Player::xfer( Xfer *xfer )
 				// put at end of list
 				m_specialPowerReadyTimerList.push_back( timer );
 
-			}  // end for i
+			}
 		}
 	}
 	///////////////////////////////////////////////////////////////////////////
@@ -4053,24 +4347,24 @@ void Player::xfer( Xfer *xfer )
 	if( squadCount != NUM_HOTKEY_SQUADS )
 	{
 
-		DEBUG_CRASH(( "Player::xfer - size of m_squadCount array has changed\n" ));
+		DEBUG_CRASH(( "Player::xfer - size of m_squadCount array has changed" ));
 		throw SC_INVALID_DATA;
 
-	}  // end if
+	}
 	for( UnsignedShort i = 0; i < squadCount; ++i )
 	{
 
-		if( m_squads[ i ] == NULL )
+		if( m_squads[ i ] == nullptr )
 		{
 
-			DEBUG_CRASH(( "Player::xfer - NULL squad at index '%d'\n", i ));
+			DEBUG_CRASH(( "Player::xfer - null squad at index '%d'", i ));
 			throw SC_INVALID_DATA;
 
-		}  // end if
+		}
 
 		xfer->xferSnapshot( m_squads[ i ] );
 
-	}  // end for, i
+	}
 
 	// current squad selection
 	Bool currentSelectionPresent = m_currentSelection ? TRUE : FALSE;
@@ -4079,27 +4373,25 @@ void Player::xfer( Xfer *xfer )
 	{
 
 		// allocate squad if needed
-		if( m_currentSelection == NULL && xfer->getXferMode() == XFER_LOAD )
+		if( m_currentSelection == nullptr && xfer->getXferMode() == XFER_LOAD )
 			m_currentSelection = newInstance( Squad );
 
 		// xfer
 		xfer->xferSnapshot( m_currentSelection );
 
-	}  // end if
+	}
 
 	// Player battle plan bonuses
-	Bool battlePlanBonus = m_battlePlanBonuses != NULL;
+	Bool battlePlanBonus = m_battlePlanBonuses != nullptr;
 	xfer->xferBool( &battlePlanBonus ); //If we're loading, it just replaces the bool
 	if( xfer->getXferMode() == XFER_LOAD )
 	{
-		if (m_battlePlanBonuses)
-		{
-			m_battlePlanBonuses->deleteInstance();
-			m_battlePlanBonuses = NULL;
-		}
+		deleteInstance(m_battlePlanBonuses);
+		m_battlePlanBonuses = nullptr;
+
 		if ( battlePlanBonus )
 		{
-			m_battlePlanBonuses = newInstance( BattlePlanBonuses );	
+			m_battlePlanBonuses = newInstance( BattlePlanBonuses );
 		}
 	}
 	if( m_battlePlanBonuses )
@@ -4123,13 +4415,13 @@ void Player::xfer( Xfer *xfer )
 	else
 		m_unitsShouldHunt = FALSE;
 
-}  // end xfer
+}
 
 // ------------------------------------------------------------------------------------------------
 /** Load post process */
 // ------------------------------------------------------------------------------------------------
-void Player::loadPostProcess( void )
+void Player::loadPostProcess()
 {
 
-}  // end loadPostProcess
+}
 

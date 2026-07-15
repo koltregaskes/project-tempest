@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_TEAMBEHAVIOR_H__40A707E0_08CB_4544_9FF1_AF0DACAB02A6__INCLUDED_)
-#define AFX_TEAMBEHAVIOR_H__40A707E0_08CB_4544_9FF1_AF0DACAB02A6__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // TeamBehavior.h : header file
 //
 
@@ -45,7 +41,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(TeamBehavior)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -61,7 +57,7 @@ protected:
 	// Generated message map functions
 	//{{AFX_MSG(TeamBehavior)
 	afx_msg void OnSelchangeOnCreateScript();
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnTransportsReturn();
 	afx_msg void OnAvoidThreats();
 	afx_msg void OnSelchangeOnEnemySighted();
@@ -80,5 +76,3 @@ protected:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_TEAMBEHAVIOR_H__40A707E0_08CB_4544_9FF1_AF0DACAB02A6__INCLUDED_)

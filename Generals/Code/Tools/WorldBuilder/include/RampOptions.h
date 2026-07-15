@@ -16,7 +16,7 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// FILE: RampOptions.h 
+// FILE: RampOptions.h
 /*---------------------------------------------------------------------------*/
 /* EA Pacific                                                                */
 /* Confidential Information	                                                 */
@@ -32,12 +32,10 @@
 /*---------------------------------------------------------------------------*/
 
 #pragma once
-#ifndef _H_RAMPOPTIONS_
-#define _H_RAMPOPTIONS_
 
 // INCLUDES ///////////////////////////////////////////////////////////////////
 #include "OptionsPanel.h"
-#include "Resource.h"
+#include "resource.h"
 
 // DEFINES ////////////////////////////////////////////////////////////////////
 // TYPE DEFINES ///////////////////////////////////////////////////////////////
@@ -49,8 +47,8 @@ class RampOptions : public COptionsPanel
 	Real m_rampWidth;
 	public:
 		enum { IDD = IDD_RAMP_OPTIONS };
-		RampOptions(CWnd* pParent = NULL);
-		virtual ~RampOptions();
+		RampOptions(CWnd* pParent = nullptr);
+		virtual ~RampOptions() override;
 
 		Bool shouldApplyTheRamp();
 		Real getRampWidth() { return m_rampWidth; }
@@ -62,5 +60,3 @@ class RampOptions : public COptionsPanel
 };
 
 extern RampOptions* TheRampOptions;
-
-#endif /* _H_RAMPOPTIONS_ */

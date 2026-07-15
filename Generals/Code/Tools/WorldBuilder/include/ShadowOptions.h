@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_SHADOWOPTIONS_H__25CB23E2_9E42_44D4_BE83_4B89F87746DE__INCLUDED_)
-#define AFX_SHADOWOPTIONS_H__25CB23E2_9E42_44D4_BE83_4B89F87746DE__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // ShadowOptions.h : header file
 //
 
@@ -32,7 +28,7 @@ class ShadowOptions : public CDialog
 {
 // Construction
 public:
-	ShadowOptions(CWnd* pParent = NULL);   // standard constructor
+	ShadowOptions(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(ShadowOptions)
@@ -45,7 +41,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(ShadowOptions)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -56,7 +52,7 @@ protected:
 	Real m_intensity;
 
 protected:
-	void setShadowColor(void);
+	void setShadowColor();
 
 	// Generated message map functions
 	//{{AFX_MSG(ShadowOptions)
@@ -64,12 +60,10 @@ protected:
 	afx_msg void OnChangeBaEdit();
 	afx_msg void OnChangeGaEdit();
 	afx_msg void OnChangeRaEdit();
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_SHADOWOPTIONS_H__25CB23E2_9E42_44D4_BE83_4B89F87746DE__INCLUDED_)

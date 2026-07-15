@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_BlendMaterial_H__D3FF66C5_711D_4DAC_8A29_5EAAB5C3A23E__INCLUDED_)
-#define AFX_BlendMaterial_H__D3FF66C5_711D_4DAC_8A29_5EAAB5C3A23E__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // BlendMaterial.h : header file
 //
 
@@ -36,7 +32,7 @@ class BlendMaterial : public COptionsPanel
 {
 // Construction
 public:
-	BlendMaterial(CWnd* pParent = NULL);   // standard constructor
+	BlendMaterial(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(BlendMaterial)
@@ -49,10 +45,10 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(BlendMaterial)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	virtual void OnOK(){return;};  ///< Modeless dialogs don't OK, so eat this for modeless.
-	virtual void OnCancel(){return;}; ///< Modeless dialogs don't close on ESC, so eat this for modeless.
-	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult);
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
+	virtual void OnOK() override {return;};  ///< Modeless dialogs don't OK, so eat this for modeless.
+	virtual void OnCancel() override {return;}; ///< Modeless dialogs don't close on ESC, so eat this for modeless.
+	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult) override;
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -60,7 +56,7 @@ protected:
 	enum {MIN_TILE_SIZE=2, MAX_TILE_SIZE = 100};
 	// Generated message map functions
 	//{{AFX_MSG(BlendMaterial)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
@@ -72,21 +68,19 @@ protected:
 	CTreeCtrl								m_terrainTreeView;
 
 protected:
-	void updateTextures(void);
+	void updateTextures();
 	void addTerrain(const char *pPath, Int terrainNdx, HTREEITEM parent);
-	HTREEITEM findOrAdd(HTREEITEM parent, char *pLabel);
+	HTREEITEM findOrAdd(HTREEITEM parent, const char *pLabel);
 
 public:
-	static Int getBlendTexClass(void) {return m_currentBlendTexture;}
+	static Int getBlendTexClass() {return m_currentBlendTexture;}
 
 	static void setBlendTexClass(Int texClass);
 
 public:
 	Bool setTerrainTreeViewSelection(HTREEITEM parent, Int selection);
 
-}; 
+};
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_BlendMaterial_H__D3FF66C5_711D_4DAC_8A29_5EAAB5C3A23E__INCLUDED_)

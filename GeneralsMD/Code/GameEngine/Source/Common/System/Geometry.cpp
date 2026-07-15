@@ -24,9 +24,9 @@
 
 // FILE: Geometry.cpp /////////////////////////////////////////////////////////////////////////////
 // Author: Steven Johnson, Aug 2002
-// Desc:   
+// Desc:
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-#include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
+#include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
 #define DEFINE_GEOMETRY_NAMES
 
@@ -36,11 +36,6 @@
 #include "Common/RandomValue.h"
 #include "Common/Xfer.h"
 
-#ifdef _INTERNAL
-// for occasional debugging...
-//#pragma optimize("", off)
-//#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -151,7 +146,7 @@ static Real calcPointToLineDistSquared(const Coord3D& pt, const Coord3D& lineSta
 	}
 
   Real tmp = dot / lineLenSqr;
-	
+
 	closest.x = lineStart.x + tmp * line.x;
 	closest.y = lineStart.y + tmp * line.y;
 	closest.z = lineStart.z + tmp * line.z;
@@ -181,7 +176,7 @@ void GeometryInfo::calcPitches(const Coord3D& thisPos, const GeometryInfo& that,
 	Real dxy = sqrt(sqr(thatPos.x - thisCenter.x) + sqr(thatPos.y - thisCenter.y));
 
 	Real dz;
-	
+
 	/** @todo srj -- this could be better, by calcing it for all the corners, not just top-center
 		and bottom-center... oh well */
 	dz = (thatPos.z + that.getMaxHeightAbovePosition()) - thisCenter.z;
@@ -297,7 +292,7 @@ void GeometryInfo::get2DBounds(const Coord3D& geomCenter, Real angle, Region2D& 
 			bounds.lo.y = y;
 			bounds.hi.x = x;
 			bounds.hi.y = y;
-			
+
 			x = geomCenter.x + exc - eys;
 			y = geomCenter.y + eyc + exs;
 			if (bounds.lo.x > x) bounds.lo.x = x;
@@ -381,7 +376,7 @@ Bool GeometryInfo::isPointInFootprint(const Coord3D& geomCenter, const Coord3D& 
 }
 
 //=============================================================================
-void GeometryInfo::makeRandomOffsetWithinFootprint(Coord3D& pt) const
+void GeometryInfo::makeRandomOffsetWithinFootprint(Coord3D& pt, const RandomValueClass& random) const
 {
 	switch(m_type)
 	{
@@ -395,14 +390,14 @@ void GeometryInfo::makeRandomOffsetWithinFootprint(Coord3D& pt) const
 			Real distSqr;
 			do
 			{
-				pt.x = GameLogicRandomValueReal(-m_majorRadius, m_majorRadius);
-				pt.y = GameLogicRandomValueReal(-m_majorRadius, m_majorRadius);
+				pt.x = RandomValueReal(random, -m_majorRadius, m_majorRadius);
+				pt.y = RandomValueReal(random, -m_majorRadius, m_majorRadius);
 				pt.z = 0.0f;
 				distSqr = sqr(pt.x) + sqr(pt.y);
 			} while (distSqr > maxDistSqr);
 #else
-			Real radius = GameLogicRandomValueReal(0.0f, m_boundingCircleRadius);
-			Real angle = GameLogicRandomValueReal(-PI, PI);
+			Real radius = RandomValueReal(random, 0.0f, m_boundingCircleRadius);
+			Real angle = RandomValueReal(random, -PI, PI);
 			pt.x = radius * Cos(angle);
 			pt.y = radius * Sin(angle);
 			pt.z = 0.0f;
@@ -412,8 +407,8 @@ void GeometryInfo::makeRandomOffsetWithinFootprint(Coord3D& pt) const
 
 		case GEOMETRY_BOX:
 		{
-			pt.x = GameLogicRandomValueReal(-m_majorRadius, m_majorRadius);
-			pt.y = GameLogicRandomValueReal(-m_minorRadius, m_minorRadius);
+			pt.x = RandomValueReal(random, -m_majorRadius, m_majorRadius);
+			pt.y = RandomValueReal(random, -m_minorRadius, m_minorRadius);
 			pt.z = 0.0f;
 			break;
 		}
@@ -518,7 +513,7 @@ void GeometryInfo::calcBoundingStuff()
 	};
 }
 
-#if defined(_DEBUG) || defined(_INTERNAL)
+#if defined(RTS_DEBUG)
 //=============================================================================
 void GeometryInfo::tweakExtents(ExtentModType extentModType, Real extentModAmount)
 {
@@ -542,7 +537,7 @@ void GeometryInfo::tweakExtents(ExtentModType extentModType, Real extentModAmoun
 }
 #endif
 
-#if defined(_DEBUG) || defined(_INTERNAL)
+#if defined(RTS_DEBUG)
 //=============================================================================
 AsciiString GeometryInfo::getDescriptiveString() const
 {
@@ -558,7 +553,7 @@ AsciiString GeometryInfo::getDescriptiveString() const
 void GeometryInfo::crc( Xfer *xfer )
 {
 
-}  // end crc
+}
 
 // ------------------------------------------------------------------------------------------------
 /** Xfer method
@@ -594,12 +589,12 @@ void GeometryInfo::xfer( Xfer *xfer )
 	// bounding sphere radius
 	xfer->xferReal( &m_boundingSphereRadius );
 
-}  // end xfer
+}
 
 // ------------------------------------------------------------------------------------------------
 /** Load post process */
 // ------------------------------------------------------------------------------------------------
-void GeometryInfo::loadPostProcess( void )
+void GeometryInfo::loadPostProcess()
 {
 
-}  // end loadPostProcess
+}

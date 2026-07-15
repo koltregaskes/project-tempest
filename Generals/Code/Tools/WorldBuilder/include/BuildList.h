@@ -16,12 +16,8 @@
 **	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(AFX_BuildList_H__D3FF66C5_7107_4DAC_8A29_5EBAB5C3A24E__INCLUDED_)
-#define AFX_BuildList_H__D3FF66C5_7107_4DAC_8A29_5EBAB5C3A24E__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 // BuildList.h : header file
 //
 
@@ -38,9 +34,9 @@ class BuildList : public COptionsPanel, public PopupSliderOwner
 {
 // Construction
 public:
- 	BuildList(CWnd* pParent = NULL);   ///< standard constructor
+ 	BuildList(CWnd* pParent = nullptr);   ///< standard constructor
 
-	~BuildList(void);   ///< standard destructor
+	virtual ~BuildList() override;   ///< standard destructor
 	enum { NAME_MAX_LEN = 64 };
 // Dialog Data
 	//{{AFX_DATA(BuildList)
@@ -53,9 +49,9 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(BuildList)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	virtual void OnOK(){return;};  ///< Modeless dialogs don't OK, so eat this for modeless.
-	virtual void OnCancel(){return;}; ///< Modeless dialogs don't close on ESC, so eat this for modeless.
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
+	virtual void OnOK() override {return;};  ///< Modeless dialogs don't OK, so eat this for modeless.
+	virtual void OnCancel() override {return;}; ///< Modeless dialogs don't close on ESC, so eat this for modeless.
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -63,7 +59,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(BuildList)
-	virtual BOOL OnInitDialog();
+	virtual BOOL OnInitDialog() override;
 	afx_msg void OnSelchangeSidesCombo();
 	afx_msg void OnMoveUp();
 	afx_msg void OnMoveDown();
@@ -93,21 +89,19 @@ protected:
 	static Bool			m_updating;
 
 protected:
-	void loadSides(void);
-	void updateCurSide(void);
+	void loadSides();
+	void updateCurSide();
 
 public:
 	static void addBuilding(Coord3D loc, Real angle, AsciiString name);
-	static void update(void) {if (m_staticThis) m_staticThis->loadSides();};
+	static void update() {if (m_staticThis) m_staticThis->loadSides();};
 	static void setSelectedBuildList(BuildListInfo *pInfo);
 
-	virtual void GetPopSliderInfo(const long sliderID, long *pMin, long *pMax, long *pLineSize, long *pInitial);
-	virtual void PopSliderChanged(const long sliderID, long theVal);
-	virtual void PopSliderFinished(const long sliderID, long theVal);
+	virtual void GetPopSliderInfo(const long sliderID, long *pMin, long *pMax, long *pLineSize, long *pInitial) override;
+	virtual void PopSliderChanged(const long sliderID, long theVal) override;
+	virtual void PopSliderFinished(const long sliderID, long theVal) override;
 
-}; 
+};
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_BuildList_H__D3FF66C5_711D_4DAC_8A29_5EAAB5C3A23E__INCLUDED_)

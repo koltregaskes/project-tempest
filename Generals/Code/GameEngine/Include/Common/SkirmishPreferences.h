@@ -30,30 +30,34 @@
 
 #pragma once
 
-#ifndef __SKIRMISHPREFERENCES_H__
-#define __SKIRMISHPREFERENCES_H__
-
 //-----------------------------------------------------------------------------
 // USER INCLUDES //////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
 #include "Common/UserPreferences.h"
 
 //-----------------------------------------------------------------------------
-// SkirmishPreferences class 
+// SkirmishPreferences class
 //-----------------------------------------------------------------------------
 class SkirmishPreferences : public UserPreferences
 {
 public:
 	SkirmishPreferences();
-	virtual ~SkirmishPreferences();
-	virtual Bool write(void);
-	AsciiString getSlotList(void);
-	void setSlotList(void);
-	UnicodeString getUserName(void);		// convenience function
-	Int getPreferredFaction(void);			// convenience function
-	Int getPreferredColor(void);				// convenience function
-	AsciiString getPreferredMap(void);	// convenience function
-	Bool usesSystemMapDir(void);		// convenience function
-};
+	virtual ~SkirmishPreferences() override;
 
-#endif // __SKIRMISHPREFERENCES_H__
+	Bool loadFromIniFile();
+
+	virtual Bool write() override;
+	AsciiString getSlotList();
+	void setSlotList();
+	UnicodeString getUserName();		// convenience function
+	Int getPreferredFaction();			// convenience function
+	Int getPreferredColor();				// convenience function
+	AsciiString getPreferredMap();	// convenience function
+	Bool usesSystemMapDir();		// convenience function
+
+  Bool getSuperweaponRestricted() const;
+  void setSuperweaponRestricted( Bool superweaponRestricted);
+
+  Money getStartingCash() const;
+  void setStartingCash( const Money &startingCash );
+};
