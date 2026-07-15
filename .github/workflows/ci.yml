@@ -165,7 +165,9 @@ jobs:
   replaycheck-generalsmd:
     name: Replay Check GeneralsMD${{ matrix.preset && '' }}
     needs: build-generalsmd-vc6
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.generalsmd == 'true' || needs.detect-changes.outputs.shared == 'true' }}
+    # The encrypted retail-data fixture is private to the community repository. Downstream forks must explicitly
+    # provide an equivalent legal fixture and opt in with the REPLAY_CHECK_ENABLED repository variable.
+    if: ${{ (github.repository == 'TheSuperHackers/GeneralsGameCode' || vars.REPLAY_CHECK_ENABLED == 'true') && (github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.generalsmd == 'true' || needs.detect-changes.outputs.shared == 'true') }}
     strategy:
       matrix:
         include:
