@@ -74,6 +74,12 @@ if ($runtimeAsset.validation.material_passes_per_render_mesh -ne 1) {
     throw "Every Courier render submesh must use one material pass for Generals engine compatibility."
 }
 
+$expectedPristineTextures = @("ptcable.tga", "ptcyan.tga", "ptrubber.tga", "ptsteel.tga", "ptwhite.tga")
+$recordedPristineTextures = @($runtimeAsset.validation.texture_files | Sort-Object)
+if (($expectedPristineTextures -join ",") -ne ($recordedPristineTextures -join ",")) {
+    throw "The Courier pristine W3D texture roundtrip is incomplete: $($recordedPristineTextures -join ', ')"
+}
+
 if ((@($runtimeAsset.validation.house_color_meshes) -join ",") -ne "HouseColor0,HouseColor1") {
     throw "The Courier runtime asset must use the native HouseColor mesh convention in both LODs."
 }
@@ -90,5 +96,24 @@ if ($runtimeAsset.review.rdp_stability -ne "blocked_repeated_application_error_1
     throw "The known W3D Viewer RDP stability blocker must remain explicit."
 }
 
+$damagedRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-COURIER-002" }
+if (
+    $null -eq $damagedRuntimeAsset -or
+    $damagedRuntimeAsset.validation.export_mode -ne "HM" -or
+    $damagedRuntimeAsset.validation.roundtrip_import -ne "pass" -or
+    $damagedRuntimeAsset.validation.imported_render_mesh_count -ne 14 -or
+    $damagedRuntimeAsset.validation.imported_box_count -ne 1 -or
+    (@($damagedRuntimeAsset.validation.damage_meshes) -join ",") -ne "CRDMG0,CRDMG1" -or
+    $damagedRuntimeAsset.validation.damage_texture -ne "ptburn.tga" -or
+    $damagedRuntimeAsset.validation.powered_off_texture -ne "ptoff.tga"
+) {
+    throw "The Courier damaged-state HLOD contract is incomplete."
+}
+
+$textureAssets = @($manifest.assets | Where-Object { $_.asset_id -like "PT-TEXTURE-FG-COURIER-*" })
+if ($textureAssets.Count -ne 7) {
+    throw "The Courier requires exactly seven original, provenance-tracked runtime textures; found $($textureAssets.Count)."
+}
+
 $validated | Format-Table -AutoSize
-Write-Host "Validated $($validated.Count) Project Tempest assets, the Courier contract, and the manual-only renderer policy."
+Write-Host "Validated $($validated.Count) Project Tempest assets, textured pristine/damaged Courier HLODs, and the manual-only renderer policy."

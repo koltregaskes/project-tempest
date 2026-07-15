@@ -27,9 +27,23 @@ set_target_properties(project_tempest_demo PROPERTIES
     OUTPUT_NAME "ProjectTempestDemo${RTS_BUILD_OUTPUT_SUFFIX}"
 )
 
-add_custom_command(TARGET project_tempest_demo POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/Content/Art/W3D/courier.w3d"
-        "$<TARGET_FILE_DIR:project_tempest_demo>/courier.w3d"
-    VERBATIM
+set(PROJECT_TEMPEST_RUNTIME_ASSETS
+    "Content/Art/W3D/courier.w3d"
+    "Content/Art/W3D/courierd.w3d"
+    "Content/Art/Textures/ptburn.tga"
+    "Content/Art/Textures/ptcable.tga"
+    "Content/Art/Textures/ptcyan.tga"
+    "Content/Art/Textures/ptoff.tga"
+    "Content/Art/Textures/ptrubber.tga"
+    "Content/Art/Textures/ptsteel.tga"
+    "Content/Art/Textures/ptwhite.tga"
 )
+
+foreach(asset IN LISTS PROJECT_TEMPEST_RUNTIME_ASSETS)
+    add_custom_command(TARGET project_tempest_demo POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/${asset}"
+            "$<TARGET_FILE_DIR:project_tempest_demo>"
+        VERBATIM
+    )
+endforeach()

@@ -31,24 +31,86 @@ source_root = os.path.join(
     project_root, "ProjectTempest", "SourceAssets", "Models", "Freegrid", "Courier"
 )
 runtime_root = os.path.join(project_root, "ProjectTempest", "Content", "Art", "W3D")
+texture_root = os.path.join(project_root, "ProjectTempest", "Content", "Art", "Textures")
 evidence_root = os.path.join(project_root, "build", "courier-blockout")
 os.makedirs(source_root, exist_ok=True)
 os.makedirs(runtime_root, exist_ok=True)
+os.makedirs(texture_root, exist_ok=True)
 os.makedirs(evidence_root, exist_ok=True)
 
 blend_path = os.path.join(source_root, "courier-master-v1.blend")
+damaged_blend_path = os.path.join(source_root, "courier-damaged-v1.blend")
 preview_path = os.path.join(source_root, "courier-blockout-v1.png")
 top_preview_path = os.path.join(source_root, "courier-top-v1.png")
+damaged_preview_path = os.path.join(source_root, "courier-damaged-v1.png")
 w3d_path = os.path.join(runtime_root, "courier.w3d")
+damaged_w3d_path = os.path.join(runtime_root, "courierd.w3d")
 result_path = os.path.join(evidence_root, "result.json")
 
-bpy.ops.object.select_all(action="SELECT")
-bpy.ops.object.delete(use_global=False)
+def clear_scene_geometry():
+    for obj in list(bpy.data.objects):
+        bpy.data.objects.remove(obj, do_unlink=True)
+    for mesh in list(bpy.data.meshes):
+        if mesh.users == 0:
+            bpy.data.meshes.remove(mesh)
+    for collection in list(bpy.data.collections):
+        if collection.users == 0 or collection.name != bpy.context.scene.collection.name:
+            bpy.data.collections.remove(collection)
 
 
-def material(name, color, metallic=0.0, roughness=0.55, emission=None):
+clear_scene_geometry()
+
+
+texture_artifacts = []
+
+
+def create_texture(filename, base_color, accent_color, pattern):
+    size = 128
+    image = bpy.data.images.new(filename, width=size, height=size, alpha=True)
+    pixels = [0.0] * (size * size * 4)
+    for y in range(size):
+        for x in range(size):
+            noise = ((x * 17 + y * 31 + x * y * 7) % 97) / 96.0
+            seam = (x % 32 <= 1) or (y % 32 <= 1)
+            diagonal = ((x + (2 * y)) % 53) <= 1
+            if pattern == "rubber":
+                use_accent = ((x // 8) + (y // 8)) % 2 == 0
+                factor = 0.72 + (0.18 * noise)
+            elif pattern == "cable":
+                use_accent = (x % 24) <= 3
+                factor = 0.78 + (0.18 * noise)
+            elif pattern == "emissive":
+                use_accent = seam
+                factor = 0.90 + (0.10 * noise)
+            elif pattern == "burn":
+                use_accent = seam or diagonal or ((x * 5 + y * 3) % 41 < 5)
+                factor = 0.55 + (0.30 * noise)
+            else:
+                use_accent = seam or diagonal
+                factor = 0.72 + (0.24 * noise)
+            color = accent_color if use_accent else base_color
+            index = (y * size + x) * 4
+            pixels[index:index + 4] = [
+                min(1.0, color[0] * factor),
+                min(1.0, color[1] * factor),
+                min(1.0, color[2] * factor),
+                1.0,
+            ]
+    image.pixels = pixels
+    image.filepath_raw = os.path.join(texture_root, filename)
+    image.file_format = "TARGA_RAW"
+    image.save()
+    texture_artifacts.append(image.filepath_raw)
+    return image
+
+
+def material(name, color, metallic=0.0, roughness=0.55, emission=None, texture=None):
     mat = bpy.data.materials.new(name)
     mat.diffuse_color = (*color, 1.0)
+    mat.material_type = "VERTEX_MATERIAL"
+    mat.ambient = (0.30, 0.30, 0.30, 0.0)
+    mat.specular = (0.18, 0.18, 0.18) if metallic > 0.1 else (0.04, 0.04, 0.04)
+    mat.surface_type = "1" if metallic > 0.5 else "13"
     mat.use_nodes = True
     shader = mat.node_tree.nodes.get("Principled BSDF")
     if shader:
@@ -58,17 +120,45 @@ def material(name, color, metallic=0.0, roughness=0.55, emission=None):
         if emission:
             shader.inputs["Emission Color"].default_value = (*emission, 1.0)
             shader.inputs["Emission Strength"].default_value = 3.0
+        if texture is not None:
+            texture_node = mat.node_tree.nodes.new("ShaderNodeTexImage")
+            texture_node.image = texture
+            texture_node.location = (-360, 260)
+            mat.node_tree.links.new(texture_node.outputs["Color"], shader.inputs["Base Color"])
     return mat
 
 
-dark_steel = material("PT_DARK_STEEL", (0.055, 0.065, 0.07), metallic=0.75, roughness=0.38)
-off_white = material("PT_WORN_WHITE", (0.52, 0.47, 0.36), metallic=0.35, roughness=0.62)
-amber = material("PT_TEAM_AMBER", (0.74, 0.30, 0.025), metallic=0.35, roughness=0.48)
-rubber = material("PT_RUBBER", (0.018, 0.022, 0.024), metallic=0.0, roughness=0.9)
-cyan = material(
-    "PT_STATUS_CYAN", (0.015, 0.38, 0.45), metallic=0.1, roughness=0.25, emission=(0.0, 0.65, 0.8)
+steel_texture = create_texture("ptsteel.tga", (0.12, 0.15, 0.17), (0.35, 0.18, 0.07), "metal")
+white_texture = create_texture("ptwhite.tga", (0.72, 0.68, 0.55), (0.20, 0.16, 0.10), "metal")
+rubber_texture = create_texture("ptrubber.tga", (0.05, 0.06, 0.065), (0.11, 0.12, 0.12), "rubber")
+cyan_texture = create_texture("ptcyan.tga", (0.02, 0.52, 0.62), (0.25, 0.95, 1.0), "emissive")
+cable_texture = create_texture("ptcable.tga", (0.38, 0.03, 0.02), (0.82, 0.22, 0.04), "cable")
+burn_texture = create_texture("ptburn.tga", (0.10, 0.075, 0.055), (0.015, 0.012, 0.010), "burn")
+off_texture = create_texture("ptoff.tga", (0.025, 0.035, 0.04), (0.11, 0.06, 0.025), "burn")
+
+dark_steel = material(
+    "PT_DARK_STEEL", (0.72, 0.72, 0.72), metallic=0.75, roughness=0.38, texture=steel_texture
 )
-cable_red = material("PT_CABLE_RED", (0.32, 0.025, 0.018), metallic=0.15, roughness=0.58)
+off_white = material(
+    "PT_WORN_WHITE", (0.82, 0.82, 0.82), metallic=0.35, roughness=0.62, texture=white_texture
+)
+amber = material("PT_TEAM_AMBER", (0.74, 0.30, 0.025), metallic=0.35, roughness=0.48)
+rubber = material(
+    "PT_RUBBER", (0.62, 0.62, 0.62), metallic=0.0, roughness=0.9, texture=rubber_texture
+)
+cyan = material(
+    "PT_STATUS_CYAN",
+    (0.75, 0.75, 0.75),
+    metallic=0.1,
+    roughness=0.25,
+    emission=(0.0, 0.65, 0.8),
+    texture=cyan_texture,
+)
+cable_red = material(
+    "PT_CABLE_RED", (0.75, 0.75, 0.75), metallic=0.15, roughness=0.58, texture=cable_texture
+)
+burn = material("PT_BURN", (0.68, 0.68, 0.68), metallic=0.1, roughness=0.9, texture=burn_texture)
+cyan_off = material("PT_STATUS_OFF", (0.65, 0.65, 0.65), roughness=0.8, texture=off_texture)
 
 vehicle_objects = []
 material_objects = {}
@@ -183,7 +273,7 @@ bpy.context.scene.camera = camera
 scene = bpy.context.scene
 scene.render.engine = "BLENDER_WORKBENCH"
 scene.display.shading.light = "STUDIO"
-scene.display.shading.color_type = "MATERIAL"
+scene.display.shading.color_type = "TEXTURE"
 scene.display.shading.show_shadows = True
 scene.display.shading.show_cavity = True
 scene.display.shading.cavity_type = "WORLD"
@@ -288,6 +378,22 @@ lod1_objects = [
     for lod0, (_mat, prefix, ratio) in zip(lod0_objects, mesh_specs)
 ]
 
+
+def quantize_uvs(objects, digits=5):
+    # Blender's primitive/decimate UV calculations can vary by one float LSB
+    # between clean processes. W3D stores float32 UVs directly, so quantise the
+    # authored source before export to keep runtime containers byte-stable.
+    for obj in objects:
+        for uv_layer in obj.data.uv_layers:
+            for uv_loop in uv_layer.data:
+                uv_loop.uv = (
+                    round(float(uv_loop.uv.x), digits),
+                    round(float(uv_loop.uv.y), digits),
+                )
+
+
+quantize_uvs(lod0_objects + lod1_objects)
+
 runtime_identifiers = [
     *(obj.name for obj in lod0_objects),
     *(obj.name for obj in lod1_objects),
@@ -312,9 +418,69 @@ export_result = bpy.ops.export_mesh.westwood_w3d(filepath=w3d_path, export_mode=
 if export_result != {"FINISHED"} or not os.path.isfile(w3d_path):
     fail(f"W3D export failed: {export_result}")
 
+# Produce a separate, deterministic damage-state HLOD. The production game data
+# will switch to this model at the REALLYDAMAGED threshold; keeping the state in
+# its own W3D matches the engine's model-condition path and avoids runtime mesh edits.
+for glow_name in ("CRGLOW0", "CRGLOW1"):
+    glow_object = bpy.data.objects.get(glow_name)
+    if glow_object is None or len(glow_object.data.materials) != 1:
+        fail(f"Damage-state source is missing {glow_name}")
+    glow_object.data.materials[0] = cyan_off
+
+bpy.ops.mesh.primitive_cube_add(location=(-0.52, 0.08, 1.285), rotation=(0.0, 0.0, math.radians(8.0)))
+damage_lod0 = bpy.context.active_object
+damage_lod0.name = "CRDMG0"
+damage_lod0.dimensions = (0.92, 0.74, 0.055)
+bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+damage_lod0.data.materials.append(burn)
+bevel = damage_lod0.modifiers.new("PT_DAMAGE_BEVEL", "BEVEL")
+bevel.width = 0.035
+bevel.segments = 1
+bpy.context.view_layer.objects.active = damage_lod0
+bpy.ops.object.modifier_apply(modifier=bevel.name)
+
+damage_lod1 = damage_lod0.copy()
+damage_lod1.data = damage_lod0.data.copy()
+damage_lod1.name = "CRDMG1"
+lod1_collection.objects.link(damage_lod1)
+quantize_uvs([damage_lod0, damage_lod1])
+
+# Knock the damaged sensor housing sideways while retaining the same material
+# and topology contract. This is deliberately readable from the RTS camera.
+for armor_name in ("CRARMOR0", "CRARMOR1"):
+    armor_object = bpy.data.objects.get(armor_name)
+    if armor_object is None:
+        fail(f"Damage-state source is missing {armor_name}")
+    for vertex in armor_object.data.vertices:
+        local_z = vertex.co.z
+        if local_z > 1.55:
+            vertex.co.y -= 0.20
+            vertex.co.z -= 0.22
+
+bpy.ops.wm.save_as_mainfile(filepath=damaged_blend_path)
+
+# Headless/offscreen damage-state evidence. No interactive Blender UI is used.
+bpy.ops.mesh.primitive_plane_add(size=30.0, location=(0.0, 0.0, 0.0))
+damage_ground = bpy.context.active_object
+damage_ground.name = "PT_DAMAGE_GROUND"
+damage_ground.data.materials.append(material("PT_DAMAGE_PREVIEW", (0.025, 0.03, 0.035), roughness=0.95))
+bpy.ops.object.camera_add(location=(-5.4, -6.2, 3.9))
+damage_camera = bpy.context.active_object
+damage_camera.name = "PT_DAMAGE_CAMERA"
+damage_camera.data.lens = 58.0
+damage_camera.rotation_euler = (Vector((0.0, 0.0, 0.85)) - damage_camera.location).to_track_quat("-Z", "Y").to_euler()
+scene.camera = damage_camera
+scene.render.filepath = damaged_preview_path
+bpy.ops.render.render(write_still=True)
+bpy.data.objects.remove(damage_ground, do_unlink=True)
+bpy.data.objects.remove(damage_camera, do_unlink=True)
+
+damaged_export_result = bpy.ops.export_mesh.westwood_w3d(filepath=damaged_w3d_path, export_mode="HM")
+if damaged_export_result != {"FINISHED"} or not os.path.isfile(damaged_w3d_path):
+    fail(f"Damaged W3D export failed: {damaged_export_result}")
+
 # Re-import the generated runtime file in the same clean process to catch malformed or empty exports immediately.
-bpy.ops.object.select_all(action="SELECT")
-bpy.ops.object.delete(use_global=False)
+clear_scene_geometry()
 import_result = bpy.ops.import_mesh.westwood_w3d(filepath=w3d_path)
 imported_meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
 imported_boxes = [obj for obj in imported_meshes if obj.data.object_type == "BOX"]
@@ -338,6 +504,24 @@ imported_collision_flags = (
     else set()
 )
 imported_vertex_count = sum(len(obj.data.vertices) for obj in imported_meshes)
+max_material_passes_per_render_mesh = max(
+    len(obj.data.materials) for obj in imported_render_meshes
+)
+imported_texture_files = sorted(
+    {
+        os.path.basename(node.image.filepath or node.image.name).lower()
+        for obj in imported_render_meshes
+        for imported_material in obj.data.materials
+        if imported_material is not None and imported_material.use_nodes
+        for node in imported_material.node_tree.nodes
+        if node.type == "TEX_IMAGE" and node.image is not None
+    }
+)
+expected_texture_files = sorted(
+    os.path.basename(path).lower()
+    for path in texture_artifacts
+    if os.path.basename(path).lower() not in {"ptburn.tga", "ptoff.tga"}
+)
 imported_lod_collections = [
     collection.name
     for collection in bpy.data.collections
@@ -351,6 +535,7 @@ if (
     or imported_house_color_meshes != ["HouseColor0", "HouseColor1"]
     or invalid_material_counts
     or imported_vertex_count == 0
+    or imported_texture_files != expected_texture_files
 ):
     fail(
         f"W3D re-import failed: result={import_result}, meshes={len(imported_meshes)}, "
@@ -358,7 +543,39 @@ if (
         f"collision_flags={sorted(imported_collision_flags)}, "
         f"house_color_meshes={imported_house_color_meshes}, "
         f"invalid_material_counts={invalid_material_counts}, "
+        f"textures={imported_texture_files}, expected_textures={expected_texture_files}, "
         f"vertices={imported_vertex_count}"
+    )
+
+# Validate the independent damaged HLOD and its explicit burn/power-off texture payload.
+clear_scene_geometry()
+damaged_import_result = bpy.ops.import_mesh.westwood_w3d(filepath=damaged_w3d_path)
+damaged_meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
+damaged_boxes = [obj for obj in damaged_meshes if obj.data.object_type == "BOX"]
+damaged_render_meshes = [obj for obj in damaged_meshes if obj.data.object_type != "BOX"]
+damaged_render_names = sorted(obj.name for obj in damaged_render_meshes)
+expected_damaged_render_names = sorted(expected_render_names + ["CRDMG0", "CRDMG1"])
+damaged_texture_files = sorted(
+    {
+        os.path.basename(node.image.filepath or node.image.name).lower()
+        for obj in damaged_render_meshes
+        for imported_material in obj.data.materials
+        if imported_material is not None and imported_material.use_nodes
+        for node in imported_material.node_tree.nodes
+        if node.type == "TEX_IMAGE" and node.image is not None
+    }
+)
+if (
+    damaged_import_result != {"FINISHED"}
+    or damaged_render_names != expected_damaged_render_names
+    or len(damaged_boxes) != 1
+    or "ptburn.tga" not in damaged_texture_files
+    or "ptoff.tga" not in damaged_texture_files
+):
+    fail(
+        f"Damaged W3D re-import failed: result={damaged_import_result}, "
+        f"render_meshes={damaged_render_names}, boxes={len(damaged_boxes)}, "
+        f"textures={damaged_texture_files}"
     )
 
 
@@ -369,6 +586,18 @@ def sha256(path):
 
 result = {
     "blend": {"path": os.path.relpath(blend_path, project_root), "sha256": sha256(blend_path)},
+    "damaged_blend": {
+        "path": os.path.relpath(damaged_blend_path, project_root),
+        "sha256": sha256(damaged_blend_path),
+    },
+    "damaged_preview": {
+        "path": os.path.relpath(damaged_preview_path, project_root),
+        "sha256": sha256(damaged_preview_path),
+    },
+    "damaged_w3d": {
+        "path": os.path.relpath(damaged_w3d_path, project_root),
+        "sha256": sha256(damaged_w3d_path),
+    },
     "blender_version": bpy.app.version_string,
     "concept_asset_id": "PT-CONCEPT-FG-COURIER-001",
     "export_result": sorted(export_result),
@@ -379,13 +608,19 @@ result = {
     "imported_mesh_count": len(imported_meshes),
     "imported_render_mesh_count": len(imported_render_meshes),
     "imported_house_color_meshes": imported_house_color_meshes,
-    "max_material_passes_per_render_mesh": max(
-        len(obj.data.materials) for obj in imported_render_meshes
-    ),
+    "imported_texture_files": imported_texture_files,
+    "damaged_import_result": sorted(damaged_import_result),
+    "damaged_render_mesh_count": len(damaged_render_meshes),
+    "damaged_texture_files": damaged_texture_files,
+    "max_material_passes_per_render_mesh": max_material_passes_per_render_mesh,
     "imported_vertex_count": imported_vertex_count,
     "lod0_vertex_count": lod0_vertex_count,
     "lod1_vertex_count": lod1_vertex_count,
     "source_part_count": source_part_count,
+    "textures": [
+        {"path": os.path.relpath(path, project_root), "sha256": sha256(path)}
+        for path in sorted(texture_artifacts)
+    ],
     "plugin_version": ".".join(str(part) for part in io_mesh_w3d.VERSION),
     "preview": {"path": os.path.relpath(preview_path, project_root), "sha256": sha256(preview_path)},
     "top_preview": {

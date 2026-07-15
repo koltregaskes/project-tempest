@@ -36,13 +36,13 @@
       "input_references": [
         "PT-CONCEPT-FG-COURIER-001"
       ],
-      "sha256": "6f0581bcbb207de5f3e127360fd4d2651d81bdc4a798c013384063583d6306fa",
+      "sha256": "8fbdc1156825c4a36ed7ae93019ca10b2f7b545543509b184ef2a87c9732f62b",
       "review": {
         "creative": "approved_as_first_editable_blockout",
         "top_down_readability": "pass",
         "lod_and_collision": "pass_scripted_lod0_lod1_and_box_source",
         "team_colour": "pass_native_housecolor_meshes_in_both_lods",
-        "production_geometry": "pending_damage_and_material_pass",
+        "production_geometry": "pass_textured_pristine_source",
         "public_distribution": "pending_explicit_rights_and_identity_review"
       },
       "distribution": "internal_development_only"
@@ -55,7 +55,7 @@
       "tool": "Blender 5.1.2 Workbench",
       "source_asset": "PT-MODEL-FG-COURIER-001",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "e5b68561cc8850197b33bb6854cd0b1b983296986783361249036f4c494b84ab",
+      "sha256": "7c7a5df9d690ade4ff81fbc10b73bdd2b495ad0d697e838d1a0585bc3a6a4bdf",
       "review": {
         "frame": "nonblank_1280x720",
         "silhouette": "pass",
@@ -71,7 +71,7 @@
       "tool": "Blender 5.1.2 Workbench",
       "source_asset": "PT-MODEL-FG-COURIER-001",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "eac17ada834c2a344e4f8577ba1fb559eefd5fef11b4518c39848e03b975a363",
+      "sha256": "39d153b297284153bf9d7a492d1c0c2abddcec22028051be0030f2dd58de3e33",
       "review": {
         "frame": "nonblank_1280x720",
         "top_down_silhouette": "pass",
@@ -83,13 +83,13 @@
     {
       "asset_id": "PT-RUNTIME-FG-COURIER-001",
       "path": "Content/Art/W3D/courier.w3d",
-      "role": "engine-format Courier blockout with hierarchy, LODs, collision, and native house-colour meshes",
+      "role": "engine-format textured Courier with hierarchy, LODs, collision, and native house-colour meshes",
       "origin": "exported_from_project_source",
       "tool": "OpenSAGE Blender plugin 0.7.3",
       "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
       "source_asset": "PT-MODEL-FG-COURIER-001",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "141fec8a5aea3d8b6a88c9bf959536093f2d6ff6f72b023d963882effa77ecb9",
+      "sha256": "9cbcbc1b458668956ed5d2ab45b8c6dc234415daaac0da346d366f846c180e62",
       "validation": {
         "repeat_export_hash_stable": true,
         "roundtrip_import": "pass",
@@ -101,6 +101,14 @@
         "imported_box_count": 1,
         "imported_vertex_count_after_w3d_splitting": 10998,
         "material_passes_per_render_mesh": 1,
+        "texture_roundtrip": "pass_five_pristine_tga_references",
+        "texture_files": [
+          "ptcable.tga",
+          "ptcyan.tga",
+          "ptrubber.tga",
+          "ptsteel.tga",
+          "ptwhite.tga"
+        ],
         "house_color_meshes": [
           "HouseColor0",
           "HouseColor1"
@@ -120,9 +128,143 @@
         "lod_roundtrip": "pass",
         "collision_roundtrip": "pass",
         "team_colour_roundtrip": "pass_native_housecolor_mesh_names",
-        "production_geometry": "pending_damage_and_material_pass",
+        "production_geometry": "pass_textured_lod0_lod1_and_collision",
+        "damage_state": "pass_separate_courierd_hlod_headless_roundtrip",
         "public_distribution": "pending_explicit_rights_and_identity_review"
       },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-FG-COURIER-002",
+      "path": "SourceAssets/Models/Freegrid/Courier/courier-damaged-v1.blend",
+      "role": "editable damaged-state export master with deformed sensor, burn plate, powered-off status material, LODs, and collision",
+      "faction": "Freegrid",
+      "subject": "Courier scout vehicle damaged state",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_asset": "PT-MODEL-FG-COURIER-001",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "866a57eb181d3d6bc3c7abe4d5910da0ee89717f977d9618a679fcea6ea5eb8b",
+      "review": {
+        "damage_readability": "pass_headless_preview_via_burn_plate_deformation_and_lights_off",
+        "runtime_mapping": "ready_for_reallydamaged_model_condition",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-FG-COURIER-003",
+      "path": "SourceAssets/Models/Freegrid/Courier/courier-damaged-v1.png",
+      "role": "headless damage-state review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-FG-COURIER-002",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "57470437ac9f8d7f484afb7cadbc9ae24b42f8f61e60a35b9f4ebc129fc7a9dc",
+      "review": {
+        "frame": "nonblank_1280x720",
+        "damage_cues": "pass_burn_plate_deformed_sensor_and_powered_off_cyan",
+        "automation_policy": "headless_offscreen_only"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-FG-COURIER-002",
+      "path": "Content/Art/W3D/courierd.w3d",
+      "role": "engine-format Courier damaged-state HLOD",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-FG-COURIER-002",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "287f1927cf5575ec20771595c716fa23bcd993b17aa2687f4722969e79747f0b",
+      "validation": {
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "imported_render_mesh_count": 14,
+        "imported_box_count": 1,
+        "damage_meshes": [
+          "CRDMG0",
+          "CRDMG1"
+        ],
+        "damage_texture": "ptburn.tga",
+        "powered_off_texture": "ptoff.tga"
+      },
+      "review": {
+        "damage_state": "pass_headless_hlod_and_texture_roundtrip",
+        "automation_policy": "manual_renderer_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-001",
+      "path": "Content/Art/Textures/ptsteel.tga",
+      "role": "Courier oxidised dark-steel base material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "e724262c30a6b1c795e1f87f592613ffbebb802b67452e3edc2c5c63ffebbd01",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-002",
+      "path": "Content/Art/Textures/ptwhite.tga",
+      "role": "Courier worn warm-white armour material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "4098b28d7db4fccc1e91d1ff7db60eacdfde0816ac8a8d657c8c713ce209b593",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-003",
+      "path": "Content/Art/Textures/ptrubber.tga",
+      "role": "Courier tyre and tread material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "ada6a20fa352109205941fcacd478660da7344a53f1a5064154636a3fb0896ca",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-004",
+      "path": "Content/Art/Textures/ptcyan.tga",
+      "role": "Courier powered cyan status-light material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "8cd6244b7d8b3b794c869b7254c09d5f0d4312c9d032775a632d9119ee613322",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-005",
+      "path": "Content/Art/Textures/ptcable.tga",
+      "role": "Courier insulated power-cable material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "6a9de313544cdca4a69768c3ef989a34d9b8b45cb154078563e4d1d20c6fedfe",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-006",
+      "path": "Content/Art/Textures/ptburn.tga",
+      "role": "Courier damage-state burn and scorch material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "ba6568d8546630529545f03fc4372b0bbbd058834a10702c5d26556e64803df7",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-007",
+      "path": "Content/Art/Textures/ptoff.tga",
+      "role": "Courier powered-off damage-state status material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "a73c9ddac40a6e66fa23780aaa592fb4ddc6f3d0877265c2ac188b5b76273986",
       "distribution": "internal_development_only"
     },
     {

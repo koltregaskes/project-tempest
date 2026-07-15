@@ -167,12 +167,17 @@ orthographic top-down review renders, and `ProjectTempest/Content/Art/W3D/courie
 team-colour meshes, and one oriented `BOUNDINGBOX` with physical, projectile, visibility, and vehicle collision flags.
 W3D `HM` export is hash-stable across regeneration; immediate round-trip import recovers twelve visible submeshes and
 one collision box (10,998 vertices after the plugin's W3D UV/material vertex splitting). The single-material topology
-keeps every mesh below the engine's four-pass ceiling. A CI-built `W3DViewV.exe` produced one manually captured HLOD
+keeps every mesh below the engine's four-pass ceiling. The production pass adds seven original deterministic 128×128
+TGA maps and a separate `courierd.w3d` HLOD with two burn meshes, a deformed sensor, powered-off status material, two
+LODs, and the same collision contract. Two clean headless generations produced byte-identical pristine and damaged W3Ds;
+empty-scene re-import recovered five pristine texture references plus explicit burn and powered-off damage references.
+A CI-built `W3DViewV.exe` produced one manually captured HLOD
 frame showing 3,424 polygons through the hash-pinned BSD-2-Clause d3d8to9 v1.15.1 bridge. Windows Application Error
 event 1000 subsequently recorded repeated access-violation and unhandled-exception crashes under Microsoft Remote
-Display, so the frame proves static geometry/HLOD loading but not renderer stability. M2 remains open until damage state,
-production materials/textures, in-engine team readability, data definition, selection bounds, and safe manual runtime
-verification on a suitable non-RDP desktop are proven.
+Display, so the frame proves static geometry/HLOD loading but not renderer stability. M2 remains open until damage-state data switching,
+in-engine team readability, data definition, selection bounds, and safe manual runtime verification on a suitable
+non-RDP desktop are proven; textured geometry and the separate damaged-state payload now pass the headless source and
+format gates.
 
 ### Windows no-visible-GUI policy
 

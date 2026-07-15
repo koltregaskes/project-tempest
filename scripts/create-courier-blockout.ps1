@@ -39,7 +39,23 @@ $result = Get-Content -Raw -LiteralPath $resultPath | ConvertFrom-Json
 if ($result.imported_mesh_count -lt 1 -or $result.imported_vertex_count -lt 1) {
     throw "Courier W3D roundtrip verification did not produce valid geometry."
 }
-foreach ($artifact in @($result.blend, $result.preview, $result.top_preview, $result.w3d)) {
+if ($result.imported_render_mesh_count -ne 12 -or $result.damaged_render_mesh_count -ne 14) {
+    throw "Courier pristine/damaged W3D roundtrip mesh counts are invalid."
+}
+if (@($result.imported_texture_files).Count -ne 5 -or @($result.textures).Count -ne 7) {
+    throw "Courier runtime texture generation or W3D texture roundtrip is incomplete."
+}
+$artifacts = @(
+    $result.blend,
+    $result.damaged_blend,
+    $result.preview,
+    $result.top_preview,
+    $result.damaged_preview,
+    $result.w3d,
+    $result.damaged_w3d
+) + @($result.textures)
+
+foreach ($artifact in $artifacts) {
     $artifactPath = Join-Path $repoRoot $artifact.path
     if (-not (Test-Path -LiteralPath $artifactPath)) {
         throw "Courier artifact is missing: '$artifactPath'."

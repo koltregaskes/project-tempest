@@ -27,13 +27,18 @@ hero/top-down review renders, and runtime W3D with:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\create-courier-blockout.ps1
 ```
 
-The generator splits each visual material into a single-pass render submesh, producing six submeshes per LOD plus a
+The generator authors seven deterministic 128×128 TGA material maps, then splits each visual material into a single-pass render submesh, producing six submeshes per LOD plus a
 `BOUNDINGBOX` collision primitive with physical, projectile, visibility, and vehicle flags. `HouseColor0` and
 `HouseColor1` deliberately use Generals' native mesh-name recolouring convention. It exports in W3D `HM` mode and
 immediately re-imports the file, failing unless all twelve render meshes, both house-colour meshes, and exactly one
 collision box survive the round trip. This one-material-per-submesh rule is required because the engine supports no more
 than four render passes per mesh. The W3D output is deterministic; Workbench preview PNG and Blender container hashes are
 recorded for the committed artifacts but are not deterministic build keys.
+
+The same headless run also creates `courierd.w3d`, a separate `REALLYDAMAGED`-ready HLOD with a dark burn plate,
+deformed sensor housing, powered-off cyan elements, two LODs, and the same collision contract. Both pristine and damaged
+models are re-imported in an empty Blender scene; the test fails unless all expected render meshes and texture references
+survive. The current executable package includes both W3Ds and all seven textures beside the executable.
 
 The runtime W3D has a captured frame from the repository's native `W3DViewV.exe`. The viewer is unstable under Microsoft
 Remote Display: repeated Application Error event 1000 crashes occurred even with the compatibility bridge. Therefore
