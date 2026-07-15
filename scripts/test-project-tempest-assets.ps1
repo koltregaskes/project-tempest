@@ -201,6 +201,12 @@ if (
 ) {
     throw "Project Tempest HUD drawing must restore the prior GDI font before scalable fonts can be deleted."
 }
+if (
+    $demoSource -notmatch [regex]::Escape('FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));') -or
+    $demoSource -notmatch [regex]::Escape('"ENTER  establish link and begin     [%s]  settings     ESC  exit"')
+) {
+    throw "Project Tempest briefing must render the current remappable settings shortcut."
+}
 
 foreach ($interfaceSource in @("Code/TempestInterface.cpp", "Code/TempestInterface.h")) {
     if ($cmakeContent -notmatch [regex]::Escape($interfaceSource)) {

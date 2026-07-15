@@ -1177,16 +1177,24 @@ void DrawModalOverlay(HDC device, const RECT &client, float scale)
     RECT body = { panel.left + padding, panel.top + ScalePixels(98.0F, scale), panel.right - padding, panel.bottom - padding };
     if (screen == Tempest::Ui::Screen::Briefing) {
         DrawLabel(device, g_hudTitleFont, RGB(226, 249, 250), title, "BLACK CURRENT / SUBSTATION 9");
+        char settingsKey[24];
+        FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
+        char briefing[640];
+        std::snprintf(
+            briefing,
+            sizeof(briefing),
+            "2089. Chorus has colonised the basin's abandoned control grid.\n\n"
+            "SELECT a Freegrid Courier. CAPTURE substations to earn salvage and grid charge. "
+            "BUILD Relays, PRODUCE Couriers, then destroy the Chorus Spire [C]. "
+            "If your Relay Core [F] falls, the district is lost.\n\n"
+            "ENTER  establish link and begin     [%s]  settings     ESC  exit",
+            settingsKey);
         DrawLabel(
             device,
             g_hudFont,
             RGB(195, 224, 228),
             body,
-            "2089. Chorus has colonised the basin's abandoned control grid.\n\n"
-            "SELECT a Freegrid Courier. CAPTURE substations to earn salvage and grid charge. "
-            "BUILD Relays, PRODUCE Couriers, then destroy the Chorus Spire [C]. "
-            "If your Relay Core [F] falls, the district is lost.\n\n"
-            "ENTER  establish link and begin     O  settings     ESC  exit",
+            briefing,
             DT_LEFT | DT_TOP | DT_WORDBREAK);
     } else if (screen == Tempest::Ui::Screen::Pause) {
         DrawLabel(device, g_hudTitleFont, RGB(226, 249, 250), title, "NETWORK PAUSED");
