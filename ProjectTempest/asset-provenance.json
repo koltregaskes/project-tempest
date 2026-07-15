@@ -1,0 +1,471 @@
+{
+  "schema_version": 1,
+  "project": "Project Tempest",
+  "public_distribution_default": "prohibited_until_reviewed",
+  "assets": [
+    {
+      "asset_id": "PT-CONCEPT-FG-COURIER-001",
+      "path": "SourceAssets/Concepts/Freegrid/Courier/courier-concept-v1.png",
+      "role": "internal concept and Blender blockout reference",
+      "faction": "Freegrid",
+      "subject": "Courier scout vehicle",
+      "origin": "generated_original",
+      "tool": "OpenAI built-in image generation",
+      "model": "not exposed by tool",
+      "generated_at_utc": "2026-07-15T09:10:29Z",
+      "prompt": "Use case: stylized-concept\nAsset type: game vehicle concept sheet for a real-time strategy unit, intended as the modelling reference for Blender\nPrimary request: design the Freegrid Courier, a compact four-wheeled cyberpunk scout vehicle made by a neighbourhood power collective in 2089 from an obsolete municipal electrical-maintenance cart\nScene/backdrop: clean neutral charcoal-grey industrial design-sheet background, no environment\nSubject: one consistent vehicle shown in a large high three-quarter RTS camera view plus smaller front, side, rear, and top orthographic views; low rugged chassis; four clearly separated wheels; asymmetric repaired body panels; exposed insulated power cables; a folding sensor mast; compact battery bank; practical tow and repair points; no driver visible; no large weapon\nStyle/medium: highly resolved AAA game vehicle concept art with believable industrial design, suitable for hard-surface 3D modelling; crisp shapes and production annotations expressed visually without written labels\nComposition/framing: landscape concept sheet, complete vehicle visible in every view, generous spacing, accurate proportions shared across all views, silhouette readable at normal RTS camera distance\nLighting/mood: controlled studio lighting that reveals planes and materials; grounded, utilitarian, rain-worn, quietly defiant rather than glossy or luxurious\nColor palette: oxidised dark steel, worn warm off-white, safety amber panels, restrained cyan status lights; avoid purple-and-pink neon cliché\nMaterials/textures: chipped paint, wet grime in seams, rubber tyres, ceramic insulators, brushed repair plates, visible bolts and cable clamps\nConstraints: original design; consistent geometry across every view; strong top-down silhouette; plausible wheel clearance and steering; no logos, no trademarks, no readable text, no watermark, no people, no city scene, no flying parts, no tank tracks, no sports-car styling, no excessive greebles, no visual resemblance to any Command & Conquer vehicle",
+      "input_references": [],
+      "edits": [],
+      "sha256": "8f6fea13a6870050672b952567908db9eb1d290fc81be384eb0f6c460b061863",
+      "review": {
+        "creative": "approved_for_internal_blockout",
+        "cross_view_consistency": "reference_only_not_exact_dimensions",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-FG-COURIER-001",
+      "path": "SourceAssets/Models/Freegrid/Courier/courier-master-v1.blend",
+      "role": "editable procedural export master with authored LOD and collision sources",
+      "faction": "Freegrid",
+      "subject": "Courier scout vehicle",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "input_references": [
+        "PT-CONCEPT-FG-COURIER-001"
+      ],
+      "sha256": "8fbdc1156825c4a36ed7ae93019ca10b2f7b545543509b184ef2a87c9732f62b",
+      "review": {
+        "creative": "approved_as_first_editable_blockout",
+        "top_down_readability": "pass",
+        "lod_and_collision": "pass_scripted_lod0_lod1_and_box_source",
+        "team_colour": "pass_native_housecolor_meshes_in_both_lods",
+        "production_geometry": "pass_textured_pristine_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-FG-COURIER-001",
+      "path": "SourceAssets/Models/Freegrid/Courier/courier-blockout-v1.png",
+      "role": "hero-angle blockout review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench",
+      "source_asset": "PT-MODEL-FG-COURIER-001",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "7c7a5df9d690ade4ff81fbc10b73bdd2b495ad0d697e838d1a0585bc3a6a4bdf",
+      "review": {
+        "frame": "nonblank_1280x720",
+        "silhouette": "pass",
+        "palette": "pass_with_dark_scene_contrast_risk"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-FG-COURIER-002",
+      "path": "SourceAssets/Models/Freegrid/Courier/courier-top-v1.png",
+      "role": "orthographic RTS-view blockout review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench",
+      "source_asset": "PT-MODEL-FG-COURIER-001",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "39d153b297284153bf9d7a492d1c0c2abddcec22028051be0030f2dd58de3e33",
+      "review": {
+        "frame": "nonblank_1280x720",
+        "top_down_silhouette": "pass",
+        "front_rear_readability": "pass_via_cyan_lamps_and_rear_battery_bank",
+        "asymmetry_readability": "pass_via_exposed_power_cable"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-FG-COURIER-001",
+      "path": "Content/Art/W3D/courier.w3d",
+      "role": "engine-format textured Courier with hierarchy, LODs, collision, and native house-colour meshes",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-FG-COURIER-001",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "9cbcbc1b458668956ed5d2ab45b8c6dc234415daaac0da346d366f846c180e62",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod0_vertex_count": 1800,
+        "authored_lod1_vertex_count": 760,
+        "imported_mesh_count": 13,
+        "imported_render_mesh_count": 12,
+        "imported_box_count": 1,
+        "imported_vertex_count_after_w3d_splitting": 10998,
+        "material_passes_per_render_mesh": 1,
+        "texture_roundtrip": "pass_five_pristine_tga_references",
+        "texture_files": [
+          "ptcable.tga",
+          "ptcyan.tga",
+          "ptrubber.tga",
+          "ptsteel.tga",
+          "ptwhite.tga"
+        ],
+        "house_color_meshes": [
+          "HouseColor0",
+          "HouseColor1"
+        ],
+        "collision_flags": [
+          "PHYSICAL",
+          "PROJECTILE",
+          "VIS",
+          "VEHICLE"
+        ],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "engine_render": "manual_capture_only_unstable_under_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "rdp_stability": "blocked_repeated_application_error_1000",
+        "lod_roundtrip": "pass",
+        "collision_roundtrip": "pass",
+        "team_colour_roundtrip": "pass_native_housecolor_mesh_names",
+        "production_geometry": "pass_textured_lod0_lod1_and_collision",
+        "damage_state": "pass_separate_courierd_hlod_headless_roundtrip",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-FG-COURIER-002",
+      "path": "SourceAssets/Models/Freegrid/Courier/courier-damaged-v1.blend",
+      "role": "editable damaged-state export master with deformed sensor, burn plate, powered-off status material, LODs, and collision",
+      "faction": "Freegrid",
+      "subject": "Courier scout vehicle damaged state",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_asset": "PT-MODEL-FG-COURIER-001",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "866a57eb181d3d6bc3c7abe4d5910da0ee89717f977d9618a679fcea6ea5eb8b",
+      "review": {
+        "damage_readability": "pass_headless_preview_via_burn_plate_deformation_and_lights_off",
+        "runtime_mapping": "ready_for_reallydamaged_model_condition",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-FG-COURIER-003",
+      "path": "SourceAssets/Models/Freegrid/Courier/courier-damaged-v1.png",
+      "role": "headless damage-state review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-FG-COURIER-002",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "57470437ac9f8d7f484afb7cadbc9ae24b42f8f61e60a35b9f4ebc129fc7a9dc",
+      "review": {
+        "frame": "nonblank_1280x720",
+        "damage_cues": "pass_burn_plate_deformed_sensor_and_powered_off_cyan",
+        "automation_policy": "headless_offscreen_only"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-FG-COURIER-002",
+      "path": "Content/Art/W3D/courierd.w3d",
+      "role": "engine-format Courier damaged-state HLOD",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-FG-COURIER-002",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "287f1927cf5575ec20771595c716fa23bcd993b17aa2687f4722969e79747f0b",
+      "validation": {
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "imported_render_mesh_count": 14,
+        "imported_box_count": 1,
+        "damage_meshes": [
+          "CRDMG0",
+          "CRDMG1"
+        ],
+        "damage_texture": "ptburn.tga",
+        "powered_off_texture": "ptoff.tga"
+      },
+      "review": {
+        "damage_state": "pass_headless_hlod_and_texture_roundtrip",
+        "automation_policy": "manual_renderer_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-001",
+      "path": "Content/Art/Textures/ptsteel.tga",
+      "role": "Courier oxidised dark-steel base material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "e724262c30a6b1c795e1f87f592613ffbebb802b67452e3edc2c5c63ffebbd01",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-002",
+      "path": "Content/Art/Textures/ptwhite.tga",
+      "role": "Courier worn warm-white armour material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "4098b28d7db4fccc1e91d1ff7db60eacdfde0816ac8a8d657c8c713ce209b593",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-003",
+      "path": "Content/Art/Textures/ptrubber.tga",
+      "role": "Courier tyre and tread material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "ada6a20fa352109205941fcacd478660da7344a53f1a5064154636a3fb0896ca",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-004",
+      "path": "Content/Art/Textures/ptcyan.tga",
+      "role": "Courier powered cyan status-light material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "8cd6244b7d8b3b794c869b7254c09d5f0d4312c9d032775a632d9119ee613322",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-005",
+      "path": "Content/Art/Textures/ptcable.tga",
+      "role": "Courier insulated power-cable material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "6a9de313544cdca4a69768c3ef989a34d9b8b45cb154078563e4d1d20c6fedfe",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-006",
+      "path": "Content/Art/Textures/ptburn.tga",
+      "role": "Courier damage-state burn and scorch material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "ba6568d8546630529545f03fc4372b0bbbd058834a10702c5d26556e64803df7",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-FG-COURIER-007",
+      "path": "Content/Art/Textures/ptoff.tga",
+      "role": "Courier powered-off damage-state status material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "a73c9ddac40a6e66fa23780aaa592fb4ddc6f3d0877265c2ac188b5b76273986",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-CH-DRONE-001",
+      "path": "SourceAssets/Models/Chorus/Drone/drone-master-v1.blend",
+      "role": "editable procedural Chorus Drone master with authored three-level LOD and collision sources",
+      "faction": "Chorus",
+      "subject": "Drone harassment unit",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "a0c8a6fae8d9961569263a1c8371ce18a9480be91d4676e5bb66390f1c71a270",
+      "review": {
+        "creative": "approved_as_dedicated_chorus_runtime_blockout",
+        "top_down_readability": "pass_distinct_three_arm_radial_silhouette",
+        "faction_readability": "pass_magenta_machine_palette",
+        "lod_and_collision": "pass_scripted_three_lods_and_box_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-CH-DRONE-001",
+      "path": "SourceAssets/Models/Chorus/Drone/drone-top-v1.png",
+      "role": "orthographic RTS-view Chorus Drone review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-CH-DRONE-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "da25da87dff6211d507f660567f3c768b24440ae5b9db8ef9f49d37b30058733",
+      "review": {
+        "frame": "nonblank_960x720",
+        "top_down_silhouette": "pass",
+        "faction_contrast": "pass_magenta_emissive_against_charcoal",
+        "normal_zoom_engine_readability": "pending_manual_only_non_rdp"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-CH-DRONE-001",
+      "path": "Content/Art/W3D/drone.w3d",
+      "role": "engine-format Chorus Drone with three HLOD states, single-pass materials, textures, and collision",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-CH-DRONE-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "63704dfc3275f38b7ddf6cc2e4a36b2d38ee6293fb4c8774f9bffb90f63097f1",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod_vertex_counts": [640, 345, 194],
+        "imported_render_mesh_count": 9,
+        "imported_box_count": 1,
+        "material_passes_per_render_mesh": 1,
+        "render_meshes": [
+          "DRBODY0",
+          "DRBODY1",
+          "DRBODY2",
+          "DRGLOW0",
+          "DRGLOW1",
+          "DRGLOW2",
+          "DRMAG0",
+          "DRMAG1",
+          "DRMAG2"
+        ],
+        "texture_files": ["ptcyan.tga", "ptmagnta.tga", "ptsteel.tga"],
+        "collision_flags": ["PHYSICAL", "PROJECTILE", "VIS", "VEHICLE"],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "lod_roundtrip": "pass_three_levels",
+        "collision_roundtrip": "pass",
+        "texture_roundtrip": "pass",
+        "engine_render": "pending_manual_only_non_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-FG-RELAY-001",
+      "path": "SourceAssets/Models/Freegrid/Relay/relay-master-v1.blend",
+      "role": "editable procedural Freegrid Relay master with authored three-level LOD and collision sources",
+      "faction": "Freegrid",
+      "subject": "Relay territory and capacity structure",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "4808c800fce534cda7e7f20f0c814fa8ecc688cd603ddff7e70aef7c2af3bfd9",
+      "review": {
+        "creative": "approved_as_first_buildable_structure_blockout",
+        "top_down_readability": "pass_radial_grid_node_silhouette",
+        "team_colour": "pass_native_housecolor_meshes_in_three_lods",
+        "lod_and_collision": "pass_scripted_three_lods_and_box_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-FG-RELAY-001",
+      "path": "SourceAssets/Models/Freegrid/Relay/relay-top-v1.png",
+      "role": "orthographic RTS-view Freegrid Relay review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-FG-RELAY-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "1aae1c69b3852aa9d00bdcc61a6c47554d47ef08e770851ea068bd91217c8289",
+      "review": {
+        "frame": "nonblank_960x720",
+        "top_down_silhouette": "pass",
+        "faction_contrast": "pass_cyan_status_nodes_and_warm_armour",
+        "normal_zoom_engine_readability": "pending_manual_only_non_rdp"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-FG-RELAY-001",
+      "path": "Content/Art/W3D/relay.w3d",
+      "role": "engine-format Freegrid Relay with three HLOD states, native house-colour meshes, textures, and collision",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-FG-RELAY-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "98901f5ffdc4465c8bfc8d61275316686c46d9d5273f4f0f4f301de3e4ce8e58",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod_vertex_counts": [636, 350, 191],
+        "imported_render_mesh_count": 9,
+        "imported_box_count": 1,
+        "material_passes_per_render_mesh": 1,
+        "render_meshes": [
+          "HouseColor0",
+          "HouseColor1",
+          "HouseColor2",
+          "RLARMOR0",
+          "RLARMOR1",
+          "RLARMOR2",
+          "RLBODY0",
+          "RLBODY1",
+          "RLBODY2"
+        ],
+        "texture_files": ["ptcyan.tga", "ptsteel.tga", "ptwhite.tga"],
+        "house_color_meshes": ["HouseColor0", "HouseColor1", "HouseColor2"],
+        "collision_flags": ["PHYSICAL", "PROJECTILE", "VIS", "VEHICLE"],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "lod_roundtrip": "pass_three_levels",
+        "collision_roundtrip": "pass",
+        "texture_roundtrip": "pass",
+        "team_colour_roundtrip": "pass_native_housecolor_mesh_names",
+        "engine_render": "pending_manual_only_non_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-CH-DRONE-001",
+      "path": "Content/Art/Textures/ptmagnta.tga",
+      "role": "Chorus Drone magenta circuit and emissive material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "8c0d9121c4beddf2a8c660079d14d1fa98d81fbd810fcafae619c42f330baf02",
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-EVIDENCE-FG-COURIER-001",
+      "path": "ReviewEvidence/courier-w3dview-engine.png",
+      "role": "native W3D Viewer render evidence for the Courier HLOD blockout",
+      "origin": "captured_from_project_runtime_asset",
+      "tool": "CI W3DViewV from db8c122445ebb335ea521c627443e9b598b5e11b with d3d8to9 v1.15.1",
+      "source_asset": "PT-RUNTIME-FG-COURIER-001",
+      "sha256": "21ea3ab92617684c348f66b0ae33556a5ed388712adef9f6335e0b3b43115125",
+      "validation": {
+        "viewer_sha256": "d31185afd443365ce9ee159fb2fd122dd9f7f66f3e14fbd9d4987f37fb8bb544",
+        "viewer_ci_run": "https://github.com/koltregaskes/project-tempest/actions/runs/29405282513",
+        "d3d8to9_version": "v1.15.1",
+        "d3d8to9_commit": "65870f2302e9c496cd6d873d6095961d5c777668",
+        "d3d8to9_license": "BSD-2-Clause",
+        "d3d8to9_sha256": "ab6bf7a9a9f4b3e66a75ca038d8d10289c88acbfe8d52c3b5a8a9a259cb26cd5",
+        "miles_stub_commit": "6e32700d7ba4b4713a03bf1f5ffc3b0ac8d17264",
+        "miles_stub_license": "GPL-3.0",
+        "miles_stub_sha256": "5c09cec5f15de4b0ee4f40ca65fd39bb15a1a41159bcade80b8a7e1855b904d5",
+        "rendered_polygons": 3424,
+        "window_title": "courier.w3d - W3D Viewer"
+      },
+      "review": {
+        "engine_geometry": "pass",
+        "engine_hlod": "pass",
+        "automation_policy": "manual_only_never_unattended",
+        "rdp_stability": "blocked_repeated_application_error_1000",
+        "production_materials": "pending"
+      },
+      "distribution": "internal_development_only"
+    }
+  ]
+}
