@@ -908,10 +908,13 @@ void DrawLabel(
     const char *text,
     UINT flags = DT_LEFT | DT_TOP | DT_SINGLELINE)
 {
-    SelectObject(device, font);
+    const HGDIOBJ previousFont = SelectObject(device, font);
     SetTextColor(device, color);
     RECT drawRect = rect;
     DrawTextA(device, text, -1, &drawRect, flags | DT_NOPREFIX);
+    if (previousFont && previousFont != HGDI_ERROR) {
+        SelectObject(device, previousFont);
+    }
 }
 
 void FormatKeyName(std::uint16_t key, char *buffer, std::size_t bufferSize)
