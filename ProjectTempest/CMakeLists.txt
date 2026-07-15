@@ -1,5 +1,6 @@
 add_executable(project_tempest_demo WIN32
     Code/ProjectTempestDemo.cpp
+    Code/TempestSimulation.cpp
 )
 
 target_compile_features(project_tempest_demo PRIVATE cxx_std_17)
@@ -47,3 +48,12 @@ foreach(asset IN LISTS PROJECT_TEMPEST_RUNTIME_ASSETS)
         VERBATIM
     )
 endforeach()
+
+add_executable(project_tempest_sim_tests
+    Code/TempestSimulation.cpp
+    Tests/TempestSimulationTests.cpp
+)
+target_compile_features(project_tempest_sim_tests PRIVATE cxx_std_17)
+target_include_directories(project_tempest_sim_tests PRIVATE Code)
+
+add_test(NAME project_tempest_sim_tests COMMAND project_tempest_sim_tests)

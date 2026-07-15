@@ -130,6 +130,13 @@ should stay within the build scripts/CMake prerequisite checks, a new original l
 automation, data definitions, and the smallest bootstrap selection needed to enter Substation 9. Networking, replay
 protocol, renderer replacement, and broad platform abstraction are outside this slice unless evidence shows they block it.
 
+The first standalone simulation surface is implemented in `ProjectTempest/Code/TempestSimulation.*`. It uses integer
+state and a fixed 20 Hz tick, sequences commands deterministically, and owns Substation 9 movement, capture, economy,
+construction, production, combat, Arc Pulse, basic Chorus AI, pause/restart, and outcomes. A console-only test target
+replays the same command stream twice and compares every per-tick checksum. This proves the headless rules core; the
+rendered prototype still requires explicit input, HUD, and presentation integration before it constitutes the governed
+skirmish demo.
+
 ### Golden asset and format decision
 
 The first end-to-end asset is the **Freegrid Courier**, a small wheeled scout with no skeletal-animation dependency.

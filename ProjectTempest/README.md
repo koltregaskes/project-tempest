@@ -67,6 +67,23 @@ do not retry a visible GUI. `prepare-w3dview-compat.ps1` only verifies and copie
 
 ## Standalone prototype
 
+The standalone code now includes a deterministic Substation 9 simulation core in
+`Code/TempestSimulation.h` and `Code/TempestSimulation.cpp`. It advances at a fixed 20 ticks per second, accepts
+sequence-stable commands, and models Courier movement, three capturable substations, credit/power income, Relay
+construction, Courier production, combat, Arc Pulse, Chorus reinforcement/target AI, pause, restart, victory, and
+defeat. `Tests/TempestSimulationTests.cpp` validates those rules and proves that identical command streams yield an
+identical checksum on every tick.
+
+Build and run the console-only test target without opening a renderer:
+
+```powershell
+cmake --build --preset win32 --target project_tempest_sim_tests
+ctest --test-dir .\build\win32 -C Release --output-on-failure
+```
+
+The rendered prototype compiles this simulation core but does not yet expose its complete command set or match state
+through the player-facing UI. That integration remains required before the Substation 9 skirmish is playable.
+
 Modern Generals Win32 builds also produce `ProjectTempestDemo.exe`, a retail-asset-free executable that loads the
 Courier directly from this tree. Its current M2 interaction slice provides a fixed RTS camera, selection, right-click
 movement, keyboard movement, restart, and a simple uplink objective. It is an executable integration checkpoint, not

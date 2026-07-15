@@ -80,6 +80,16 @@ jobs:
           ./scripts/test-project-tempest-assets.ps1
           ./scripts/test-project-tempest-no-gui.ps1
 
+      - name: Compile and run deterministic Substation 9 simulation tests
+        shell: bash
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic \
+            ProjectTempest/Code/TempestSimulation.cpp \
+            ProjectTempest/Tests/TempestSimulationTests.cpp \
+            -IProjectTempest/Code \
+            -o "$RUNNER_TEMP/project-tempest-sim-tests"
+          "$RUNNER_TEMP/project-tempest-sim-tests"
+
   build-generals:
     name: Build Generals${{ matrix.preset && '' }}
     needs: detect-changes

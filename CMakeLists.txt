@@ -112,6 +112,7 @@ endif()
 # Project Tempest is a clean-room content/demo target built on the GPL Generals
 # renderer. It intentionally targets the supported modern Win32 toolchain only.
 if(RTS_BUILD_GENERALS AND NOT IS_VS6_BUILD)
+    enable_testing()
     add_subdirectory(ProjectTempest)
 endif()
 
