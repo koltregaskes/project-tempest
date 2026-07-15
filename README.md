@@ -11,6 +11,9 @@ developed. See [PROJECT_TEMPEST.md](PROJECT_TEMPEST.md) for the delivery contrac
 The governed first-demo plan is [PROJECT_TEMPEST_DEMO_SPEC.md](PROJECT_TEMPEST_DEMO_SPEC.md): a 15–20 minute original
 cyberpunk skirmish slice, its content budget, asset/tool pipeline, milestone evidence, and review gates.
 
+Original concept, editable source, runtime-content, and provenance work is rooted in
+[ProjectTempest/README.md](ProjectTempest/README.md). Retail game assets are prohibited from that tree.
+
 ## Community baseline
 
 [![GitHub Release](https://img.shields.io/github/v/release/TheSuperHackers/GeneralsGameCode?include_prereleases&sort=date&display_name=tag&style=flat&label=Release)](https://github.com/TheSuperHackers/GeneralsGameCode/releases)

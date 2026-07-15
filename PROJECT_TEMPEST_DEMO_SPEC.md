@@ -136,6 +136,11 @@ The first end-to-end asset is the **Freegrid Courier**, a small wheeled scout wi
 It must progress from concept sheet to Blender master, game mesh, collision, LODs, materials/textures, team/readability
 markers, engine import, data definition, selection bounds, destruction state, and an in-engine screenshot.
 
+Concept v1 and its complete prompt/hash record live under
+[`ProjectTempest/SourceAssets/Concepts/Freegrid/Courier`](ProjectTempest/SourceAssets/Concepts/Freegrid/Courier) and
+[`ProjectTempest/asset-provenance.json`](ProjectTempest/asset-provenance.json). It is an internal blockout reference,
+not an exact engineering drawing or a production-ready asset.
+
 The engine currently consumes W3D-era assets while current generation tools produce formats such as GLB. The first
 technical spike must choose and prove one route:
 
@@ -154,6 +159,12 @@ test using only procedural geometry, with evidence written to the ignored build 
 mesh imported successfully. This selects the bridge but does not yet prove materials, collision, LODs, hierarchy, or
 damage states. W3D filenames and mesh identifiers must be no longer than 16 characters; source names may be descriptive,
 but the export mapping must enforce legal runtime identifiers.
+
+Authored baseline (2026-07-15): the concept has been translated into a 47-part procedural Blender master, hero and
+orthographic top-down review renders, and `ProjectTempest/Content/Art/W3D/courier.w3d`. The W3D export hash is stable
+across regeneration and round-trip imports as one non-empty 7,736-vertex mesh. This proves an original editable source
+and engine-format payload, but M2 remains open until collision, production LODs, damage state, materials/textures, team
+readability markers, data definition, selection bounds, and an actual Project Tempest engine render pass.
 
 ## Capability and tool routing
 

@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "project": "Project Tempest",
+  "public_distribution_default": "prohibited_until_reviewed",
+  "assets": [
+    {
+      "asset_id": "PT-CONCEPT-FG-COURIER-001",
+      "path": "SourceAssets/Concepts/Freegrid/Courier/courier-concept-v1.png",
+      "role": "internal concept and Blender blockout reference",
+      "faction": "Freegrid",
+      "subject": "Courier scout vehicle",
+      "origin": "generated_original",
+      "tool": "OpenAI built-in image generation",
+      "model": "not exposed by tool",
+      "generated_at_utc": "2026-07-15T09:10:29Z",
+      "prompt": "Use case: stylized-concept\nAsset type: game vehicle concept sheet for a real-time strategy unit, intended as the modelling reference for Blender\nPrimary request: design the Freegrid Courier, a compact four-wheeled cyberpunk scout vehicle made by a neighbourhood power collective in 2089 from an obsolete municipal electrical-maintenance cart\nScene/backdrop: clean neutral charcoal-grey industrial design-sheet background, no environment\nSubject: one consistent vehicle shown in a large high three-quarter RTS camera view plus smaller front, side, rear, and top orthographic views; low rugged chassis; four clearly separated wheels; asymmetric repaired body panels; exposed insulated power cables; a folding sensor mast; compact battery bank; practical tow and repair points; no driver visible; no large weapon\nStyle/medium: highly resolved AAA game vehicle concept art with believable industrial design, suitable for hard-surface 3D modelling; crisp shapes and production annotations expressed visually without written labels\nComposition/framing: landscape concept sheet, complete vehicle visible in every view, generous spacing, accurate proportions shared across all views, silhouette readable at normal RTS camera distance\nLighting/mood: controlled studio lighting that reveals planes and materials; grounded, utilitarian, rain-worn, quietly defiant rather than glossy or luxurious\nColor palette: oxidised dark steel, worn warm off-white, safety amber panels, restrained cyan status lights; avoid purple-and-pink neon cliché\nMaterials/textures: chipped paint, wet grime in seams, rubber tyres, ceramic insulators, brushed repair plates, visible bolts and cable clamps\nConstraints: original design; consistent geometry across every view; strong top-down silhouette; plausible wheel clearance and steering; no logos, no trademarks, no readable text, no watermark, no people, no city scene, no flying parts, no tank tracks, no sports-car styling, no excessive greebles, no visual resemblance to any Command & Conquer vehicle",
+      "input_references": [],
+      "edits": [],
+      "sha256": "8f6fea13a6870050672b952567908db9eb1d290fc81be384eb0f6c460b061863",
+      "review": {
+        "creative": "approved_for_internal_blockout",
+        "cross_view_consistency": "reference_only_not_exact_dimensions",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-FG-COURIER-001",
+      "path": "SourceAssets/Models/Freegrid/Courier/courier-master-v1.blend",
+      "role": "editable procedural blockout master",
+      "faction": "Freegrid",
+      "subject": "Courier scout vehicle",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "input_references": [
+        "PT-CONCEPT-FG-COURIER-001"
+      ],
+      "sha256": "d23dc8f36edc616fade4b23bac36d6795f0ddd931e1ab0c90c1c75788cfa211a",
+      "review": {
+        "creative": "approved_as_first_editable_blockout",
+        "top_down_readability": "pass",
+        "production_geometry": "pending_lod_collision_damage_and_material_pass",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-FG-COURIER-001",
+      "path": "SourceAssets/Models/Freegrid/Courier/courier-blockout-v1.png",
+      "role": "hero-angle blockout review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench",
+      "source_asset": "PT-MODEL-FG-COURIER-001",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "d28c6d74b72505f25f33bc27f677f5953a1da573d1640e07967ba80e11408f34",
+      "review": {
+        "frame": "nonblank_1280x720",
+        "silhouette": "pass",
+        "palette": "pass_with_dark_scene_contrast_risk"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-FG-COURIER-002",
+      "path": "SourceAssets/Models/Freegrid/Courier/courier-top-v1.png",
+      "role": "orthographic RTS-view blockout review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench",
+      "source_asset": "PT-MODEL-FG-COURIER-001",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "64355ba1f4befedc7daa75b958edc57d9841d3b2927ae72f011645c367029919",
+      "review": {
+        "frame": "nonblank_1280x720",
+        "top_down_silhouette": "pass",
+        "front_rear_readability": "pass_via_cyan_lamps_and_rear_battery_bank",
+        "asymmetry_readability": "pass_via_exposed_power_cable"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-FG-COURIER-001",
+      "path": "Content/Art/W3D/courier.w3d",
+      "role": "first engine-format Courier blockout",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-FG-COURIER-001",
+      "source_script": "../scripts/create-courier-blockout.py",
+      "sha256": "bb020fcc36faa0201b2c021722c461c86cd0123eb100b31b12381f7361b833cd",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "imported_mesh_count": 1,
+        "imported_vertex_count": 7736,
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "engine_render": "pending",
+        "production_geometry": "pending_lod_collision_damage_and_material_pass",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    }
+  ]
+}
