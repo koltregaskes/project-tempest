@@ -120,6 +120,15 @@ technical spike must choose and prove one route:
 The decision record must compare animation, collision, LOD, materials, determinism, build integration, licensing, and
 batch automation. A manual one-off conversion is not a successful pipeline.
 
+Decision (2026-07-15): use option 3 for the first pipeline. Pin the LGPL-3.0
+[OpenSAGE Blender plugin](https://github.com/OpenSAGE/OpenSAGE.BlenderPlugin) at commit
+`feb80cd0bf22b3c24c0395ae3260a5349c080892` (plugin v0.7.3), which explicitly supports Blender 5.1. The repository's
+`scripts/test-w3d-pipeline.ps1` fetches that source into a short per-user tool cache and performs a headless export/import
+test using only procedural geometry, with evidence written to the ignored build tree. On Blender 5.1.2, two clean exports produced the same SHA-256 and the exported
+mesh imported successfully. This selects the bridge but does not yet prove materials, collision, LODs, hierarchy, or
+damage states. W3D filenames and mesh identifiers must be no longer than 16 characters; source names may be descriptive,
+but the export mapping must enforce legal runtime identifiers.
+
 ## Capability and tool routing
 
 This is a preview review of game-relevant capabilities, not a scored end-to-end tool certification. Paid generation

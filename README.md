@@ -99,6 +99,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows.
 The Visual C++ ATL component is required. If it is absent, the script and CMake configure step fail early with the
 exact Visual Studio component identifier instead of allowing a late compile failure.
 
+The original-content 3D pipeline uses a pinned, licence-compatible OpenSAGE Blender plugin cached under the current
+user's local application data. Its headless smoke test creates procedural geometry, exports W3D, imports it again, and
+records the tool versions and output hash under the ignored `build` tree:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-w3d-pipeline.ps1
+```
+
 **Linux (via Docker)**
 ```bash
 ./scripts/docker-build.sh              # Build using Docker
