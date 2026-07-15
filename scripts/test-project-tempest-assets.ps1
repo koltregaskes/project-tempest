@@ -314,6 +314,17 @@ if (
 if ($demoSource -notmatch [regex]::Escape('transform.Scale(isChorus ? 0.72F : 1.0F);')) {
     throw "Project Tempest unit rendering must scale Chorus models through the current faction flag."
 }
+foreach ($pointerLeaveContract in @(
+    "g_pointerInClient",
+    "TRACKMOUSEEVENT",
+    "TME_LEAVE",
+    "TrackMouseEvent(&tracking)",
+    "WM_MOUSELEAVE"
+)) {
+    if ($demoSource -notmatch [regex]::Escape($pointerLeaveContract)) {
+        throw "Project Tempest edge scrolling is missing pointer-leave contract '$pointerLeaveContract'."
+    }
+}
 
 foreach ($interfaceSource in @("Code/TempestInterface.cpp", "Code/TempestInterface.h")) {
     if ($cmakeContent -notmatch [regex]::Escape($interfaceSource)) {
