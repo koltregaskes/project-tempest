@@ -86,7 +86,7 @@ jobs:
       - name: Compile and run deterministic Substation 9 simulation tests
         shell: bash
         run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic \
+          g++ -std=c++20 -Wall -Wextra -Werror -pedantic \
             ProjectTempest/Code/TempestSimulation.cpp \
             ProjectTempest/Tests/TempestSimulationTests.cpp \
             -IProjectTempest/Code \
