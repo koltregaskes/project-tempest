@@ -27,7 +27,7 @@
     {
       "asset_id": "PT-MODEL-FG-COURIER-001",
       "path": "SourceAssets/Models/Freegrid/Courier/courier-master-v1.blend",
-      "role": "editable procedural blockout master",
+      "role": "editable procedural export master with authored LOD and collision sources",
       "faction": "Freegrid",
       "subject": "Courier scout vehicle",
       "origin": "authored_original_from_primitives",
@@ -36,11 +36,12 @@
       "input_references": [
         "PT-CONCEPT-FG-COURIER-001"
       ],
-      "sha256": "d23dc8f36edc616fade4b23bac36d6795f0ddd931e1ab0c90c1c75788cfa211a",
+      "sha256": "91f380068f80e559d251168c827410289a5ff4da37429e4a63d671984cb0b828",
       "review": {
         "creative": "approved_as_first_editable_blockout",
         "top_down_readability": "pass",
-        "production_geometry": "pending_lod_collision_damage_and_material_pass",
+        "lod_and_collision": "pass_scripted_lod0_lod1_and_box_source",
+        "production_geometry": "pending_damage_and_material_pass",
         "public_distribution": "pending_explicit_rights_and_identity_review"
       },
       "distribution": "internal_development_only"
@@ -53,7 +54,7 @@
       "tool": "Blender 5.1.2 Workbench",
       "source_asset": "PT-MODEL-FG-COURIER-001",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "d28c6d74b72505f25f33bc27f677f5953a1da573d1640e07967ba80e11408f34",
+      "sha256": "f3d394b30090dd8d0b6fa8cf9b74bcae2251dc06236e3f52f05ed9c81fbaba6b",
       "review": {
         "frame": "nonblank_1280x720",
         "silhouette": "pass",
@@ -69,7 +70,7 @@
       "tool": "Blender 5.1.2 Workbench",
       "source_asset": "PT-MODEL-FG-COURIER-001",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "64355ba1f4befedc7daa75b958edc57d9841d3b2927ae72f011645c367029919",
+      "sha256": "7f90ef01606061702296b4372a639c845d8b7d443f3c7703b1929f0a38544cd4",
       "review": {
         "frame": "nonblank_1280x720",
         "top_down_silhouette": "pass",
@@ -81,23 +82,36 @@
     {
       "asset_id": "PT-RUNTIME-FG-COURIER-001",
       "path": "Content/Art/W3D/courier.w3d",
-      "role": "first engine-format Courier blockout",
+      "role": "engine-format Courier blockout with hierarchy, LODs, and collision",
       "origin": "exported_from_project_source",
       "tool": "OpenSAGE Blender plugin 0.7.3",
       "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
       "source_asset": "PT-MODEL-FG-COURIER-001",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "bb020fcc36faa0201b2c021722c461c86cd0123eb100b31b12381f7361b833cd",
+      "sha256": "3fb971cf0178e1750df846d6965a0c7bffb99d7e837563830b1dd841085ca094",
       "validation": {
         "repeat_export_hash_stable": true,
         "roundtrip_import": "pass",
-        "imported_mesh_count": 1,
-        "imported_vertex_count": 7736,
+        "export_mode": "HM",
+        "authored_lod0_vertex_count": 1800,
+        "authored_lod1_vertex_count": 691,
+        "imported_mesh_count": 3,
+        "imported_render_mesh_count": 2,
+        "imported_box_count": 1,
+        "imported_vertex_count_after_w3d_splitting": 10853,
+        "collision_flags": [
+          "PHYSICAL",
+          "PROJECTILE",
+          "VIS",
+          "VEHICLE"
+        ],
         "filename_and_mesh_identifier_limit": 16
       },
       "review": {
         "engine_render": "pending",
-        "production_geometry": "pending_lod_collision_damage_and_material_pass",
+        "lod_roundtrip": "pass",
+        "collision_roundtrip": "pass",
+        "production_geometry": "pending_damage_and_material_pass",
         "public_distribution": "pending_explicit_rights_and_identity_review"
       },
       "distribution": "internal_development_only"

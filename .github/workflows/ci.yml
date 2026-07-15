@@ -26,6 +26,7 @@ jobs:
       generals: ${{ steps.filter.outputs.generals }}
       generalsmd: ${{ steps.filter.outputs.generalsmd }}
       shared: ${{ steps.filter.outputs.shared }}
+      tempest: ${{ steps.filter.outputs.tempest }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -47,6 +48,12 @@ jobs:
               - 'cmake/**'
               - 'Core/**'
               - 'Dependencies/**'
+            tempest:
+              - 'ProjectTempest/**'
+              - 'PROJECT_TEMPEST*.md'
+              - 'scripts/create-courier-blockout.*'
+              - 'scripts/test-project-tempest-assets.ps1'
+              - 'scripts/test-w3d-pipeline.*'
 
       - name: Changes Summary
         run: |
@@ -54,6 +61,20 @@ jobs:
           echo "- Generals: ${{ steps.filter.outputs.generals == 'true' && '✅' || '❌' }}" >> $GITHUB_STEP_SUMMARY
           echo "- GeneralsMD: ${{ steps.filter.outputs.generalsmd == 'true' && '✅' || '❌' }}" >> $GITHUB_STEP_SUMMARY
           echo "- Shared: ${{ steps.filter.outputs.shared == 'true' && '✅' || '❌' }}" >> $GITHUB_STEP_SUMMARY
+
+  validate-project-tempest-assets:
+    name: Validate Project Tempest Assets
+    needs: detect-changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.tempest == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Validate provenance, hashes, and Courier W3D contract
+        shell: pwsh
+        run: ./scripts/test-project-tempest-assets.ps1
 
   build-generals:
     name: Build Generals${{ matrix.preset && '' }}

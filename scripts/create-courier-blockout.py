@@ -208,9 +208,6 @@ camera.location = hero_location
 camera.rotation_euler = hero_rotation
 scene.render.filepath = preview_path
 
-# Save the editable master before destructively joining a disposable export copy.
-bpy.ops.wm.save_as_mainfile(filepath=blend_path)
-
 bpy.data.objects.remove(ground, do_unlink=True)
 bpy.data.objects.remove(camera, do_unlink=True)
 bpy.ops.object.select_all(action="DESELECT")
@@ -219,12 +216,61 @@ for obj in vehicle_objects:
         obj.select_set(True)
 bpy.context.view_layer.objects.active = vehicle_objects[0]
 bpy.ops.object.join()
-export_object = bpy.context.active_object
-export_object.name = "PT_COURIER"
-export_object.data.name = "PT_COURIER_M"
+source_part_count = len(vehicle_objects)
+lod0_object = bpy.context.active_object
+lod0_object.name = "CRLOD0"
+lod0_object.data.name = "CRLOD0_M"
 bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
-export_result = bpy.ops.export_mesh.westwood_w3d(filepath=w3d_path, export_mode="M")
+# The HLOD exporter treats root-scene meshes as the highest-detail level and each
+# child collection as a successively cheaper level. Keep the collision box at the
+# root so it is attached to the authoritative LOD without becoming visible art.
+collision_object = box(
+    "BOUNDINGBOX",
+    (-0.08, 0.0, 1.08),
+    (3.80, 1.92, 2.16),
+    dark_steel,
+    bevel=0.0,
+)
+collision_object.data.object_type = "BOX"
+collision_object.data.box_type = "1"
+expected_collision_flags = {"PHYSICAL", "PROJECTILE", "VIS", "VEHICLE"}
+collision_object.data.box_collision_types = expected_collision_flags
+collision_object.display_type = "WIRE"
+collision_object.hide_render = True
+
+lod1_collection = bpy.data.collections.new("LOD1")
+scene.collection.children.link(lod1_collection)
+lod1_object = lod0_object.copy()
+lod1_object.data = lod0_object.data.copy()
+lod1_object.name = "CRLOD1"
+lod1_object.data.name = "CRLOD1_M"
+lod1_collection.objects.link(lod1_object)
+decimate = lod1_object.modifiers.new("PT_LOD1_DECIMATE", "DECIMATE")
+decimate.ratio = 0.35
+decimate.use_collapse_triangulate = True
+bpy.context.view_layer.objects.active = lod1_object
+lod1_object.select_set(True)
+bpy.ops.object.modifier_apply(modifier=decimate.name)
+lod1_object.select_set(False)
+
+runtime_identifiers = [lod0_object.name, lod1_object.name, collision_object.name]
+if any(len(identifier) > 16 for identifier in runtime_identifiers):
+    fail(f"W3D runtime identifier exceeds 16 characters: {runtime_identifiers}")
+
+# The generated blend is the editable export master; the procedural Python file
+# remains the non-destructive source for regenerating its constituent parts.
+bpy.ops.wm.save_as_mainfile(filepath=blend_path)
+
+lod0_vertex_count = len(lod0_object.data.vertices)
+lod1_vertex_count = len(lod1_object.data.vertices)
+if lod1_vertex_count <= 0 or lod1_vertex_count >= lod0_vertex_count:
+    fail(
+        f"LOD1 simplification failed: lod0={lod0_vertex_count}, "
+        f"lod1={lod1_vertex_count}"
+    )
+
+export_result = bpy.ops.export_mesh.westwood_w3d(filepath=w3d_path, export_mode="HM")
 if export_result != {"FINISHED"} or not os.path.isfile(w3d_path):
     fail(f"W3D export failed: {export_result}")
 
@@ -233,10 +279,31 @@ bpy.ops.object.select_all(action="SELECT")
 bpy.ops.object.delete(use_global=False)
 import_result = bpy.ops.import_mesh.westwood_w3d(filepath=w3d_path)
 imported_meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
+imported_boxes = [obj for obj in imported_meshes if obj.data.object_type == "BOX"]
+imported_render_meshes = [obj for obj in imported_meshes if obj.data.object_type != "BOX"]
+imported_render_names = sorted(obj.name for obj in imported_render_meshes)
+imported_collision_flags = (
+    set(imported_boxes[0].data.box_collision_types) - {"DEFAULT"}
+    if len(imported_boxes) == 1
+    else set()
+)
 imported_vertex_count = sum(len(obj.data.vertices) for obj in imported_meshes)
-if import_result != {"FINISHED"} or not imported_meshes or imported_vertex_count == 0:
+imported_lod_collections = [
+    collection.name
+    for collection in bpy.data.collections
+    if any(obj.type == "MESH" and obj.data.object_type != "BOX" for obj in collection.objects)
+]
+if (
+    import_result != {"FINISHED"}
+    or imported_render_names != ["CRLOD0", "CRLOD1"]
+    or len(imported_boxes) != 1
+    or imported_collision_flags != expected_collision_flags
+    or imported_vertex_count == 0
+):
     fail(
         f"W3D re-import failed: result={import_result}, meshes={len(imported_meshes)}, "
+        f"render_meshes={imported_render_names}, boxes={len(imported_boxes)}, "
+        f"collision_flags={sorted(imported_collision_flags)}, "
         f"vertices={imported_vertex_count}"
     )
 
@@ -252,9 +319,15 @@ result = {
     "concept_asset_id": "PT-CONCEPT-FG-COURIER-001",
     "export_result": sorted(export_result),
     "import_result": sorted(import_result),
+    "imported_box_count": len(imported_boxes),
+    "imported_collision_flags": sorted(imported_collision_flags),
+    "imported_lod_collections": sorted(imported_lod_collections),
     "imported_mesh_count": len(imported_meshes),
+    "imported_render_mesh_count": len(imported_render_meshes),
     "imported_vertex_count": imported_vertex_count,
-    "object_count": len(vehicle_objects),
+    "lod0_vertex_count": lod0_vertex_count,
+    "lod1_vertex_count": lod1_vertex_count,
+    "source_part_count": source_part_count,
     "plugin_version": ".".join(str(part) for part in io_mesh_w3d.VERSION),
     "preview": {"path": os.path.relpath(preview_path, project_root), "sha256": sha256(preview_path)},
     "top_preview": {

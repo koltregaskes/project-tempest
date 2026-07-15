@@ -156,15 +156,19 @@ Decision (2026-07-15): use option 3 for the first pipeline. Pin the LGPL-3.0
 `feb80cd0bf22b3c24c0395ae3260a5349c080892` (plugin v0.7.3), which explicitly supports Blender 5.1. The repository's
 `scripts/test-w3d-pipeline.ps1` fetches that source into a short per-user tool cache and performs a headless export/import
 test using only procedural geometry, with evidence written to the ignored build tree. On Blender 5.1.2, two clean exports produced the same SHA-256 and the exported
-mesh imported successfully. This selects the bridge but does not yet prove materials, collision, LODs, hierarchy, or
-damage states. W3D filenames and mesh identifiers must be no longer than 16 characters; source names may be descriptive,
+mesh imported successfully. This selected the bridge; the authored baseline below additionally proves a static hierarchy,
+collision, and two LODs, but materials, animation, and damage states remain unproven. W3D filenames and mesh identifiers
+must be no longer than 16 characters; source names may be descriptive,
 but the export mapping must enforce legal runtime identifiers.
 
-Authored baseline (2026-07-15): the concept has been translated into a 47-part procedural Blender master, hero and
-orthographic top-down review renders, and `ProjectTempest/Content/Art/W3D/courier.w3d`. The W3D export hash is stable
-across regeneration and round-trip imports as one non-empty 7,736-vertex mesh. This proves an original editable source
-and engine-format payload, but M2 remains open until collision, production LODs, damage state, materials/textures, team
-readability markers, data definition, selection bounds, and an actual Project Tempest engine render pass.
+Authored baseline (2026-07-15): the concept has been translated into a 47-part procedural Blender source, hero and
+orthographic top-down review renders, and `ProjectTempest/Content/Art/W3D/courier.w3d`. The export master contains a
+1,800-vertex `CRLOD0`, a 691-vertex `CRLOD1`, and one oriented `BOUNDINGBOX` with physical, projectile, visibility, and
+vehicle collision flags. W3D `HM` export is hash-stable across regeneration; immediate round-trip import recovers two
+visible meshes and one collision box (10,853 vertices after the plugin's W3D UV/material vertex splitting). This proves
+the original editable source, static hierarchy, first LOD transition payload, collision payload, and engine-format
+serialization. M2 remains open until damage state, production materials/textures, team readability markers, data
+definition, selection bounds, and an actual Project Tempest engine render pass are proven.
 
 ## Capability and tool routing
 
