@@ -26,6 +26,7 @@ jobs:
       generals: ${{ steps.filter.outputs.generals }}
       generalsmd: ${{ steps.filter.outputs.generalsmd }}
       shared: ${{ steps.filter.outputs.shared }}
+      tempest: ${{ steps.filter.outputs.tempest }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -47,6 +48,17 @@ jobs:
               - 'cmake/**'
               - 'Core/**'
               - 'Dependencies/**'
+            tempest:
+              - 'ProjectTempest/**'
+              - 'PROJECT_TEMPEST*.md'
+              - 'scripts/build-windows.ps1'
+              - 'scripts/create-courier-blockout.*'
+              - 'scripts/create-substation-kit.*'
+              - 'scripts/prepare-w3dview-compat.ps1'
+              - 'scripts/test-project-tempest-assets.ps1'
+              - 'scripts/test-project-tempest-no-gui.ps1'
+              - 'scripts/test-project-tempest-reproducibility.ps1'
+              - 'scripts/test-w3d-pipeline.*'
 
       - name: Changes Summary
         run: |
@@ -55,10 +67,38 @@ jobs:
           echo "- GeneralsMD: ${{ steps.filter.outputs.generalsmd == 'true' && '✅' || '❌' }}" >> $GITHUB_STEP_SUMMARY
           echo "- Shared: ${{ steps.filter.outputs.shared == 'true' && '✅' || '❌' }}" >> $GITHUB_STEP_SUMMARY
 
+  validate-project-tempest-assets:
+    name: Validate Project Tempest Assets
+    needs: detect-changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.tempest == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Validate provenance, hashes, and Courier W3D contract
+        shell: pwsh
+        run: |
+          ./scripts/test-project-tempest-assets.ps1
+          ./scripts/test-project-tempest-no-gui.ps1
+
+      - name: Compile and run deterministic Substation 9 simulation tests
+        shell: bash
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Werror -pedantic \
+            ProjectTempest/Code/TempestSimulation.cpp \
+            ProjectTempest/Tests/TempestSimulationTests.cpp \
+            -IProjectTempest/Code \
+            -o "$RUNNER_TEMP/project-tempest-sim-tests"
+          "$RUNNER_TEMP/project-tempest-sim-tests"
+
   build-generals:
     name: Build Generals${{ matrix.preset && '' }}
     needs: detect-changes
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.generals == 'true' || needs.detect-changes.outputs.shared == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.generals == 'true' || needs.detect-changes.outputs.shared == 'true' || needs.detect-changes.outputs.tempest == 'true' }}
     strategy:
       matrix:
         include:

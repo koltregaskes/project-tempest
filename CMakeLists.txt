@@ -36,6 +36,25 @@ project(genzh LANGUAGES C CXX)
 # This file handles extra settings wanted/needed for different compilers.
 include(cmake/compilers.cmake)
 
+# The Win32 game and legacy browser/tool code use ATL. Detect the optional Visual Studio component during
+# configuration so a local build does not fail hundreds of compile actions later with a missing atlbase.h.
+if(MSVC AND NOT IS_VS6_BUILD)
+    include(CheckIncludeFileCXX)
+    # This machine-level prerequisite can be installed between configure attempts. Do not preserve a stale failure in
+    # CMakeCache.txt after the user adds the ATL component, while preserving successful detections.
+    if(NOT RTS_HAS_MSVC_ATL)
+        unset(RTS_HAS_MSVC_ATL CACHE)
+    endif()
+    check_include_file_cxx(atlbase.h RTS_HAS_MSVC_ATL)
+    if(NOT RTS_HAS_MSVC_ATL)
+        message(FATAL_ERROR
+            "Visual C++ ATL headers were not found. Modify Visual Studio 2022 Build Tools and add "
+            "Microsoft.VisualStudio.Component.VC.ATL, then configure again. "
+            "See scripts/build-windows.ps1 for the reproducible local build entry point."
+        )
+    endif()
+endif()
+
 # Debug symbol stripping for Release builds (MinGW)
 include(cmake/debug_strip.cmake)
 
@@ -90,6 +109,13 @@ endif()
 
 if(RTS_BUILD_GENERALS)
     add_subdirectory(Generals)
+endif()
+
+# Project Tempest is a clean-room content/demo target built on the GPL Generals
+# renderer. It intentionally targets the supported modern Win32 toolchain only.
+if(RTS_BUILD_GENERALS AND NOT IS_VS6_BUILD)
+    enable_testing()
+    add_subdirectory(ProjectTempest)
 endif()
 
 feature_summary(WHAT ENABLED_FEATURES DESCRIPTION "Enabled features:")

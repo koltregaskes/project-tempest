@@ -27,7 +27,6 @@
 #include "W3DViewView.h"
 #include "Utils.h"
 #include "ColorUtils.h"
-#include "verchk.h"
 #include "wwmath.h"
 #include "WWAudio.h"
 #include "ViewerAssetMgr.h"
@@ -140,30 +139,6 @@ WinMain
 }
 
 
-///////////////////////////////////////////////////////////////
-//
-//  Do_Version_Check
-//
-////////////////////////////////////////////////////////////
-void
-Do_Version_Check ()
-{
-	char curr_filename[MAX_PATH];
-	::GetModuleFileName (nullptr, curr_filename, MAX_PATH);
-
-	CString filename = "\\\\cabal\\mis\\r&d\\w3d\\w3dview\\";
-	filename += ::Get_Filename_From_Path (curr_filename);
-
-	//
-	//	Check the version of the viewer that is out on the network
-	// against the version we are running.
-	//
-	if (Compare_EXE_Version ((int)::AfxGetInstanceHandle (), filename) < 0) {
-		::MessageBox (nullptr, "There is a newer version of the W3DViewer, please run W3DUpdate to upgrade your local copy.", "Version Info", MB_ICONEXCLAMATION | MB_OK | MB_SETFOREGROUND | MB_SYSTEMMODAL);
-	}
-}
-
-
 /////////////////////////////////////////////////////////////////////////////
 //
 // InitInstance
@@ -181,7 +156,8 @@ BOOL CW3DViewApp::InitInstance ()
 	Enable3dControlsStatic();	// Call this when linking to MFC statically
 #endif
 
-	Do_Version_Check ();
+	// Public builds must not probe Westwood's retired internal \\cabal share.
+	// Versioning is owned by the repository and CI artifacts instead.
 
 	RegisterColorPicker (::AfxGetInstanceHandle ());
 	RegisterColorBar (::AfxGetInstanceHandle ());
