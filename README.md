@@ -8,6 +8,12 @@ No Project Tempest binary or modified public release may use Electronic Arts or 
 current engine still requires legally owned retail game data while the standalone content and identity pipeline is
 developed. See [PROJECT_TEMPEST.md](PROJECT_TEMPEST.md) for the delivery contract and release gates.
 
+The governed first-demo plan is [PROJECT_TEMPEST_DEMO_SPEC.md](PROJECT_TEMPEST_DEMO_SPEC.md): a 15–20 minute original
+cyberpunk skirmish slice, its content budget, asset/tool pipeline, milestone evidence, and review gates.
+
+Original concept, editable source, runtime-content, and provenance work is rooted in
+[ProjectTempest/README.md](ProjectTempest/README.md). Retail game assets are prohibited from that tree.
+
 ## Community baseline
 
 [![GitHub Release](https://img.shields.io/github/v/release/TheSuperHackers/GeneralsGameCode?include_prereleases&sort=date&display_name=tag&style=flat&label=Release)](https://github.com/TheSuperHackers/GeneralsGameCode/releases)
@@ -83,6 +89,25 @@ Docker, CLion, and links to forks supporting additional versions.
 ```bash
 cmake --preset win32
 cmake --build build/win32 --config Release
+```
+
+Project Tempest contributors can use the repository bootstrap script from a normal PowerShell session. It locates the
+installed Visual Studio Build Tools, enters the x86 developer environment, verifies CMake, Ninja, and ATL, initialises
+submodules, and runs the selected preset without changing the machine-wide `PATH`:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows.ps1
+```
+
+The Visual C++ ATL component is required. If it is absent, the script and CMake configure step fail early with the
+exact Visual Studio component identifier instead of allowing a late compile failure.
+
+The original-content 3D pipeline uses a pinned, licence-compatible OpenSAGE Blender plugin cached under the current
+user's local application data. Its headless smoke test creates procedural geometry, exports W3D, imports it again, and
+records the tool versions and output hash under the ignored `build` tree:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-w3d-pipeline.ps1
 ```
 
 **Linux (via Docker)**

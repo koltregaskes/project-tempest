@@ -181,7 +181,8 @@ BOOL CW3DViewApp::InitInstance ()
 	Enable3dControlsStatic();	// Call this when linking to MFC statically
 #endif
 
-	Do_Version_Check ();
+	// Public builds must not probe Westwood's retired internal \\cabal share.
+	// Versioning is owned by the repository and CI artifacts instead.
 
 	RegisterColorPicker (::AfxGetInstanceHandle ());
 	RegisterColorBar (::AfxGetInstanceHandle ());
