@@ -10,6 +10,7 @@ $fixedUnattendedSurfaces = @(
     ".github/workflows/build-toolchain.yml",
     "scripts/build-windows.ps1",
     "scripts/test-project-tempest-assets.ps1",
+    "scripts/test-project-tempest-reproducibility.ps1",
     "scripts/test-w3d-pipeline.ps1",
     "scripts/prepare-w3dview-compat.ps1"
 )
@@ -158,10 +159,10 @@ foreach ($fixture in $safeFixtures) {
 
 foreach ($blenderScript in $unattendedSurfaces) {
     $content = Get-Content -LiteralPath (Join-Path $repositoryRoot $blenderScript) -Raw
-    if ($content -notmatch '(?i)\$BlenderPath\b') {
+    $invocations = [regex]::Matches($content, '(?im)^\s*&\s+\$BlenderPath\b.*$')
+    if ($invocations.Count -eq 0) {
         continue
     }
-    $invocations = [regex]::Matches($content, '(?im)^\s*&\s+\$BlenderPath\b.*$')
     if (
         $invocations.Count -ne 1 -or
         $invocations[0].Value -notmatch '(?i)--background\b' -or

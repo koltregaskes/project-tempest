@@ -127,16 +127,30 @@ const Tempest::Building *FindBuilding(std::uint32_t id)
 
 Tempest::Point ScreenToSimulationPoint(int mouseX, int mouseY)
 {
+    if (!g_camera) {
+        return {};
+    }
     RECT client = {};
     GetClientRect(ApplicationHWnd, &client);
     const float width = static_cast<float>(std::max(1L, client.right - client.left));
     const float height = static_cast<float>(std::max(1L, client.bottom - client.top));
+    const Vector2 viewPoint(
+        ((static_cast<float>(mouseX) / width) * 2.0F) - 1.0F,
+        1.0F - ((static_cast<float>(mouseY) / height) * 2.0F));
+    Vector3 pointOnViewPlane;
+    g_camera->Un_Project(pointOnViewPlane, viewPoint);
+    const Vector3 cameraPosition = g_camera->Get_Position();
+    const Vector3 rayDirection = pointOnViewPlane - cameraPosition;
+    if (std::abs(rayDirection.Z) < 0.0001F) {
+        return {};
+    }
+    const float distanceToArena = -cameraPosition.Z / rayDirection.Z;
     const float worldX = std::clamp(
-        ((static_cast<float>(mouseX) / width) - 0.5F) * (kArenaExtent * 2.0F),
+        cameraPosition.X + (rayDirection.X * distanceToArena),
         -kArenaExtent,
         kArenaExtent);
     const float worldY = std::clamp(
-        (0.5F - (static_cast<float>(mouseY) / height)) * (kArenaExtent * 2.0F),
+        cameraPosition.Y + (rayDirection.Y * distanceToArena),
         -kArenaExtent,
         kArenaExtent);
     return {
@@ -300,7 +314,9 @@ void BuildRelayAtNearestOwnedNode()
 void ProduceCourier()
 {
     for (const Tempest::Building &building : g_simulation.GetState().buildings) {
-        if (building.hitPoints > 0 && building.complete && building.faction == Tempest::Faction::Freegrid) {
+        if (building.hitPoints > 0 && building.complete &&
+            building.faction == Tempest::Faction::Freegrid &&
+            building.kind == Tempest::BuildingKind::Workshop) {
             g_simulation.Submit(MakeCommand(Tempest::CommandKind::ProduceCourier, building.id));
             return;
         }
@@ -831,9 +847,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
 
     MSG message = {};
     bool running = true;
+    int exitCode = 0;
     while (running) {
         while (PeekMessage(&message, nullptr, 0, 0, PM_REMOVE)) {
             if (message.message == WM_QUIT) {
+                exitCode = static_cast<int>(message.wParam);
                 running = false;
                 break;
             }
@@ -858,5 +876,5 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
     }
 
     ShutdownRenderer();
-    return 0;
+    return exitCode;
 }

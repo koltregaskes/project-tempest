@@ -36,9 +36,9 @@ bool IsWithin(Point left, Point right, std::int32_t range)
 
 void MoveTowards(Point &position, Point destination)
 {
-    const std::int32_t dx = destination.x - position.x;
-    const std::int32_t dy = destination.y - position.y;
-    const std::int32_t distance = std::abs(dx) + std::abs(dy);
+    const std::int64_t dx = static_cast<std::int64_t>(destination.x) - position.x;
+    const std::int64_t dy = static_cast<std::int64_t>(destination.y) - position.y;
+    const std::int64_t distance = std::abs(dx) + std::abs(dy);
     if (distance <= MoveDistancePerTick) {
         position = destination;
         return;
@@ -233,7 +233,8 @@ void Simulation::Execute(const Command &command)
         }
         const bool alreadyBuilt = std::any_of(
             m_state.buildings.begin(), m_state.buildings.end(), [node](const Building &building) {
-                return building.kind == BuildingKind::Relay && IsWithin(building.position, node->position, 100);
+                return building.kind == BuildingKind::Relay && building.hitPoints > 0 &&
+                    IsWithin(building.position, node->position, 100);
             });
         if (!alreadyBuilt) {
             m_state.freegridCredits -= RelayCost;
@@ -245,7 +246,7 @@ void Simulation::Execute(const Command &command)
     if (command.kind == CommandKind::ProduceCourier) {
         Building *producer = FindBuilding(command.actorId);
         if (!producer || producer->faction != Faction::Freegrid || !producer->complete ||
-            producer->kind == BuildingKind::ChorusCore || m_state.freegridCredits < CourierCost) {
+            producer->kind != BuildingKind::Workshop || m_state.freegridCredits < CourierCost) {
             return;
         }
         m_state.freegridCredits -= CourierCost;
@@ -271,7 +272,13 @@ void Simulation::Execute(const Command &command)
             }
             break;
         case CommandKind::Attack:
-            if (FindUnit(command.targetId) || FindBuilding(command.targetId)) {
+            if (const Unit *unitTarget = FindUnit(command.targetId);
+                unitTarget && unitTarget->alive && unitTarget->faction != actor->faction) {
+                actor->order = OrderKind::Attack;
+                actor->targetId = command.targetId;
+            } else if (const Building *buildingTarget = FindBuilding(command.targetId);
+                       buildingTarget && buildingTarget->hitPoints > 0 &&
+                       buildingTarget->faction != actor->faction) {
                 actor->order = OrderKind::Attack;
                 actor->targetId = command.targetId;
             }
@@ -450,9 +457,47 @@ void Simulation::UpdateEconomyAndAi()
         if (!drone.alive || drone.faction != Faction::Chorus) {
             continue;
         }
+        if ((drone.id % 3U) == 1U) {
+            if (drone.order == OrderKind::Capture) {
+                if (const ControlNode *target = FindNode(drone.targetId);
+                    target && target->owner != Faction::Chorus) {
+                    continue;
+                }
+            }
+
+            std::int64_t nearestNodeDistance = std::numeric_limits<std::int64_t>::max();
+            std::uint32_t nearestNodeId = 0;
+            Point nearestNodePosition;
+            for (const ControlNode &node : m_state.nodes) {
+                if (node.owner == Faction::Chorus) {
+                    continue;
+                }
+                const std::int64_t distance = DistanceSquared(drone.position, node.position);
+                if (distance < nearestNodeDistance ||
+                    (distance == nearestNodeDistance && node.id < nearestNodeId)) {
+                    nearestNodeDistance = distance;
+                    nearestNodeId = node.id;
+                    nearestNodePosition = node.position;
+                }
+            }
+            if (nearestNodeId != 0) {
+                drone.order = OrderKind::Capture;
+                drone.targetId = nearestNodeId;
+                drone.destination = nearestNodePosition;
+                continue;
+            }
+        }
+
         bool hasTarget = false;
-        if (const Unit *target = FindUnit(drone.targetId)) {
-            hasTarget = target->alive && target->faction == Faction::Freegrid;
+        if (drone.order == OrderKind::Attack) {
+            if (const Unit *target = FindUnit(drone.targetId)) {
+                hasTarget = target->alive && target->faction == Faction::Freegrid;
+            }
+            if (!hasTarget) {
+                if (const Building *target = FindBuilding(drone.targetId)) {
+                    hasTarget = target->hitPoints > 0 && target->faction == Faction::Freegrid;
+                }
+            }
         }
         if (!hasTarget) {
             std::int64_t nearestDistance = std::numeric_limits<std::int64_t>::max();

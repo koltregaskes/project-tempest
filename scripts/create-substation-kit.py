@@ -16,9 +16,13 @@ def fail(message):
 
 
 project_root = os.environ.get("TEMPEST_PROJECT_ROOT")
+output_root = os.environ.get("TEMPEST_OUTPUT_ROOT", project_root)
 plugin_root = os.environ.get("TEMPEST_W3D_PLUGIN_ROOT")
 if not project_root or not os.path.isdir(project_root):
     fail("TEMPEST_PROJECT_ROOT is not a valid directory")
+if not output_root:
+    fail("TEMPEST_OUTPUT_ROOT is not a valid directory")
+os.makedirs(output_root, exist_ok=True)
 if not plugin_root or not os.path.isdir(plugin_root):
     fail("TEMPEST_W3D_PLUGIN_ROOT is not a valid OpenSAGE plugin checkout")
 
@@ -28,9 +32,9 @@ import io_mesh_w3d  # noqa: E402
 io_mesh_w3d.register()
 bpy.context.preferences.filepaths.save_version = 0
 
-runtime_root = os.path.join(project_root, "ProjectTempest", "Content", "Art", "W3D")
-texture_root = os.path.join(project_root, "ProjectTempest", "Content", "Art", "Textures")
-evidence_root = os.path.join(project_root, "build", "substation-kit")
+runtime_root = os.path.join(output_root, "ProjectTempest", "Content", "Art", "W3D")
+texture_root = os.path.join(output_root, "ProjectTempest", "Content", "Art", "Textures")
+evidence_root = os.path.join(output_root, "build", "substation-kit")
 os.makedirs(runtime_root, exist_ok=True)
 os.makedirs(texture_root, exist_ok=True)
 os.makedirs(evidence_root, exist_ok=True)
@@ -284,11 +288,11 @@ def sha256(path):
 
 
 def artifact(path):
-    return {"path": os.path.relpath(path, project_root).replace("\\", "/"), "sha256": sha256(path)}
+    return {"path": os.path.relpath(path, output_root).replace("\\", "/"), "sha256": sha256(path)}
 
 
 def export_asset(name, source_parts, groups, specs, collision_center, collision_size, preview_extent, target_z):
-    source_root = os.path.join(project_root, "ProjectTempest", "SourceAssets", "Models", *name["source_parts"])
+    source_root = os.path.join(output_root, "ProjectTempest", "SourceAssets", "Models", *name["source_parts"])
     os.makedirs(source_root, exist_ok=True)
     blend_path = os.path.join(source_root, f"{name['slug']}-master-v1.blend")
     preview_path = os.path.join(source_root, f"{name['slug']}-top-v1.png")
@@ -354,6 +358,9 @@ def export_asset(name, source_parts, groups, specs, collision_center, collision_
         for obj in imported_render
         if len(obj.data.materials) != 1
     }
+    empty_render_meshes = sorted(
+        obj.name for obj in imported_render if len(obj.data.vertices) == 0
+    )
     imported_collision_flags = (
         set(imported_boxes[0].data.box_collision_types) - {"DEFAULT"}
         if len(imported_boxes) == 1
@@ -372,6 +379,7 @@ def export_asset(name, source_parts, groups, specs, collision_center, collision_
         or imported_render_names != expected_render_names
         or len(imported_boxes) != 1
         or invalid_material_counts
+        or empty_render_meshes
         or imported_collision_flags != expected_collision_flags
         or imported_texture_files != expected_texture_files
     ):
@@ -379,6 +387,7 @@ def export_asset(name, source_parts, groups, specs, collision_center, collision_
             f"{name['slug']} roundtrip failed: result={import_result}, "
             f"render={imported_render_names}, expected_render={expected_render_names}, "
             f"boxes={len(imported_boxes)}, materials={invalid_material_counts}, "
+            f"empty_render_meshes={empty_render_meshes}, "
             f"collision_flags={sorted(imported_collision_flags)}, "
             f"textures={imported_texture_files}, expected_textures={expected_texture_files}"
         )

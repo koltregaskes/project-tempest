@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -22,7 +23,7 @@ Tempest::Command MakeCommand(
     std::uint32_t targetId = 0,
     Tempest::Point point = {})
 {
-    Tempest::Command command;
+    Tempest::Command command {};
     command.executeTick = executeTick;
     command.kind = kind;
     command.actorId = actorId;
@@ -109,8 +110,50 @@ void TestEconomyConstructionAndProduction()
 
     const std::size_t unitsBeforeProduction = simulation.GetState().units.size();
     simulation.Submit(MakeCommand(simulation.GetState().tick, Tempest::CommandKind::ProduceCourier, relayId));
+    simulation.Step();
+    Expect(simulation.GetState().production.empty(), "a grid Relay cannot produce combat units");
+    Expect(simulation.GetState().units.size() == unitsBeforeProduction, "rejected Relay production creates no unit");
+
+    const std::uint32_t workshopId = FindBuilding(simulation.GetState(), Tempest::BuildingKind::Workshop);
+    simulation.Submit(MakeCommand(simulation.GetState().tick, Tempest::CommandKind::ProduceCourier, workshopId));
     simulation.Step(Tempest::TicksPerSecond * 3 + 1);
-    Expect(simulation.GetState().units.size() == unitsBeforeProduction + 1, "completed Relay produces a Courier");
+    Expect(simulation.GetState().units.size() == unitsBeforeProduction + 1, "completed Workshop produces a Courier");
+}
+
+void TestCommandValidationAndChorusTerritoryAi()
+{
+    Tempest::Simulation validationSimulation;
+    const std::uint32_t courierId = FindCourier(validationSimulation.GetState());
+    const std::uint32_t workshopId = FindBuilding(validationSimulation.GetState(), Tempest::BuildingKind::Workshop);
+    validationSimulation.Submit(MakeCommand(0, Tempest::CommandKind::Attack, courierId, workshopId));
+    validationSimulation.Step();
+    const Tempest::Unit *courier = nullptr;
+    for (const Tempest::Unit &unit : validationSimulation.GetState().units) {
+        if (unit.id == courierId) {
+            courier = &unit;
+            break;
+        }
+    }
+    Expect(courier && courier->order == Tempest::OrderKind::Idle,
+        "friendly targets are rejected before creating an unreachable attack order");
+
+    validationSimulation.Submit(MakeCommand(
+        validationSimulation.GetState().tick,
+        Tempest::CommandKind::Move,
+        courierId,
+        0,
+        { std::numeric_limits<std::int32_t>::max(), std::numeric_limits<std::int32_t>::min() }));
+    validationSimulation.Step();
+    Expect(courier->position.x > -12000 && courier->position.y < -9000,
+        "extreme move coordinates are widened before deterministic movement arithmetic");
+
+    Tempest::Simulation territorySimulation;
+    territorySimulation.Step(Tempest::TicksPerSecond * 10);
+    bool chorusCapturedNode = false;
+    for (const Tempest::ControlNode &node : territorySimulation.GetState().nodes) {
+        chorusCapturedNode |= node.owner == Tempest::Faction::Chorus;
+    }
+    Expect(chorusCapturedNode, "Chorus AI can contest and capture a control node");
 }
 
 void TestArcPulseRange()
@@ -182,13 +225,13 @@ std::vector<std::uint64_t> RunDeterministicScript()
 
 void TestDeterministicReplay()
 {
-    constexpr std::uint64_t ExpectedFinalChecksum = 10627918652945665272ULL;
+    constexpr std::uint64_t ExpectedFinalChecksum = 4421283840936625681ULL;
     const std::vector<std::uint64_t> first = RunDeterministicScript();
     const std::vector<std::uint64_t> second = RunDeterministicScript();
     Expect(first == second, "identical command streams produce identical per-tick checksums");
     Expect(!first.empty() && first.back() != 0, "determinism trace contains a final checksum");
-    Expect(first.back() == ExpectedFinalChecksum, "deterministic replay matches the reviewed golden checksum");
     std::cout << "TRACE: deterministic_replay_final_checksum=" << first.back() << '\n';
+    Expect(first.back() == ExpectedFinalChecksum, "deterministic replay matches the reviewed golden checksum");
 }
 
 } // namespace
@@ -198,6 +241,7 @@ int main()
     TestInitialStateAndPause();
     TestEconomyConstructionAndProduction();
     TestArcPulseRange();
+    TestCommandValidationAndChorusTerritoryAi();
     TestVictoryAndDefeat();
     TestDeterministicReplay();
     std::cout << "PASS: Project Tempest deterministic simulation tests\n";

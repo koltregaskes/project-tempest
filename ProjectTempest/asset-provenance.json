@@ -36,7 +36,7 @@
       "input_references": [
         "PT-CONCEPT-FG-COURIER-001"
       ],
-      "sha256": "8fbdc1156825c4a36ed7ae93019ca10b2f7b545543509b184ef2a87c9732f62b",
+      "sha256": "db88d515e737cbb21d164e48887b08ce4dcbc145a5af6c08811cb6ea2f7c333f",
       "review": {
         "creative": "approved_as_first_editable_blockout",
         "top_down_readability": "pass",
@@ -55,7 +55,7 @@
       "tool": "Blender 5.1.2 Workbench",
       "source_asset": "PT-MODEL-FG-COURIER-001",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "7c7a5df9d690ade4ff81fbc10b73bdd2b495ad0d697e838d1a0585bc3a6a4bdf",
+      "sha256": "b29f82221a13b23fa4997c9ef8b4b8cfd081e83731f0cd3d2b462494adcab363",
       "review": {
         "frame": "nonblank_1280x720",
         "silhouette": "pass",
@@ -71,7 +71,7 @@
       "tool": "Blender 5.1.2 Workbench",
       "source_asset": "PT-MODEL-FG-COURIER-001",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "39d153b297284153bf9d7a492d1c0c2abddcec22028051be0030f2dd58de3e33",
+      "sha256": "b4c820905ef55da2bca4a72ba49ac3d3a2f1af6169f5df8f15b1fbd8a759e117",
       "review": {
         "frame": "nonblank_1280x720",
         "top_down_silhouette": "pass",
@@ -144,7 +144,7 @@
       "tool": "Blender 5.1.2",
       "source_asset": "PT-MODEL-FG-COURIER-001",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "866a57eb181d3d6bc3c7abe4d5910da0ee89717f977d9618a679fcea6ea5eb8b",
+      "sha256": "30c48fae0c757da8aa38a2e6d92555f70969b3eaafe1cc9aa5ed3108293eacb7",
       "review": {
         "damage_readability": "pass_headless_preview_via_burn_plate_deformation_and_lights_off",
         "runtime_mapping": "ready_for_reallydamaged_model_condition",
@@ -160,7 +160,7 @@
       "tool": "Blender 5.1.2 Workbench --background",
       "source_asset": "PT-MODEL-FG-COURIER-002",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "57470437ac9f8d7f484afb7cadbc9ae24b42f8f61e60a35b9f4ebc129fc7a9dc",
+      "sha256": "d0f1661f667914ca6e7f58aa71b4d92d48a2e0a0bf797175d09cceb6cec5781f",
       "review": {
         "frame": "nonblank_1280x720",
         "damage_cues": "pass_burn_plate_deformed_sensor_and_powered_off_cyan",
@@ -177,7 +177,7 @@
       "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
       "source_asset": "PT-MODEL-FG-COURIER-002",
       "source_script": "../scripts/create-courier-blockout.py",
-      "sha256": "287f1927cf5575ec20771595c716fa23bcd993b17aa2687f4722969e79747f0b",
+      "sha256": "6d4f354b4a3ba3e8e8927098e4a0fb3f8138ce3ab05030f50014853abed7d3b4",
       "validation": {
         "roundtrip_import": "pass",
         "export_mode": "HM",

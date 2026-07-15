@@ -45,6 +45,7 @@ if (-not (Test-Path -LiteralPath $cachedD3d8Path -PathType Leaf)) {
 
 $actualD3d8Hash = (Get-FileHash -LiteralPath $cachedD3d8Path -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($actualD3d8Hash -ne $d3d8To9Sha256) {
+    Remove-Item -Force -LiteralPath $cachedD3d8Path
     throw "d3d8to9 hash mismatch: expected $d3d8To9Sha256, actual $actualD3d8Hash"
 }
 

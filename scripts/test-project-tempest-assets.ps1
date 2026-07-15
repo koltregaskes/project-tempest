@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
-    [string]$ManifestPath = "ProjectTempest/asset-provenance.json"
+    [string]$ManifestPath = "ProjectTempest/asset-provenance.json",
+    [switch]$VerifyReproducibility,
+    [string]$BlenderPath = "C:\Program Files\Blender Foundation\Blender 5.1\blender.exe"
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,10 +22,15 @@ if ($manifest.public_distribution_default -ne "prohibited_until_reviewed") {
 }
 
 $validated = @()
+$seenAssetIds = @{}
 foreach ($asset in $manifest.assets) {
     if ([string]::IsNullOrWhiteSpace($asset.asset_id) -or [string]::IsNullOrWhiteSpace($asset.path)) {
         throw "Every asset requires a non-empty asset_id and path."
     }
+    if ($seenAssetIds.ContainsKey($asset.asset_id)) {
+        throw "Duplicate asset_id: $($asset.asset_id)"
+    }
+    $seenAssetIds[$asset.asset_id] = $true
 
     $candidatePath = [IO.Path]::GetFullPath((Join-Path $contentRoot $asset.path))
     $contentPrefix = $contentRoot.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
@@ -138,7 +145,6 @@ $expectedRelayMeshes = "HouseColor0,HouseColor1,HouseColor2,RLARMOR0,RLARMOR1,RL
 
 if (
     $null -eq $droneRuntimeAsset -or
-    $droneRuntimeAsset.validation.repeat_export_hash_stable -ne $true -or
     $droneRuntimeAsset.validation.roundtrip_import -ne "pass" -or
     $droneRuntimeAsset.validation.export_mode -ne "HM" -or
     $droneRuntimeAsset.validation.imported_render_mesh_count -ne 9 -or
@@ -155,7 +161,6 @@ if (
 
 if (
     $null -eq $relayRuntimeAsset -or
-    $relayRuntimeAsset.validation.repeat_export_hash_stable -ne $true -or
     $relayRuntimeAsset.validation.roundtrip_import -ne "pass" -or
     $relayRuntimeAsset.validation.export_mode -ne "HM" -or
     $relayRuntimeAsset.validation.imported_render_mesh_count -ne 9 -or
@@ -193,3 +198,13 @@ if (
 
 $validated | Format-Table -AutoSize
 Write-Host "Validated $($validated.Count) Project Tempest assets, Courier/Drone/Relay runtime contracts, and the manual-only renderer policy."
+
+if ($VerifyReproducibility) {
+    $reproducibilityScript = Join-Path $PSScriptRoot "test-project-tempest-reproducibility.ps1"
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $reproducibilityScript -BlenderPath $BlenderPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Project Tempest runtime-asset reproducibility verification failed with exit code $LASTEXITCODE."
+    }
+} else {
+    Write-Host "Runtime reproducibility generation was not requested; use -VerifyReproducibility for the release gate."
+}

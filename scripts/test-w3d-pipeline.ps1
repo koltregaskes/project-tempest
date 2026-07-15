@@ -42,6 +42,14 @@ if ($LASTEXITCODE -ne 0) {
 if ($LASTEXITCODE -ne 0) {
     throw "Initialising the OpenSAGE Blender plugin submodules failed with exit code $LASTEXITCODE."
 }
+$pluginStatus = @(& git -C $toolRoot -c core.longpaths=true status --short --untracked-files=all)
+if ($LASTEXITCODE -ne 0 -or $pluginStatus.Count -gt 0) {
+    throw "The pinned OpenSAGE Blender plugin checkout is dirty: $($pluginStatus -join '; ')"
+}
+$dirtySubmodules = @(& git -C $toolRoot -c core.longpaths=true submodule foreach --recursive --quiet 'git status --short --untracked-files=all')
+if ($LASTEXITCODE -ne 0 -or $dirtySubmodules.Count -gt 0) {
+    throw "A pinned OpenSAGE Blender plugin submodule is dirty: $($dirtySubmodules -join '; ')"
+}
 
 New-Item -ItemType Directory -Force -Path $outputRoot | Out-Null
 Remove-Item -LiteralPath $resultPath -Force -ErrorAction SilentlyContinue
@@ -49,8 +57,12 @@ Remove-Item -LiteralPath $resultPath -Force -ErrorAction SilentlyContinue
 $env:TEMPEST_W3D_PLUGIN_ROOT = $toolRoot
 $env:TEMPEST_W3D_OUTPUT_ROOT = $outputRoot
 & $BlenderPath --background --factory-startup --python $pythonScript
+$blenderExitCode = $LASTEXITCODE
 
 # Blender can return success even when a Python script raises. The result sentinel is the authoritative test outcome.
+if ($blenderExitCode -ne 0) {
+    throw "Blender W3D pipeline failed with exit code $blenderExitCode."
+}
 if (-not (Test-Path -LiteralPath $resultPath)) {
     throw "The Blender W3D pipeline did not produce '$resultPath'. Review the Blender output above."
 }

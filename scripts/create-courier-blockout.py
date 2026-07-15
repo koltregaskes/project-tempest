@@ -16,9 +16,13 @@ def fail(message: str) -> None:
 
 
 project_root = os.environ.get("TEMPEST_PROJECT_ROOT")
+output_root = os.environ.get("TEMPEST_OUTPUT_ROOT", project_root)
 plugin_root = os.environ.get("TEMPEST_W3D_PLUGIN_ROOT")
 if not project_root or not os.path.isdir(project_root):
     fail("TEMPEST_PROJECT_ROOT is not a valid directory")
+if not output_root:
+    fail("TEMPEST_OUTPUT_ROOT is not a valid directory")
+os.makedirs(output_root, exist_ok=True)
 if not plugin_root or not os.path.isdir(plugin_root):
     fail("TEMPEST_W3D_PLUGIN_ROOT is not a valid OpenSAGE plugin checkout")
 
@@ -28,11 +32,11 @@ import io_mesh_w3d  # noqa: E402
 io_mesh_w3d.register()
 
 source_root = os.path.join(
-    project_root, "ProjectTempest", "SourceAssets", "Models", "Freegrid", "Courier"
+    output_root, "ProjectTempest", "SourceAssets", "Models", "Freegrid", "Courier"
 )
-runtime_root = os.path.join(project_root, "ProjectTempest", "Content", "Art", "W3D")
-texture_root = os.path.join(project_root, "ProjectTempest", "Content", "Art", "Textures")
-evidence_root = os.path.join(project_root, "build", "courier-blockout")
+runtime_root = os.path.join(output_root, "ProjectTempest", "Content", "Art", "W3D")
+texture_root = os.path.join(output_root, "ProjectTempest", "Content", "Art", "Textures")
+evidence_root = os.path.join(output_root, "build", "courier-blockout")
 os.makedirs(source_root, exist_ok=True)
 os.makedirs(runtime_root, exist_ok=True)
 os.makedirs(texture_root, exist_ok=True)
@@ -452,8 +456,8 @@ for armor_name in ("CRARMOR0", "CRARMOR1"):
     if armor_object is None:
         fail(f"Damage-state source is missing {armor_name}")
     for vertex in armor_object.data.vertices:
-        local_z = vertex.co.z
-        if local_z > 1.55:
+        world_z = (armor_object.matrix_world @ vertex.co).z
+        if world_z > 1.55:
             vertex.co.y -= 0.20
             vertex.co.z -= 0.22
 
@@ -498,6 +502,9 @@ invalid_material_counts = {
     for obj in imported_render_meshes
     if len(obj.data.materials) != 1
 }
+empty_render_meshes = sorted(
+    obj.name for obj in imported_render_meshes if len(obj.data.vertices) == 0
+)
 imported_collision_flags = (
     set(imported_boxes[0].data.box_collision_types) - {"DEFAULT"}
     if len(imported_boxes) == 1
@@ -534,7 +541,7 @@ if (
     or imported_collision_flags != expected_collision_flags
     or imported_house_color_meshes != ["HouseColor0", "HouseColor1"]
     or invalid_material_counts
-    or imported_vertex_count == 0
+    or empty_render_meshes
     or imported_texture_files != expected_texture_files
 ):
     fail(
@@ -543,6 +550,7 @@ if (
         f"collision_flags={sorted(imported_collision_flags)}, "
         f"house_color_meshes={imported_house_color_meshes}, "
         f"invalid_material_counts={invalid_material_counts}, "
+        f"empty_render_meshes={empty_render_meshes}, "
         f"textures={imported_texture_files}, expected_textures={expected_texture_files}, "
         f"vertices={imported_vertex_count}"
     )
@@ -554,6 +562,9 @@ damaged_meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"
 damaged_boxes = [obj for obj in damaged_meshes if obj.data.object_type == "BOX"]
 damaged_render_meshes = [obj for obj in damaged_meshes if obj.data.object_type != "BOX"]
 damaged_render_names = sorted(obj.name for obj in damaged_render_meshes)
+empty_damaged_render_meshes = sorted(
+    obj.name for obj in damaged_render_meshes if len(obj.data.vertices) == 0
+)
 expected_damaged_render_names = sorted(expected_render_names + ["CRDMG0", "CRDMG1"])
 damaged_texture_files = sorted(
     {
@@ -569,12 +580,14 @@ if (
     damaged_import_result != {"FINISHED"}
     or damaged_render_names != expected_damaged_render_names
     or len(damaged_boxes) != 1
+    or empty_damaged_render_meshes
     or "ptburn.tga" not in damaged_texture_files
     or "ptoff.tga" not in damaged_texture_files
 ):
     fail(
         f"Damaged W3D re-import failed: result={damaged_import_result}, "
         f"render_meshes={damaged_render_names}, boxes={len(damaged_boxes)}, "
+        f"empty_render_meshes={empty_damaged_render_meshes}, "
         f"textures={damaged_texture_files}"
     )
 
@@ -585,17 +598,17 @@ def sha256(path):
 
 
 result = {
-    "blend": {"path": os.path.relpath(blend_path, project_root), "sha256": sha256(blend_path)},
+    "blend": {"path": os.path.relpath(blend_path, output_root), "sha256": sha256(blend_path)},
     "damaged_blend": {
-        "path": os.path.relpath(damaged_blend_path, project_root),
+        "path": os.path.relpath(damaged_blend_path, output_root),
         "sha256": sha256(damaged_blend_path),
     },
     "damaged_preview": {
-        "path": os.path.relpath(damaged_preview_path, project_root),
+        "path": os.path.relpath(damaged_preview_path, output_root),
         "sha256": sha256(damaged_preview_path),
     },
     "damaged_w3d": {
-        "path": os.path.relpath(damaged_w3d_path, project_root),
+        "path": os.path.relpath(damaged_w3d_path, output_root),
         "sha256": sha256(damaged_w3d_path),
     },
     "blender_version": bpy.app.version_string,
@@ -618,16 +631,16 @@ result = {
     "lod1_vertex_count": lod1_vertex_count,
     "source_part_count": source_part_count,
     "textures": [
-        {"path": os.path.relpath(path, project_root), "sha256": sha256(path)}
+        {"path": os.path.relpath(path, output_root), "sha256": sha256(path)}
         for path in sorted(texture_artifacts)
     ],
     "plugin_version": ".".join(str(part) for part in io_mesh_w3d.VERSION),
-    "preview": {"path": os.path.relpath(preview_path, project_root), "sha256": sha256(preview_path)},
+    "preview": {"path": os.path.relpath(preview_path, output_root), "sha256": sha256(preview_path)},
     "top_preview": {
-        "path": os.path.relpath(top_preview_path, project_root),
+        "path": os.path.relpath(top_preview_path, output_root),
         "sha256": sha256(top_preview_path),
     },
-    "w3d": {"path": os.path.relpath(w3d_path, project_root), "sha256": sha256(w3d_path)},
+    "w3d": {"path": os.path.relpath(w3d_path, output_root), "sha256": sha256(w3d_path)},
 }
 
 with open(result_path, "w", encoding="utf-8") as result_file:

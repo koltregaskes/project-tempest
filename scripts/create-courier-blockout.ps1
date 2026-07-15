@@ -29,9 +29,10 @@ Remove-Item -LiteralPath $resultPath -Force -ErrorAction SilentlyContinue
 $env:TEMPEST_PROJECT_ROOT = $repoRoot
 $env:TEMPEST_W3D_PLUGIN_ROOT = $pluginRoot
 & $BlenderPath --background --factory-startup --python $pythonScript
+$blenderExitCode = $LASTEXITCODE
 
 # Blender may return success after a Python exception, so require a verified result sentinel.
-if (-not (Test-Path -LiteralPath $resultPath)) {
+if ($blenderExitCode -ne 0 -or -not (Test-Path -LiteralPath $resultPath)) {
     throw "Courier generation did not produce '$resultPath'. Review the Blender output above."
 }
 

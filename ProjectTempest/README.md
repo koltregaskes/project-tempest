@@ -27,7 +27,8 @@ hero/top-down review renders, and runtime W3D with:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\create-courier-blockout.ps1
 ```
 
-The generator authors seven deterministic 128×128 TGA material maps, then splits each visual material into a single-pass render submesh, producing six submeshes per LOD plus a
+The generator authors seven deterministic 128x128 TGA material maps, then splits each visual material into a single-pass
+render submesh, producing six submeshes per LOD plus a
 `BOUNDINGBOX` collision primitive with physical, projectile, visibility, and vehicle flags. `HouseColor0` and
 `HouseColor1` deliberately use Generals' native mesh-name recolouring convention. It exports in W3D `HM` mode and
 immediately re-imports the file, failing unless all twelve render meshes, both house-colour meshes, and exactly one
@@ -52,6 +53,14 @@ LOD states (640, 345, and 194 authored vertices). The Relay uses a radial grid-n
 render meshes, its exact texture set, one collision box, and the physical/projectile/visibility/vehicle collision flags.
 Two clean background regenerations produced byte-identical `drone.w3d`, `relay.w3d`, and `ptmagnta.tga` outputs. Blender
 containers and Workbench preview PNGs are provenance-pinned review artifacts, not deterministic build keys.
+
+The release asset gate runs the complete Courier-to-kit dependency graph twice in separate Blender processes and output
+roots, then requires all twelve runtime W3D/TGA hashes to match each other and the committed files:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-project-tempest-assets.ps1 `
+  -VerifyReproducibility
+```
 
 The runtime W3D has a captured frame from the repository's native `W3DViewV.exe`. The viewer is blocked under Microsoft
 Remote Display. On 15 July 2026, unattended launches from `build/ci-w3dview-fixed/W3DViewV.exe` caused repeated

@@ -56,7 +56,7 @@ add_executable(project_tempest_sim_tests
     Code/TempestSimulation.cpp
     Tests/TempestSimulationTests.cpp
 )
-target_compile_features(project_tempest_sim_tests PRIVATE cxx_std_17)
+target_compile_features(project_tempest_sim_tests PRIVATE cxx_std_20)
 target_include_directories(project_tempest_sim_tests PRIVATE Code)
 
 add_test(NAME project_tempest_sim_tests COMMAND project_tempest_sim_tests)

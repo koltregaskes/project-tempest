@@ -170,7 +170,9 @@ Decision (2026-07-15): use option 3 for the first pipeline. Pin the LGPL-3.0
 `scripts/test-w3d-pipeline.ps1` fetches that source into a short per-user tool cache and performs a headless export/import
 test using only procedural geometry, with evidence written to the ignored build tree. On Blender 5.1.2, two clean exports produced the same SHA-256 and the exported
 mesh imported successfully. This selected the bridge; the authored baseline below additionally proves a static hierarchy,
-collision, and two LODs, but materials, animation, and damage states remain unproven. W3D filenames and mesh identifiers
+collision, and two LODs; at that baseline checkpoint, materials, animation, and damage states were still unproven. The
+production pass below now proves textured materials and deterministic damaged-state payloads, while animation remains
+outside the static Courier's current contract. W3D filenames and mesh identifiers
 must be no longer than 16 characters; source names may be descriptive,
 but the export mapping must enforce legal runtime identifiers.
 

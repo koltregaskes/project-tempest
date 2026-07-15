@@ -51,11 +51,13 @@ jobs:
             tempest:
               - 'ProjectTempest/**'
               - 'PROJECT_TEMPEST*.md'
+              - 'scripts/build-windows.ps1'
               - 'scripts/create-courier-blockout.*'
               - 'scripts/create-substation-kit.*'
               - 'scripts/prepare-w3dview-compat.ps1'
               - 'scripts/test-project-tempest-assets.ps1'
               - 'scripts/test-project-tempest-no-gui.ps1'
+              - 'scripts/test-project-tempest-reproducibility.ps1'
               - 'scripts/test-w3d-pipeline.*'
 
       - name: Changes Summary
