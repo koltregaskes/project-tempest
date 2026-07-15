@@ -317,6 +317,7 @@ foreach ($audioContract in @(
     "MusicGainsForPressure",
     "SetSuspended",
     "VolumeGain",
+    "playbackFailed",
     "pt_music_substation.wav",
     "Tempest::Audio::Cue::ArcPulse"
 )) {

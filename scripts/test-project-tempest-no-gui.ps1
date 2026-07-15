@@ -23,12 +23,19 @@ $scriptSurfaces = Get-ChildItem -LiteralPath (Join-Path $repositoryRoot "scripts
 
 # A workflow that names Project Tempest is part of the unattended surface even when it
 # invokes a binary directly instead of going through one of the guarded wrappers.
+$projectWorkflowPattern = '(?i)project[ -]?tempest'
 $workflowSurfaces = Get-ChildItem -LiteralPath (Join-Path $repositoryRoot ".github/workflows") -File |
     Where-Object {
         $_.Extension -in @(".yml", ".yaml") -and
-        (Get-Content -LiteralPath $_.FullName -Raw) -match '(?i)project[ -]tempest'
+        (Get-Content -LiteralPath $_.FullName -Raw) -match $projectWorkflowPattern
     } |
     ForEach-Object { ".github/workflows/$($_.Name)" }
+
+foreach ($projectSpelling in @("ProjectTempest/Code", "Project Tempest", "project-tempest")) {
+    if ($projectSpelling -notmatch $projectWorkflowPattern) {
+        throw "Project Tempest workflow discovery misses canonical spelling '$projectSpelling'."
+    }
+}
 
 $unattendedSurfaces = @($fixedUnattendedSurfaces + $scriptSurfaces + $workflowSurfaces | Sort-Object -Unique)
 

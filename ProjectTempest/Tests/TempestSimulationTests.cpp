@@ -538,6 +538,10 @@ void TestAudioContract()
     bytes[25] = 0xAC;
     bytes[26] = 0;
     bytes[27] = 0;
+    bytes[28] = 0x10;
+    bytes[29] = 0xB1;
+    bytes[30] = 0x02;
+    bytes[31] = 0;
     Expect(!Tempest::Audio::ParsePcmWave(bytes, asset, error),
         "a non-48 kHz WAV is rejected");
     Expect(asset.channels == pristine.channels && asset.sampleRate == pristine.sampleRate &&

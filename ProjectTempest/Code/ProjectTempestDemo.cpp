@@ -390,6 +390,9 @@ bool BuildRelayAtNearestOwnedNode()
 
 bool ProduceCourier()
 {
+    if (g_simulation.GetState().paused) {
+        return false;
+    }
     for (const Tempest::Building &building : g_simulation.GetState().buildings) {
         if (building.hitPoints > 0 && building.complete &&
             building.faction == Tempest::Faction::Freegrid &&
@@ -502,7 +505,7 @@ void HandleInterfaceEvent(HWND window, const Tempest::Ui::InputEvent &event)
                         : Tempest::Audio::Cue::Alert);
                 break;
             case Tempest::Ui::Action::ArcPulse:
-                if (g_selectedUnitId != 0) {
+                if (g_selectedUnitId != 0 && !g_simulation.GetState().paused) {
                     g_simulation.Submit(MakeCommand(
                         Tempest::CommandKind::ArcPulse,
                         g_selectedUnitId,
@@ -510,6 +513,9 @@ void HandleInterfaceEvent(HWND window, const Tempest::Ui::InputEvent &event)
                         g_pointerPoint));
                     g_audio.Play(Tempest::Audio::Cue::ArcPulse);
                     SetFeedback("Arc Pulse requested at cursor.");
+                } else {
+                    g_audio.Play(Tempest::Audio::Cue::Alert);
+                    SetFeedback("Arc Pulse is unavailable while paused or without a selected Courier.");
                 }
                 break;
             case Tempest::Ui::Action::PrimarySelect:
@@ -1721,12 +1727,19 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
         return 2;
     }
     std::string audioError;
-    const bool audioReady = g_audio.Initialize(std::filesystem::current_path(), audioError);
+    bool audioReady = g_audio.Initialize(std::filesystem::current_path(), audioError);
     if (audioReady) {
         ApplyAudioSettings();
         g_audio.StartMusic();
-        g_audio.SetSuspended(!g_applicationActive);
-    } else {
+        audioReady = g_audio.IsReady();
+        if (audioReady) {
+            g_audio.SetSuspended(!g_applicationActive);
+        } else {
+            audioError = "music playback could not start";
+            g_audio.Shutdown();
+        }
+    }
+    if (!audioReady) {
         OutputDebugStringA(("Project Tempest audio unavailable: " + audioError + "\n").c_str());
     }
     if (!audioReady) {

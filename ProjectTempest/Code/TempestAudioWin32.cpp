@@ -65,6 +65,7 @@ struct AudioSystem::Impl {
     bool musicStarted = false;
     bool suspended = false;
     bool comReference = false;
+    bool playbackFailed = false;
 };
 
 AudioSystem::AudioSystem() : m_impl(std::make_unique<Impl>())
@@ -197,28 +198,37 @@ void AudioSystem::StartMusic()
         buffers[index].AudioBytes = static_cast<UINT32>(m_impl->musicLayers[index].pcm.size());
         buffers[index].pAudioData = m_impl->musicLayers[index].pcm.data();
         buffers[index].LoopCount = XAUDIO2_LOOP_INFINITE;
-        if (FAILED(m_impl->musicVoices[index]->SubmitSourceBuffer(&buffers[index]))) {
+        const HRESULT result = m_impl->musicVoices[index]->SubmitSourceBuffer(&buffers[index]);
+        if (FAILED(result)) {
             for (IXAudio2SourceVoice *voice : m_impl->musicVoices) {
                 voice->FlushSourceBuffers();
             }
+            OutputDebugStringA((HResultMessage("SubmitSourceBuffer(music)", result) + "\n").c_str());
+            m_impl->playbackFailed = true;
             return;
         }
     }
     for (IXAudio2SourceVoice *voice : m_impl->musicVoices) {
-        if (FAILED(voice->Start(0, kMusicStartOperationSet))) {
+        const HRESULT result = voice->Start(0, kMusicStartOperationSet);
+        if (FAILED(result)) {
             m_impl->engine->CommitChanges(kMusicStartOperationSet);
             for (IXAudio2SourceVoice *startedVoice : m_impl->musicVoices) {
                 startedVoice->Stop(0);
                 startedVoice->FlushSourceBuffers();
             }
+            OutputDebugStringA((HResultMessage("Start(music)", result) + "\n").c_str());
+            m_impl->playbackFailed = true;
             return;
         }
     }
-    if (FAILED(m_impl->engine->CommitChanges(kMusicStartOperationSet))) {
+    const HRESULT commitResult = m_impl->engine->CommitChanges(kMusicStartOperationSet);
+    if (FAILED(commitResult)) {
         for (IXAudio2SourceVoice *voice : m_impl->musicVoices) {
             voice->Stop(0);
             voice->FlushSourceBuffers();
         }
+        OutputDebugStringA((HResultMessage("CommitChanges(music)", commitResult) + "\n").c_str());
+        m_impl->playbackFailed = true;
         return;
     }
     m_impl->musicStarted = true;
@@ -226,6 +236,9 @@ void AudioSystem::StartMusic()
 
 void AudioSystem::SetMusicPressure(float pressure)
 {
+    if (!IsReady()) {
+        return;
+    }
     const float requestedPressure = std::clamp(pressure, 0.0F, 1.0F);
     m_impl->musicPressure = requestedPressure;
     if (m_impl->appliedMusicPressure >= 0.0F &&
@@ -244,7 +257,7 @@ void AudioSystem::SetMusicPressure(float pressure)
 
 void AudioSystem::SetSuspended(bool suspended)
 {
-    if (!m_impl->engine || suspended == m_impl->suspended) {
+    if (!IsReady() || suspended == m_impl->suspended) {
         return;
     }
     if (suspended) {
@@ -252,6 +265,8 @@ void AudioSystem::SetSuspended(bool suspended)
         m_impl->suspended = true;
     } else if (SUCCEEDED(m_impl->engine->StartEngine())) {
         m_impl->suspended = false;
+    } else {
+        m_impl->playbackFailed = true;
     }
 }
 
@@ -262,14 +277,29 @@ void AudioSystem::Play(Cue cue)
         return;
     }
     IXAudio2SourceVoice *voice = m_impl->cueVoices[index];
-    voice->Stop(0);
-    voice->FlushSourceBuffers();
+    const HRESULT stopResult = voice->Stop(0);
+    const HRESULT flushResult = voice->FlushSourceBuffers();
+    if (FAILED(stopResult) || FAILED(flushResult)) {
+        const HRESULT result = FAILED(stopResult) ? stopResult : flushResult;
+        OutputDebugStringA((HResultMessage("Reset(effect)", result) + "\n").c_str());
+        m_impl->playbackFailed = true;
+        return;
+    }
     XAUDIO2_BUFFER buffer = {};
     buffer.Flags = XAUDIO2_END_OF_STREAM;
     buffer.AudioBytes = static_cast<UINT32>(m_impl->cues[index].pcm.size());
     buffer.pAudioData = m_impl->cues[index].pcm.data();
-    if (SUCCEEDED(voice->SubmitSourceBuffer(&buffer))) {
-        voice->Start(0);
+    const HRESULT submitResult = voice->SubmitSourceBuffer(&buffer);
+    if (FAILED(submitResult)) {
+        OutputDebugStringA((HResultMessage("SubmitSourceBuffer(effect)", submitResult) + "\n").c_str());
+        m_impl->playbackFailed = true;
+        return;
+    }
+    const HRESULT startResult = voice->Start(0);
+    if (FAILED(startResult)) {
+        voice->FlushSourceBuffers();
+        OutputDebugStringA((HResultMessage("Start(effect)", startResult) + "\n").c_str());
+        m_impl->playbackFailed = true;
     }
 }
 
@@ -316,13 +346,14 @@ void AudioSystem::Shutdown()
     m_impl->musicStarted = false;
     m_impl->suspended = false;
     m_impl->appliedMusicPressure = -1.0F;
+    m_impl->playbackFailed = false;
     m_impl->musicLayers = {};
     m_impl->cues = {};
 }
 
 bool AudioSystem::IsReady() const
 {
-    return m_impl && m_impl->engine && m_impl->masteringVoice &&
+    return m_impl && !m_impl->playbackFailed && m_impl->engine && m_impl->masteringVoice &&
         m_impl->musicBus && m_impl->effectsBus &&
         std::all_of(m_impl->musicVoices.begin(), m_impl->musicVoices.end(), [](const auto *voice) { return voice; }) &&
         std::all_of(m_impl->cueVoices.begin(), m_impl->cueVoices.end(), [](const auto *voice) { return voice; });
