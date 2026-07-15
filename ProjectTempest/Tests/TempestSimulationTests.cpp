@@ -348,18 +348,23 @@ void TestInterfaceFlow()
     Expect(begin.intent == Tempest::Ui::Intent::BeginMatch &&
             interfaceState.GetScreen() == Tempest::Ui::Screen::Playing,
         "confirm starts the match from the briefing");
+    const Tempest::Ui::InputEvent select =
+        interfaceState.HandleMouseButton(Tempest::Ui::MouseButton::Left);
+    Expect(select.intent == Tempest::Ui::Intent::GameplayAction &&
+            select.action == Tempest::Ui::Action::PrimarySelect,
+        "the default primary mouse binding enters the gameplay action stream");
 
-    interfaceState.HandleKey(interfaceState.KeyFor(Tempest::Ui::Action::Pause));
+    interfaceState.HandleKey(interfaceState.BindingFor(Tempest::Ui::Action::Pause).code);
     Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Pause,
         "the remappable pause action opens the pause screen");
-    interfaceState.HandleKey(interfaceState.KeyFor(Tempest::Ui::Action::OpenSettings));
+    interfaceState.HandleKey(interfaceState.BindingFor(Tempest::Ui::Action::OpenSettings).code);
     Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Settings &&
             interfaceState.GetSettingsReturnScreen() == Tempest::Ui::Screen::Pause,
         "settings opened during play returns to the safe paused screen");
     interfaceState.HandleKey(Tempest::Ui::KeyEscape);
     Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Pause,
         "escape returns from settings to pause without advancing simulation");
-    interfaceState.HandleKey(interfaceState.KeyFor(Tempest::Ui::Action::Pause));
+    interfaceState.HandleKey(interfaceState.BindingFor(Tempest::Ui::Action::Pause).code);
     Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Playing,
         "pause action resumes the match");
 
@@ -367,7 +372,7 @@ void TestInterfaceFlow()
     Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Result,
         "a completed simulation opens the in-window result flow");
     const Tempest::Ui::InputEvent restart =
-        interfaceState.HandleKey(interfaceState.KeyFor(Tempest::Ui::Action::Restart));
+        interfaceState.HandleKey(interfaceState.BindingFor(Tempest::Ui::Action::Restart).code);
     Expect(restart.intent == Tempest::Ui::Intent::RestartMatch &&
             interfaceState.GetScreen() == Tempest::Ui::Screen::Playing,
         "result flow restarts without returning to the desktop");
@@ -376,7 +381,7 @@ void TestInterfaceFlow()
 void TestSettingsBoundsAndRemapping()
 {
     Tempest::Ui::InterfaceState interfaceState;
-    interfaceState.HandleKey(interfaceState.KeyFor(Tempest::Ui::Action::OpenSettings));
+    interfaceState.HandleKey(interfaceState.BindingFor(Tempest::Ui::Action::OpenSettings).code);
     Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Settings,
         "briefing exposes essential settings before play");
 
@@ -409,20 +414,71 @@ void TestSettingsBoundsAndRemapping()
     Expect(interfaceState.IsCapturingBinding(), "confirm starts an explicit key capture");
     const Tempest::Ui::InputEvent rebound = interfaceState.HandleKey('K');
     Expect(rebound.intent == Tempest::Ui::Intent::BindingChanged &&
-            interfaceState.KeyFor(Tempest::Ui::Action::MoveUp) == 'K',
+            interfaceState.BindingFor(Tempest::Ui::Action::MoveUp) ==
+                Tempest::Ui::InputBinding { Tempest::Ui::InputDevice::Keyboard, 'K' },
         "a free key can replace a gameplay binding");
 
     interfaceState.HandleKey(Tempest::Ui::KeyDown);
     interfaceState.HandleKey(Tempest::Ui::KeyEnter);
     const Tempest::Ui::InputEvent collision = interfaceState.HandleKey('K');
     Expect(collision.intent == Tempest::Ui::Intent::BindingRejected &&
-            interfaceState.KeyFor(Tempest::Ui::Action::MoveDown) == 'S',
+            interfaceState.BindingFor(Tempest::Ui::Action::MoveDown) ==
+                Tempest::Ui::InputBinding { Tempest::Ui::InputDevice::Keyboard, 'S' },
         "duplicate bindings are rejected without losing the prior key");
 
     bool keyStates[256] = {};
+    bool mouseStates[6] = {};
     keyStates['K'] = true;
-    Expect(interfaceState.IsActionPressed(Tempest::Ui::Action::MoveUp, keyStates, 256),
+    Expect(interfaceState.IsActionPressed(Tempest::Ui::Action::MoveUp, keyStates, 256, mouseStates, 6),
         "the runtime input query consumes the remapped key");
+
+    for (int row = 0; row < 9; ++row) {
+        interfaceState.HandleKey(Tempest::Ui::KeyDown);
+    }
+    Expect(interfaceState.ActionForSettingsRow(interfaceState.GetSelectedSettingsRow()) ==
+            Tempest::Ui::Action::PrimarySelect,
+        "settings navigation reaches the primary mouse action");
+    interfaceState.HandleKey(Tempest::Ui::KeyEnter);
+    const Tempest::Ui::InputEvent mouseRebound =
+        interfaceState.HandleMouseButton(Tempest::Ui::MouseButton::Middle);
+    Expect(mouseRebound.intent == Tempest::Ui::Intent::BindingChanged &&
+            interfaceState.BindingFor(Tempest::Ui::Action::PrimarySelect) ==
+                Tempest::Ui::InputBinding {
+                    Tempest::Ui::InputDevice::Mouse,
+                    static_cast<std::uint16_t>(Tempest::Ui::MouseButton::Middle) },
+        "primary selection can be rebound to a mouse button");
+}
+
+void TestConfigurationPersistence()
+{
+    Tempest::Ui::InterfaceState source;
+    source.HandleKey(source.BindingFor(Tempest::Ui::Action::OpenSettings).code);
+    source.HandleKey(Tempest::Ui::KeyRight);
+    for (int row = 0; row < Tempest::Ui::InterfaceState::AdjustableSettingCount; ++row) {
+        source.HandleKey(Tempest::Ui::KeyDown);
+    }
+    source.HandleKey(Tempest::Ui::KeyEnter);
+    source.HandleKey('K');
+
+    const std::string saved = source.SerializeConfiguration();
+    Tempest::Ui::InterfaceState restored;
+    Expect(restored.LoadConfiguration(saved), "a complete versioned settings file loads");
+    Expect(restored.GetSettings().cameraSpeedPercent == 110,
+        "persisted numeric settings survive a round trip");
+    Expect(restored.BindingFor(Tempest::Ui::Action::MoveUp) ==
+            Tempest::Ui::InputBinding { Tempest::Ui::InputDevice::Keyboard, 'K' },
+        "persisted control bindings survive a round trip");
+    Expect(restored.SerializeConfiguration() == saved,
+        "configuration serialization is deterministic");
+
+    const std::string pristine = restored.SerializeConfiguration();
+    std::string corrupt = saved;
+    const std::size_t cameraValue = corrupt.find("camera_speed_percent=110");
+    Expect(cameraValue != std::string::npos, "round-trip fixture contains the adjusted camera speed");
+    corrupt.replace(cameraValue, std::string("camera_speed_percent=110").size(), "camera_speed_percent=999");
+    Expect(!restored.LoadConfiguration(corrupt), "out-of-range persisted settings are rejected");
+    Expect(restored.SerializeConfiguration() == pristine,
+        "a rejected settings file cannot partially mutate live settings");
 }
 
 } // namespace
@@ -438,6 +494,7 @@ int main()
     TestDeterministicReplay();
     TestInterfaceFlow();
     TestSettingsBoundsAndRemapping();
+    TestConfigurationPersistence();
     std::cout << "PASS: Project Tempest deterministic simulation tests\n";
     return 0;
 }

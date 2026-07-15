@@ -201,8 +201,19 @@ if (
 ) {
     throw "Project Tempest HUD drawing must restore the prior GDI font before scalable fonts can be deleted."
 }
+foreach ($mouseCaptureContract in @(
+    "SetCapture(window)",
+    "ReleaseCapture()",
+    "WM_CAPTURECHANGED",
+    "WM_CANCELMODE",
+    "ClearHeldMouseButtons(window, true)"
+)) {
+    if ($demoSource -notmatch [regex]::Escape($mouseCaptureContract)) {
+        throw "Project Tempest mouse capture lifecycle is missing '$mouseCaptureContract'."
+    }
+}
 if (
-    $demoSource -notmatch [regex]::Escape('FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));') -or
+    $demoSource -notmatch [regex]::Escape('FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));') -or
     $demoSource -notmatch [regex]::Escape('"ENTER  establish link and begin     [%s]  settings     ESC  exit"')
 ) {
     throw "Project Tempest briefing must render the current remappable settings shortcut."
@@ -232,7 +243,13 @@ foreach ($interfaceContract in @(
     "DrawModalOverlay",
     "SyncOutcome",
     "colourIndependentCues",
-    "RestartMatch"
+    "RestartMatch",
+    "SerializeConfiguration",
+    "LoadConfiguration",
+    "HandleMouseButton",
+    "PrimarySelect",
+    "ContextCommand",
+    "MoveFileExW"
 )) {
     if ($combinedInterfaceSource -notmatch [regex]::Escape($interfaceContract)) {
         throw "Project Tempest interface contract is missing '$interfaceContract'."

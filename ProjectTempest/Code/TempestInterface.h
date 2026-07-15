@@ -5,6 +5,8 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string>
+#include <string_view>
 
 namespace Tempest::Ui {
 
@@ -35,7 +37,29 @@ enum class Action : std::uint8_t {
     Pause,
     OpenSettings,
     Restart,
+    PrimarySelect,
+    ContextCommand,
     Count,
+};
+
+enum class InputDevice : std::uint8_t {
+    Keyboard,
+    Mouse,
+};
+
+enum class MouseButton : std::uint16_t {
+    Left = 1,
+    Right = 2,
+    Middle = 3,
+    Extra1 = 4,
+    Extra2 = 5,
+};
+
+struct InputBinding {
+    InputDevice device = InputDevice::Keyboard;
+    std::uint16_t code = 0;
+
+    bool operator==(const InputBinding &) const = default;
 };
 
 enum class Intent : std::uint8_t {
@@ -75,6 +99,7 @@ public:
 
     void ResetForBoot();
     InputEvent HandleKey(std::uint16_t key);
+    InputEvent HandleMouseButton(MouseButton button);
     void SyncOutcome(MatchOutcome outcome);
 
     Screen GetScreen() const { return m_screen; }
@@ -86,9 +111,17 @@ public:
     std::int32_t GetSettingsRowCount() const { return AdjustableSettingCount + RemappableActionCount; }
     const Settings &GetSettings() const { return m_settings; }
 
-    std::uint16_t KeyFor(Action action) const;
+    InputBinding BindingFor(Action action) const;
     Action ActionForSettingsRow(std::int32_t row) const;
-    bool IsActionPressed(Action action, const bool *keyStates, std::size_t keyStateCount) const;
+    bool IsActionPressed(
+        Action action,
+        const bool *keyStates,
+        std::size_t keyStateCount,
+        const bool *mouseStates,
+        std::size_t mouseStateCount) const;
+
+    std::string SerializeConfiguration() const;
+    bool LoadConfiguration(std::string_view content);
 
     static const char *ActionName(Action action);
     static const char *ScreenName(Screen screen);
@@ -97,15 +130,16 @@ private:
     Screen m_screen = Screen::Briefing;
     Screen m_settingsReturnScreen = Screen::Briefing;
     Settings m_settings;
-    std::array<std::uint16_t, static_cast<std::size_t>(Action::Count)> m_bindings {};
+    std::array<InputBinding, static_cast<std::size_t>(Action::Count)> m_bindings {};
     std::int32_t m_selectedSettingsRow = 0;
     bool m_capturingBinding = false;
 
-    Action FindAction(std::uint16_t key) const;
-    bool HasAction(std::uint16_t key) const;
-    InputEvent HandleSettingsKey(std::uint16_t key);
+    InputEvent HandleInput(InputBinding input);
+    Action FindAction(InputBinding input) const;
+    bool HasAction(InputBinding input) const;
+    InputEvent HandleSettingsInput(InputBinding input);
     InputEvent AdjustSelectedSetting(std::int32_t direction);
-    bool TryRebind(Action action, std::uint16_t key);
+    bool TryRebind(Action action, InputBinding input);
     void OpenSettings(Screen returnScreen);
 };
 

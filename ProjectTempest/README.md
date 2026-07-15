@@ -146,13 +146,18 @@ Controls:
 - `Enter` starts from the briefing; `R` restarts from pause/result; `Esc` exits from briefing/result.
 
 The settings overlay supports camera speed, UI scale, master/music/effects levels, edge-scroll disable, reduced motion,
-reduced flashes, colour-independent ownership cues, and collision-safe remapping for all ten keyboard actions. The HUD
-scales from the current client height and aspect ratio rather than assuming 1280×720. Chorus ownership uses an `X` shape
-and `[C]` text while Freegrid uses a `+` shape and `[F]` text, so hostile state is not communicated by hue alone.
-Reduced motion disables edge-driven camera movement while retaining deliberate keyboard pan, and losing window focus
-clears held inputs and enters the pause screen.
-Original audio playback, persisted settings, mouse-button remapping, and player-visible multi-resolution verification
-remain open M5 work; the current volume values are interface state, not a claim that missing audio content is playing.
+reduced flashes, colour-independent ownership cues, and collision-safe keyboard-or-mouse remapping for all twelve
+actions, including primary selection and context command. Left, right, middle, Mouse 4, and Mouse 5 are recognised.
+The HUD scales from the current client height and aspect ratio rather than assuming 1280×720. Chorus ownership uses an
+`X` shape and `[C]` text while Freegrid uses a `+` shape and `[F]` text, so hostile state is not communicated by hue
+alone. Reduced motion disables edge-driven camera movement while retaining deliberate pan; losing window focus clears
+held keyboard and mouse inputs and enters the pause screen.
+
+Changes are stored in `%LOCALAPPDATA%\ProjectTempest\settings.ini`. The versioned file contains the complete settings
+and binding set; invalid, partial, out-of-range, or duplicate data is rejected without partially changing live state.
+Saving writes a same-directory temporary file before replacing the prior profile. Original audio playback,
+player-visible multi-resolution verification, and manual runtime proof of persistence/remapping remain open M5 work;
+the current volume values are interface state, not a claim that missing audio content is playing.
 
 Build with a modern Generals preset, for example:
 
