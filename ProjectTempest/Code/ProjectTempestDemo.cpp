@@ -121,7 +121,8 @@ Tempest::Command MakeCommand(
     Tempest::CommandKind kind,
     std::uint32_t actorId = 0,
     std::uint32_t targetId = 0,
-    Tempest::Point point = {})
+    Tempest::Point point = {},
+    Tempest::UnitKind unitKind = Tempest::UnitKind::CourierScout)
 {
     Tempest::Command command {};
     command.executeTick = g_simulation.GetState().tick;
@@ -129,6 +130,7 @@ Tempest::Command MakeCommand(
     command.actorId = actorId;
     command.targetId = targetId;
     command.point = point;
+    command.unitKind = unitKind;
     return command;
 }
 
@@ -294,7 +296,7 @@ bool SelectFromScreen(int mouseX, int mouseY)
     g_selectedUnitId = 0;
     std::int64_t closestDistance = static_cast<std::int64_t>(kScreenPickRadius) * kScreenPickRadius;
     for (const Tempest::Unit &unit : g_simulation.GetState().units) {
-        if (!unit.alive || unit.faction != Tempest::Faction::Freegrid || unit.kind != Tempest::UnitKind::CourierScout) {
+        if (!unit.alive || unit.faction != Tempest::Faction::Freegrid) {
             continue;
         }
         const std::int64_t distance = DistanceSquared(unit.position, g_pointerPoint);
@@ -303,7 +305,14 @@ bool SelectFromScreen(int mouseX, int mouseY)
             g_selectedUnitId = unit.id;
         }
     }
-    SetFeedback(g_selectedUnitId != 0 ? "Courier scout selected." : "No selectable Freegrid scout at cursor.");
+    const Tempest::Unit *selected = FindUnit(g_selectedUnitId);
+    if (selected) {
+        char feedback[160];
+        std::snprintf(feedback, sizeof(feedback), "%s selected.", Tempest::GetUnitDefinition(selected->kind).displayName);
+        SetFeedback(feedback);
+    } else {
+        SetFeedback("No selectable Freegrid unit at cursor.");
+    }
     UpdateWindowTitle();
     return g_selectedUnitId != 0;
 }
@@ -318,6 +327,38 @@ bool IssueContextOrder(int mouseX, int mouseY)
 
     std::uint32_t targetId = 0;
     std::int64_t closestDistance = static_cast<std::int64_t>(kScreenPickRadius) * kScreenPickRadius;
+    if (selected->kind == Tempest::UnitKind::FabricatorRig) {
+        for (const Tempest::Unit &unit : g_simulation.GetState().units) {
+            if (!unit.alive || unit.faction != Tempest::Faction::Freegrid ||
+                unit.hitPoints >= unit.maximumHitPoints) {
+                continue;
+            }
+            const std::int64_t distance = DistanceSquared(unit.position, g_pointerPoint);
+            if (distance <= closestDistance) {
+                closestDistance = distance;
+                targetId = unit.id;
+            }
+        }
+        for (const Tempest::Building &building : g_simulation.GetState().buildings) {
+            if (building.hitPoints <= 0 || building.faction != Tempest::Faction::Freegrid ||
+                building.hitPoints >= building.maximumHitPoints) {
+                continue;
+            }
+            const std::int64_t distance = DistanceSquared(building.position, g_pointerPoint);
+            if (distance <= closestDistance) {
+                closestDistance = distance;
+                targetId = building.id;
+            }
+        }
+        if (targetId != 0) {
+            g_simulation.Submit(MakeCommand(Tempest::CommandKind::Repair, selected->id, targetId));
+            SetFeedback("Fabricator repair order acknowledged; salvage is charged as integrity returns.");
+            return true;
+        }
+    }
+
+    targetId = 0;
+    closestDistance = static_cast<std::int64_t>(kScreenPickRadius) * kScreenPickRadius;
     for (const Tempest::Unit &unit : g_simulation.GetState().units) {
         if (!unit.alive || unit.faction != Tempest::Faction::Chorus) {
             continue;
@@ -366,7 +407,7 @@ bool IssueContextOrder(int mouseX, int mouseY)
 bool BuildRelayAtNearestOwnedNode()
 {
     const Tempest::Unit *selected = FindUnit(g_selectedUnitId);
-    if (!selected || g_simulation.GetState().paused) {
+    if (!selected || selected->kind != Tempest::UnitKind::FabricatorRig || g_simulation.GetState().paused) {
         return false;
     }
     std::uint32_t targetId = 0;
@@ -382,14 +423,14 @@ bool BuildRelayAtNearestOwnedNode()
         }
     }
     if (targetId != 0) {
-        g_simulation.Submit(MakeCommand(Tempest::CommandKind::BuildRelay, 0, targetId));
+        g_simulation.Submit(MakeCommand(Tempest::CommandKind::BuildRelay, selected->id, targetId));
         SetFeedback("Grid relay restoration requested at the nearest owned node.");
         return true;
     }
     return false;
 }
 
-bool ProduceCourier()
+bool ProduceUnit(Tempest::UnitKind kind)
 {
     if (g_simulation.GetState().paused) {
         return false;
@@ -398,9 +439,15 @@ bool ProduceCourier()
         if (building.hitPoints > 0 && building.complete &&
             building.faction == Tempest::Faction::Freegrid &&
             building.kind == Tempest::BuildingKind::FabricatorBay &&
-            g_simulation.CanProduceUnit(building.id, Tempest::UnitKind::CourierScout)) {
-            g_simulation.Submit(MakeCommand(Tempest::CommandKind::ProduceCourier, building.id));
-            SetFeedback("Courier scout production queued.");
+            g_simulation.CanProduceUnit(building.id, kind)) {
+            g_simulation.Submit(MakeCommand(Tempest::CommandKind::ProduceUnit, building.id, 0, {}, kind));
+            char feedback[160];
+            std::snprintf(
+                feedback,
+                sizeof(feedback),
+                "%s production queued; capacity is reserved.",
+                Tempest::GetUnitDefinition(kind).displayName);
+            SetFeedback(feedback);
             return true;
         }
     }
@@ -501,8 +548,23 @@ void HandleInterfaceEvent(HWND window, const Tempest::Ui::InputEvent &event)
                         ? Tempest::Audio::Cue::Command
                         : Tempest::Audio::Cue::Alert);
                 break;
+            case Tempest::Ui::Action::ProduceFabricator:
+                g_audio.Play(ProduceUnit(Tempest::UnitKind::FabricatorRig)
+                        ? Tempest::Audio::Cue::Command
+                        : Tempest::Audio::Cue::Alert);
+                break;
             case Tempest::Ui::Action::ProduceCourier:
-                g_audio.Play(ProduceCourier()
+                g_audio.Play(ProduceUnit(Tempest::UnitKind::CourierScout)
+                        ? Tempest::Audio::Cue::Command
+                        : Tempest::Audio::Cue::Alert);
+                break;
+            case Tempest::Ui::Action::ProduceLancer:
+                g_audio.Play(ProduceUnit(Tempest::UnitKind::LancerCrew)
+                        ? Tempest::Audio::Cue::Command
+                        : Tempest::Audio::Cue::Alert);
+                break;
+            case Tempest::Ui::Action::ProduceCoilCarrier:
+                g_audio.Play(ProduceUnit(Tempest::UnitKind::CoilCarrier)
                         ? Tempest::Audio::Cue::Command
                         : Tempest::Audio::Cue::Alert);
                 break;
@@ -517,7 +579,7 @@ void HandleInterfaceEvent(HWND window, const Tempest::Ui::InputEvent &event)
                     SetFeedback("Arc Pulse requested at cursor.");
                 } else {
                     g_audio.Play(Tempest::Audio::Cue::Alert);
-                    SetFeedback("Arc Pulse is unavailable while paused or without a selected Courier scout.");
+                    SetFeedback("Arc Pulse is unavailable while paused or without a selected Freegrid unit.");
                 }
                 break;
             case Tempest::Ui::Action::PrimarySelect:
@@ -1253,7 +1315,7 @@ void DrawHud(HDC device, const RECT &client, float scale)
     const Tempest::Unit *selected = FindUnit(g_selectedUnitId);
     const int margin = ScalePixels(14.0F, scale);
     const int topHeight = ScalePixels(66.0F, scale);
-    const int bottomHeight = ScalePixels(58.0F, scale);
+    const int bottomHeight = ScalePixels(84.0F, scale);
     const COLORREF panel = RGB(7, 17, 26);
     const COLORREF border = RGB(28, 187, 217);
     const COLORREF primary = RGB(225, 244, 247);
@@ -1296,7 +1358,8 @@ void DrawHud(HDC device, const RECT &client, float scale)
         std::snprintf(
             detail,
             sizeof(detail),
-            "SELECTED  COURIER #%u  INTEGRITY %d/%d    OBJECTIVE  Secure relays, then destroy the Chorus Spire [C].",
+            "SELECTED  %s #%u  INTEGRITY %d/%d    OBJECTIVE  Secure relays, then destroy the Chorus Spire [C].",
+            Tempest::GetUnitDefinition(selected->kind).displayName,
             selected->id,
             selected->hitPoints,
             selected->maximumHitPoints);
@@ -1318,7 +1381,10 @@ void DrawHud(HDC device, const RECT &client, float scale)
     };
     DrawPanel(device, bottom, panel, border);
     char buildKey[24];
-    char produceKey[24];
+    char fabricatorKey[24];
+    char courierKey[24];
+    char lancerKey[24];
+    char coilKey[24];
     char pulseKey[24];
     char pauseKey[24];
     char settingsKey[24];
@@ -1327,7 +1393,10 @@ void DrawHud(HDC device, const RECT &client, float scale)
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::PrimarySelect), selectKey, sizeof(selectKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ContextCommand), contextKey, sizeof(contextKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::BuildRelay), buildKey, sizeof(buildKey));
-    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ProduceCourier), produceKey, sizeof(produceKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ProduceFabricator), fabricatorKey, sizeof(fabricatorKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ProduceCourier), courierKey, sizeof(courierKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ProduceLancer), lancerKey, sizeof(lancerKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ProduceCoilCarrier), coilKey, sizeof(coilKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ArcPulse), pulseKey, sizeof(pulseKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::Pause), pauseKey, sizeof(pauseKey));
     FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
@@ -1335,11 +1404,14 @@ void DrawHud(HDC device, const RECT &client, float scale)
     std::snprintf(
         commands,
         sizeof(commands),
-        "[%s] SELECT   [%s] MOVE / CAPTURE / ATTACK   [%s] RELAY   [%s] COURIER   [%s] ARC PULSE   [%s] PAUSE   [%s] SETTINGS",
+        "[%s] SELECT   [%s] MOVE / CAPTURE / ATTACK / REPAIR   [%s] DYNAMO\n[%s] RIG   [%s] SCOUT   [%s] LANCER   [%s] COIL   [%s] ARC PULSE   [%s] PAUSE   [%s] SETTINGS",
         selectKey,
         contextKey,
         buildKey,
-        produceKey,
+        fabricatorKey,
+        courierKey,
+        lancerKey,
+        coilKey,
         pulseKey,
         pauseKey,
         settingsKey);
@@ -1349,9 +1421,9 @@ void DrawHud(HDC device, const RECT &client, float scale)
         bottom.right - ScalePixels(14.0F, scale),
         bottom.bottom,
     };
-    DrawLabel(device, g_hudSmallFont, primary, commandRect, commands);
+    DrawLabel(device, g_hudSmallFont, primary, commandRect, commands, DT_LEFT | DT_TOP);
     if (g_feedbackUntil == 0 || static_cast<LONG>(g_feedbackUntil - timeGetTime()) > 0) {
-        commandRect.top += ScalePixels(25.0F, scale);
+        commandRect.top += ScalePixels(48.0F, scale);
         DrawLabel(device, g_hudSmallFont, secondary, commandRect, g_feedback);
     }
 }
@@ -1396,7 +1468,7 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
     };
     const Tempest::Ui::Settings &settings = g_interface.GetSettings();
     const int selectedRow = g_interface.GetSelectedSettingsRow();
-    const int rowHeight = ScalePixels(31.0F, scale);
+    const int rowHeight = ScalePixels(28.0F, scale);
     const int contentTop = panel.top + ScalePixels(100.0F, scale);
     const int gutter = ScalePixels(20.0F, scale);
     const int columnWidth = (panel.right - panel.left - (padding * 2) - gutter) / 2;
@@ -1462,7 +1534,7 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
             g_hudSmallFont,
             RGB(128, 164, 173),
             note,
-            "Changes save atomically to the local profile; original music/effects playback remains an M5 content task.",
+            "Changes save atomically to the local profile; audio and accessibility updates apply immediately.",
             DT_CENTER | DT_TOP | DT_SINGLELINE);
     }
 }

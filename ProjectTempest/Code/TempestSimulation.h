@@ -54,8 +54,10 @@ struct UnitDefinition {
     std::int32_t salvageCost = 0;
     std::int32_t buildTicks = 0;
     std::int32_t capacityCost = 0;
+    std::int32_t moveDistancePerTick = 0;
     std::int32_t attackDamage = 0;
     std::int32_t attackCooldownTicks = 0;
+    std::int32_t attackRange = 0;
 };
 
 struct BuildingDefinition {
@@ -89,6 +91,7 @@ enum class OrderKind : std::uint8_t {
     Move,
     Capture,
     Attack,
+    Repair,
 };
 
 struct Unit {
@@ -103,6 +106,7 @@ struct Unit {
     std::int32_t maximumHitPoints = 0;
     std::int32_t attackCooldownTicks = 0;
     std::int32_t abilityCooldownTicks = 0;
+    std::int32_t repairCooldownTicks = 0;
     bool alive = true;
 };
 
@@ -130,7 +134,8 @@ enum class CommandKind : std::uint8_t {
     Capture,
     Attack,
     BuildRelay,
-    ProduceCourier,
+    ProduceUnit,
+    Repair,
     ArcPulse,
     TogglePause,
     Restart,
@@ -142,6 +147,7 @@ struct Command {
     std::uint32_t actorId = 0;
     std::uint32_t targetId = 0;
     Point point;
+    UnitKind unitKind = UnitKind::CourierScout;
     std::uint64_t sequence = 0;
 };
 
@@ -159,6 +165,7 @@ struct MatchState {
     std::int32_t abilityCharge = 0;
     std::int32_t incomeRemainderTicks = 0;
     std::int32_t chorusSpawnTicks = 0;
+    std::uint32_t chorusWave = 0;
     std::uint32_t nextEntityId = 1;
     std::vector<Unit> units;
     std::vector<Building> buildings;
@@ -199,6 +206,7 @@ private:
     void Execute(const Command &command);
     void UpdateConstructionAndProduction();
     void UpdateMovementAndCapture();
+    void UpdateRepairs();
     void UpdateCombat();
     void UpdateEconomyAndAi();
     void UpdateOutcome();

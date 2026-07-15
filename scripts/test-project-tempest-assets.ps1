@@ -363,6 +363,9 @@ foreach ($interfaceContract in @(
     "HandleMouseButton",
     "PrimarySelect",
     "ContextCommand",
+    "ProduceFabricator",
+    "ProduceLancer",
+    "ProduceCoilCarrier",
     "MoveFileExW"
 )) {
     if ($combinedInterfaceSource -notmatch [regex]::Escape($interfaceContract)) {
@@ -379,6 +382,18 @@ foreach ($contentRole in @(
 )) {
     if (($simulationHeader + $simulationSource) -notmatch [regex]::Escape($contentRole)) {
         throw "Project Tempest content model is missing '$contentRole'."
+    }
+}
+foreach ($behaviorContract in @(
+    "CommandKind::ProduceUnit",
+    "CommandKind::Repair",
+    "moveDistancePerTick",
+    "attackRange",
+    "repairCooldownTicks",
+    "chorusWave"
+)) {
+    if (($demoSource + $simulationHeader + $simulationSource) -notmatch [regex]::Escape($behaviorContract)) {
+        throw "Project Tempest roster behavior is missing '$behaviorContract'."
     }
 }
 if (($demoSource + $simulationHeader + $simulationSource) -match
