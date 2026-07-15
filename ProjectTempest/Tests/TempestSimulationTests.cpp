@@ -77,7 +77,7 @@ Tempest::Command MakeCommand(
 std::uint32_t FindCourier(const Tempest::MatchState &state)
 {
     for (const Tempest::Unit &unit : state.units) {
-        if (unit.faction == Tempest::Faction::Freegrid && unit.kind == Tempest::UnitKind::Courier && unit.alive) {
+        if (unit.faction == Tempest::Faction::Freegrid && unit.kind == Tempest::UnitKind::CourierScout && unit.alive) {
             return unit.id;
         }
     }
@@ -94,11 +94,21 @@ std::uint32_t FindBuilding(const Tempest::MatchState &state, Tempest::BuildingKi
     return 0;
 }
 
+std::uint32_t FindUnit(const Tempest::MatchState &state, Tempest::UnitKind kind)
+{
+    for (const Tempest::Unit &unit : state.units) {
+        if (unit.kind == kind && unit.alive) {
+            return unit.id;
+        }
+    }
+    return 0;
+}
+
 std::vector<std::uint32_t> FindCouriers(const Tempest::MatchState &state)
 {
     std::vector<std::uint32_t> ids;
     for (const Tempest::Unit &unit : state.units) {
-        if (unit.faction == Tempest::Faction::Freegrid && unit.kind == Tempest::UnitKind::Courier && unit.alive) {
+        if (unit.faction == Tempest::Faction::Freegrid && unit.kind == Tempest::UnitKind::CourierScout && unit.alive) {
             ids.push_back(unit.id);
         }
     }
@@ -118,7 +128,7 @@ const Tempest::Unit *FindUnitById(const Tempest::MatchState &state, std::uint32_
 std::uint32_t FindDrone(const Tempest::MatchState &state)
 {
     for (const Tempest::Unit &unit : state.units) {
-        if (unit.faction == Tempest::Faction::Chorus && unit.kind == Tempest::UnitKind::ChorusDrone && unit.alive) {
+        if (unit.faction == Tempest::Faction::Chorus && unit.kind == Tempest::UnitKind::Skitter && unit.alive) {
             return unit.id;
         }
     }
@@ -132,17 +142,55 @@ bool IsWithin(const Tempest::Point &left, const Tempest::Point &right, std::int3
     return (dx * dx) + (dy * dy) <= static_cast<std::int64_t>(range) * range;
 }
 
+void TestContentDefinitions()
+{
+    Expect(static_cast<std::size_t>(Tempest::UnitKind::Count) == 7,
+        "content model defines all four Freegrid and three Chorus unit roles");
+    Expect(static_cast<std::size_t>(Tempest::BuildingKind::Count) == 7,
+        "content model defines all four Freegrid and three Chorus structures");
+    Expect(static_cast<std::size_t>(Tempest::AbilityKind::Count) == 2,
+        "content model defines both governed Freegrid abilities");
+
+    for (std::size_t index = 0; index < static_cast<std::size_t>(Tempest::UnitKind::Count); ++index) {
+        const auto kind = static_cast<Tempest::UnitKind>(index);
+        const Tempest::UnitDefinition &definition = Tempest::GetUnitDefinition(kind);
+        Expect(!std::string(definition.displayName).empty() && definition.maximumHitPoints > 0 &&
+                definition.attackDamage > 0 && definition.attackCooldownTicks > 0,
+            "every unit role has deterministic combat data");
+        Expect(definition.faction == (index < 4 ? Tempest::Faction::Freegrid : Tempest::Faction::Chorus),
+            "unit definitions preserve the governed four-to-three faction split");
+    }
+    for (std::size_t index = 0; index < static_cast<std::size_t>(Tempest::BuildingKind::Count); ++index) {
+        const auto kind = static_cast<Tempest::BuildingKind>(index);
+        const Tempest::BuildingDefinition &definition = Tempest::GetBuildingDefinition(kind);
+        Expect(!std::string(definition.displayName).empty() && definition.maximumHitPoints > 0,
+            "every structure role has deterministic durability data");
+        Expect(definition.faction == (index < 4 ? Tempest::Faction::Freegrid : Tempest::Faction::Chorus),
+            "structure definitions preserve the governed four-to-three faction split");
+    }
+    Expect(std::string(Tempest::GetAbilityDefinition(Tempest::AbilityKind::GridLinkScan).displayName) ==
+            "Grid-link scan" &&
+            std::string(Tempest::GetAbilityDefinition(Tempest::AbilityKind::EmergencyOvercharge).displayName) ==
+                "Emergency overcharge",
+        "ability definitions use the governed Substation 9 vocabulary");
+}
+
 void TestInitialStateAndPause()
 {
     Tempest::Simulation simulation;
     const Tempest::MatchState &initial = simulation.GetState();
     Expect(initial.tick == 0, "Substation 9 starts at tick zero");
-    Expect(initial.freegridCredits == 500, "Freegrid starts with 500 credits");
-    Expect(initial.freegridPower == 50, "Freegrid starts with 50 power");
+    Expect(initial.salvage == 500, "Freegrid starts with 500 salvage");
+    Expect(initial.abilityCharge == 50, "Freegrid starts with 50 ability charge");
     Expect(initial.nodes.size() == 3, "Substation 9 has three control nodes");
-    Expect(FindCourier(initial) != 0, "Freegrid starts with a Courier");
-    Expect(FindBuilding(initial, Tempest::BuildingKind::Workshop) != 0, "Freegrid starts with a Workshop");
-    Expect(FindBuilding(initial, Tempest::BuildingKind::ChorusCore) != 0, "Chorus starts with a Core");
+    Expect(FindUnit(initial, Tempest::UnitKind::FabricatorRig) != 0, "Freegrid starts with a Fabricator rig");
+    Expect(FindCourier(initial) != 0, "Freegrid starts with a Courier scout");
+    Expect(FindBuilding(initial, Tempest::BuildingKind::RelayCore) != 0, "Freegrid starts with a Relay Core");
+    Expect(FindBuilding(initial, Tempest::BuildingKind::FabricatorBay) != 0, "Freegrid starts with a Fabricator Bay");
+    Expect(FindBuilding(initial, Tempest::BuildingKind::MachineNest) != 0, "Chorus starts with a Machine Nest");
+    Expect(FindBuilding(initial, Tempest::BuildingKind::ChorusSpire) != 0, "Chorus starts with a Chorus Spire");
+    Expect(simulation.FreegridCapacity() == 6 && simulation.UsedFreegridCapacity() == 3,
+        "Relay Core and Fabricator Bay provide capacity for the starting rig and scout");
 
     simulation.Submit(MakeCommand(0, Tempest::CommandKind::TogglePause));
     simulation.Step();
@@ -154,7 +202,8 @@ void TestInitialStateAndPause()
 
     simulation.Submit(MakeCommand(1, Tempest::CommandKind::Restart));
     simulation.Step();
-    Expect(simulation.GetState().tick == 0 && simulation.GetState().freegridCredits == 500, "restart restores scenario state");
+    Expect(simulation.GetState().tick == 0 && simulation.GetState().salvage == 500,
+        "restart restores scenario state");
 }
 
 void TestEconomyConstructionAndProduction()
@@ -167,33 +216,69 @@ void TestEconomyConstructionAndProduction()
 
     const Tempest::ControlNode &node = simulation.GetState().nodes.front();
     Expect(node.owner == Tempest::Faction::Freegrid, "Courier captures the first substation");
-    Expect(simulation.GetState().freegridCredits > 500, "captured substation produces deterministic income");
+    Expect(simulation.GetState().salvage > 500, "captured substation produces deterministic salvage income");
 
-    const std::int32_t creditsBeforeRelay = simulation.GetState().freegridCredits;
+    const std::int32_t salvageBeforeRelay = simulation.GetState().salvage;
     simulation.Submit(MakeCommand(simulation.GetState().tick, Tempest::CommandKind::BuildRelay, 0, nodeId));
     simulation.Step();
-    Expect(simulation.GetState().freegridCredits == creditsBeforeRelay - 200, "Relay reserves its full credit cost");
+    Expect(simulation.GetState().salvage == salvageBeforeRelay - 200, "Dynamo reserves its full salvage cost");
     simulation.Step(Tempest::TicksPerSecond * 4);
-    const std::uint32_t relayId = FindBuilding(simulation.GetState(), Tempest::BuildingKind::Relay);
-    Expect(relayId != 0, "owned substation can construct a Relay");
+    const std::uint32_t relayId = FindBuilding(simulation.GetState(), Tempest::BuildingKind::Dynamo);
+    Expect(relayId != 0, "owned substation can restore a relay Dynamo");
+    Expect(simulation.FreegridCapacity() == 10, "completed Dynamo adds four unit-capacity points");
 
     const std::size_t unitsBeforeProduction = simulation.GetState().units.size();
     simulation.Submit(MakeCommand(simulation.GetState().tick, Tempest::CommandKind::ProduceCourier, relayId));
     simulation.Step();
-    Expect(simulation.GetState().production.empty(), "a grid Relay cannot produce combat units");
+    Expect(simulation.GetState().production.empty(), "a grid Dynamo cannot produce combat units");
     Expect(simulation.GetState().units.size() == unitsBeforeProduction, "rejected Relay production creates no unit");
 
-    const std::uint32_t workshopId = FindBuilding(simulation.GetState(), Tempest::BuildingKind::Workshop);
+    const std::uint32_t workshopId = FindBuilding(simulation.GetState(), Tempest::BuildingKind::FabricatorBay);
     simulation.Submit(MakeCommand(simulation.GetState().tick, Tempest::CommandKind::ProduceCourier, workshopId));
     simulation.Step(Tempest::TicksPerSecond * 3 + 1);
-    Expect(simulation.GetState().units.size() == unitsBeforeProduction + 1, "completed Workshop produces a Courier");
+    Expect(simulation.GetState().units.size() == unitsBeforeProduction + 1,
+        "completed Fabricator Bay produces a Courier scout");
+}
+
+void TestCapacityReservations()
+{
+    Tempest::Simulation simulation;
+    const std::uint32_t courierId = FindCourier(simulation.GetState());
+    const std::uint32_t nodeId = simulation.GetState().nodes.front().id;
+    const std::uint32_t fabricatorBayId =
+        FindBuilding(simulation.GetState(), Tempest::BuildingKind::FabricatorBay);
+    simulation.Submit(MakeCommand(0, Tempest::CommandKind::Capture, courierId, nodeId));
+    simulation.Step(400);
+    Expect(simulation.GetState().nodes.front().owner == Tempest::Faction::Freegrid &&
+            simulation.GetState().salvage >= 600,
+        "capacity fixture captures a relay and banks enough salvage");
+
+    const std::int32_t salvageBefore = simulation.GetState().salvage;
+    Expect(simulation.CanProduceUnit(fabricatorBayId, Tempest::UnitKind::CourierScout),
+        "Fabricator Bay can queue a scout while salvage and capacity are available");
+    for (int index = 0; index < 4; ++index) {
+        simulation.Submit(MakeCommand(
+            simulation.GetState().tick,
+            Tempest::CommandKind::ProduceCourier,
+            fabricatorBayId));
+    }
+    simulation.Step();
+    Expect(simulation.GetState().production.size() == 3,
+        "queued production reserves capacity and rejects the fourth Courier scout");
+    Expect(simulation.GetState().salvage ==
+            salvageBefore - (3 * Tempest::GetUnitDefinition(Tempest::UnitKind::CourierScout).salvageCost),
+        "capacity rejection does not spend salvage for the rejected unit");
+    Expect(simulation.UsedFreegridCapacity() == simulation.FreegridCapacity(),
+        "live and queued Freegrid units consume all six starting capacity points");
+    Expect(!simulation.CanProduceUnit(fabricatorBayId, Tempest::UnitKind::CourierScout),
+        "Fabricator Bay reports the capacity block to presentation before another queue attempt");
 }
 
 void TestCommandValidationAndChorusTerritoryAi()
 {
     Tempest::Simulation validationSimulation;
     const std::uint32_t courierId = FindCourier(validationSimulation.GetState());
-    const std::uint32_t workshopId = FindBuilding(validationSimulation.GetState(), Tempest::BuildingKind::Workshop);
+    const std::uint32_t workshopId = FindBuilding(validationSimulation.GetState(), Tempest::BuildingKind::FabricatorBay);
     validationSimulation.Submit(MakeCommand(0, Tempest::CommandKind::Attack, courierId, workshopId));
     validationSimulation.Step();
     const Tempest::Unit *courier = nullptr;
@@ -206,6 +291,7 @@ void TestCommandValidationAndChorusTerritoryAi()
     Expect(courier && courier->order == Tempest::OrderKind::Idle,
         "friendly targets are rejected before creating an unreachable attack order");
 
+    const Tempest::Point courierBeforeExtremeMove = courier->position;
     validationSimulation.Submit(MakeCommand(
         validationSimulation.GetState().tick,
         Tempest::CommandKind::Move,
@@ -213,7 +299,7 @@ void TestCommandValidationAndChorusTerritoryAi()
         0,
         { std::numeric_limits<std::int32_t>::max(), std::numeric_limits<std::int32_t>::min() }));
     validationSimulation.Step();
-    Expect(courier->position.x > -12000 && courier->position.y < -9000,
+    Expect(courier->position.x > courierBeforeExtremeMove.x && courier->position.y < courierBeforeExtremeMove.y,
         "extreme move coordinates are widened before deterministic movement arithmetic");
 
     Tempest::Simulation territorySimulation;
@@ -229,16 +315,16 @@ void TestArcPulseRange()
 {
     Tempest::Simulation simulation;
     const std::uint32_t courierId = FindCourier(simulation.GetState());
-    const std::int32_t initialPower = simulation.GetState().freegridPower;
+    const std::int32_t initialPower = simulation.GetState().abilityCharge;
     simulation.Submit(MakeCommand(0, Tempest::CommandKind::ArcPulse, courierId, 0, { 50000, 50000 }));
     simulation.Step();
-    Expect(simulation.GetState().freegridPower == initialPower, "Arc Pulse rejects an out-of-range cast point");
+    Expect(simulation.GetState().abilityCharge == initialPower, "Arc Pulse rejects an out-of-range cast point");
 }
 
 void TestLethalArcPulseResolvesBeforeActions()
 {
     Tempest::Simulation simulation;
-    const std::uint32_t workshopId = FindBuilding(simulation.GetState(), Tempest::BuildingKind::Workshop);
+    const std::uint32_t workshopId = FindBuilding(simulation.GetState(), Tempest::BuildingKind::FabricatorBay);
     simulation.Submit(MakeCommand(0, Tempest::CommandKind::ProduceCourier, workshopId));
     simulation.Step(Tempest::TicksPerSecond * 3 + 1);
 
@@ -314,13 +400,13 @@ void TestLethalArcPulseResolvesBeforeActions()
 void TestVictoryAndDefeat()
 {
     Tempest::Simulation victorySimulation;
-    const std::uint32_t workshopId = FindBuilding(victorySimulation.GetState(), Tempest::BuildingKind::Workshop);
+    const std::uint32_t workshopId = FindBuilding(victorySimulation.GetState(), Tempest::BuildingKind::FabricatorBay);
     victorySimulation.Submit(MakeCommand(0, Tempest::CommandKind::ProduceCourier, workshopId));
     victorySimulation.Submit(MakeCommand(0, Tempest::CommandKind::ProduceCourier, workshopId));
     victorySimulation.Submit(MakeCommand(0, Tempest::CommandKind::ProduceCourier, workshopId));
     victorySimulation.Step(Tempest::TicksPerSecond * 10);
 
-    const std::uint32_t chorusCoreId = FindBuilding(victorySimulation.GetState(), Tempest::BuildingKind::ChorusCore);
+    const std::uint32_t chorusCoreId = FindBuilding(victorySimulation.GetState(), Tempest::BuildingKind::ChorusSpire);
     for (const std::uint32_t courierId : FindCouriers(victorySimulation.GetState())) {
         victorySimulation.Submit(MakeCommand(
             victorySimulation.GetState().tick,
@@ -342,12 +428,12 @@ void TestVictoryAndDefeat()
                   << " living_couriers=" << FindCouriers(victorySimulation.GetState()).size() << '\n';
     }
     Expect(victorySimulation.GetState().outcome == Tempest::MatchOutcome::Victory,
-        "destroying the Chorus Core produces victory");
+        "destroying the Chorus Spire produces victory");
 
     Tempest::Simulation defeatSimulation;
     defeatSimulation.Step(Tempest::TicksPerSecond * 300);
     Expect(defeatSimulation.GetState().outcome == Tempest::MatchOutcome::Defeat,
-        "losing the Workshop produces defeat");
+        "losing the Relay Core produces defeat");
 }
 
 std::vector<std::uint64_t> RunDeterministicScript()
@@ -370,7 +456,7 @@ std::vector<std::uint64_t> RunDeterministicScript()
 
 void TestDeterministicReplay()
 {
-    constexpr std::uint64_t ExpectedFinalChecksum = 4421283840936625681ULL;
+    constexpr std::uint64_t ExpectedFinalChecksum = 1877000534974769633ULL;
     const std::vector<std::uint64_t> first = RunDeterministicScript();
     const std::vector<std::uint64_t> second = RunDeterministicScript();
     Expect(first == second, "identical command streams produce identical per-tick checksums");
@@ -571,8 +657,10 @@ void TestAudioContract()
 
 int main()
 {
+    TestContentDefinitions();
     TestInitialStateAndPause();
     TestEconomyConstructionAndProduction();
+    TestCapacityReservations();
     TestArcPulseRange();
     TestLethalArcPulseResolvesBeforeActions();
     TestCommandValidationAndChorusTerritoryAi();

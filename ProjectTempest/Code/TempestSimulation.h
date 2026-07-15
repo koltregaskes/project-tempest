@@ -20,15 +20,63 @@ enum class Faction : std::uint8_t {
 };
 
 enum class UnitKind : std::uint8_t {
-    Courier,
-    ChorusDrone,
+    FabricatorRig,
+    CourierScout,
+    LancerCrew,
+    CoilCarrier,
+    Skitter,
+    Warden,
+    Harrower,
+    Count,
 };
 
 enum class BuildingKind : std::uint8_t {
-    Workshop,
-    Relay,
-    ChorusCore,
+    RelayCore,
+    FabricatorBay,
+    Dynamo,
+    ArcSentry,
+    MachineNest,
+    SignalPylon,
+    ChorusSpire,
+    Count,
 };
+
+enum class AbilityKind : std::uint8_t {
+    GridLinkScan,
+    EmergencyOvercharge,
+    Count,
+};
+
+struct UnitDefinition {
+    const char *displayName = "";
+    Faction faction = Faction::Neutral;
+    std::int32_t maximumHitPoints = 0;
+    std::int32_t salvageCost = 0;
+    std::int32_t buildTicks = 0;
+    std::int32_t capacityCost = 0;
+    std::int32_t attackDamage = 0;
+    std::int32_t attackCooldownTicks = 0;
+};
+
+struct BuildingDefinition {
+    const char *displayName = "";
+    Faction faction = Faction::Neutral;
+    std::int32_t maximumHitPoints = 0;
+    std::int32_t salvageCost = 0;
+    std::int32_t buildTicks = 0;
+    std::int32_t capacityProvided = 0;
+};
+
+struct AbilityDefinition {
+    const char *displayName = "";
+    std::int32_t abilityChargeCost = 0;
+    std::int32_t cooldownTicks = 0;
+    std::int32_t durationTicks = 0;
+};
+
+const UnitDefinition &GetUnitDefinition(UnitKind kind);
+const BuildingDefinition &GetBuildingDefinition(BuildingKind kind);
+const AbilityDefinition &GetAbilityDefinition(AbilityKind kind);
 
 enum class MatchOutcome : std::uint8_t {
     InProgress,
@@ -46,7 +94,7 @@ enum class OrderKind : std::uint8_t {
 struct Unit {
     std::uint32_t id = 0;
     Faction faction = Faction::Neutral;
-    UnitKind kind = UnitKind::Courier;
+    UnitKind kind = UnitKind::CourierScout;
     Point position;
     Point destination;
     OrderKind order = OrderKind::Idle;
@@ -61,7 +109,7 @@ struct Unit {
 struct Building {
     std::uint32_t id = 0;
     Faction faction = Faction::Neutral;
-    BuildingKind kind = BuildingKind::Workshop;
+    BuildingKind kind = BuildingKind::RelayCore;
     Point position;
     std::int32_t hitPoints = 0;
     std::int32_t maximumHitPoints = 0;
@@ -99,7 +147,7 @@ struct Command {
 
 struct ProductionOrder {
     std::uint32_t producerId = 0;
-    UnitKind kind = UnitKind::Courier;
+    UnitKind kind = UnitKind::CourierScout;
     std::int32_t remainingTicks = 0;
 };
 
@@ -107,8 +155,8 @@ struct MatchState {
     std::uint64_t tick = 0;
     bool paused = false;
     MatchOutcome outcome = MatchOutcome::InProgress;
-    std::int32_t freegridCredits = 0;
-    std::int32_t freegridPower = 0;
+    std::int32_t salvage = 0;
+    std::int32_t abilityCharge = 0;
     std::int32_t incomeRemainderTicks = 0;
     std::int32_t chorusSpawnTicks = 0;
     std::uint32_t nextEntityId = 1;
@@ -129,6 +177,9 @@ public:
 
     const MatchState &GetState() const { return m_state; }
     std::uint64_t Checksum() const;
+    std::int32_t FreegridCapacity() const;
+    std::int32_t UsedFreegridCapacity() const;
+    bool CanProduceUnit(std::uint32_t producerId, UnitKind kind) const;
 
 private:
     MatchState m_state;

@@ -159,6 +159,15 @@ repeat-generation, strict WAV parsing, package, and XAudio2 compile gates. Maste
 runtime submixes. Audible balance/device behavior, normal-zoom readability, target-resolution clipping, and manual runtime
 proof of audio, persistence, and remapping remain open user-only gates.
 
+Current content-model boundary (2026-07-15): the deterministic rules layer names all four Freegrid units, four Freegrid
+structures, both governed abilities, three Chorus units, and three Chorus structures through data-backed definitions.
+Substation 9 now opens with a Fabricator rig, Courier scout, Relay Core, Fabricator Bay, Machine Nest, Skitter, and
+Chorus Spire. Salvage is the only spendable construction/production resource; captured relays generate separate ability
+charge, and completed Relay Core/Fabricator Bay/Dynamo structures provide capacity that live and queued units reserve.
+Courier scout, Skitter, Dynamo, Arc Pulse, and the basic Chorus loop are the implemented behavior subset. Lancer crew,
+Coil carrier, Warden, Harrower, Arc Sentry, Signal Pylon, grid-link scan, emergency overcharge, repair, and their dedicated
+runtime art/feedback remain M3/M4 implementation work rather than claimed playable content.
+
 ### Golden asset and format decision
 
 The first end-to-end asset is the **Freegrid Courier**, a small wheeled scout with no skeletal-animation dependency.

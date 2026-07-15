@@ -126,9 +126,10 @@ executable for that missing evidence.
 
 The standalone code now includes a deterministic Substation 9 simulation core in
 `Code/TempestSimulation.h` and `Code/TempestSimulation.cpp`. It advances at a fixed 20 ticks per second, accepts
-sequence-stable commands, and models Courier movement, three capturable substations, credit/power income, Relay
-construction, Courier production, combat, Arc Pulse, Chorus reinforcement/target AI, pause, restart, victory, and
-defeat. `Code/TempestInterface.*` owns the original briefing, play, pause, settings, and result state machine without
+sequence-stable commands, and models Courier scout movement, three capturable substations, salvage/ability-charge
+income, grid-relay Dynamo restoration, Courier scout production, combat, Arc Pulse, Chorus reinforcement/target AI,
+pause, restart, victory, and defeat. `Code/TempestInterface.*` owns the original briefing, play, pause, settings, and
+result state machine without
 coupling presentation state to the deterministic match checksum. `Tests/TempestSimulationTests.cpp` validates both
 surfaces and proves that identical command streams yield an identical checksum on every tick.
 
@@ -141,25 +142,26 @@ ctest --test-dir .\build\win32 -C Release --output-on-failure
 
 The rendered prototype now drives that simulation at the same fixed 20 Hz, converts player input into sequenced
 commands, and presents the current match through a neon procedural grid, faction-coloured and shape-distinct
-substation/building markers, selection brackets, dedicated Courier/Chorus Drone visuals, pristine/damaged Courier
-switching, an authored Relay model, and a scalable in-window HUD. The original interface includes a loading panel,
+substation/building markers, selection brackets, dedicated Courier scout/Skitter visuals, pristine/damaged Courier
+switching, an authored Dynamo relay model, and a scalable in-window HUD. The original interface includes a loading panel,
 mission briefing, live resources/objective/selection state, visible command acknowledgement, pause, settings, and a
 victory/defeat explanation with restart and settings available without leaving the process. This is a compile- and
-headless-test-proven integration checkpoint; safe manual gameplay/legibility verification and dedicated Workshop/Core
-art remain required before the skirmish is release-quality.
+headless-test-proven integration checkpoint; safe manual gameplay/legibility verification and dedicated Relay Core,
+Fabricator Bay, and Chorus Spire art remain required before the skirmish is release-quality.
 
 Modern Generals Win32 builds also produce `ProjectTempestDemo.exe`, a retail-asset-free executable that loads the
-Courier, damaged Courier, Chorus Drone, and Freegrid Relay directly from this tree. Its current Substation 9 integration slice provides a bounded panning RTS camera, bounded unit
-selection, context-sensitive movement/capture/attack orders, node income, Relay construction, Courier production,
+Courier scout, damaged Courier scout, Skitter, and Freegrid Dynamo relay directly from this tree. Its current Substation
+9 integration slice provides a bounded panning RTS camera, bounded unit selection, context-sensitive
+movement/capture/attack orders, node income, relay restoration, Courier scout production,
 combat, Arc Pulse, pause/settings/restart/result flow, Chorus reinforcements, and victory/defeat. It is an executable
 integration checkpoint, not the final polished vertical slice.
 
 Controls:
 
-- Left-click selects a Freegrid Courier within its screen-space selection bound.
-- Right-click moves, captures a nearby substation, or attacks a nearby Chorus unit/Core.
+- Left-click selects a Freegrid Courier scout within its screen-space selection bound.
+- Right-click moves, captures a nearby substation, or attacks a nearby Chorus unit/structure.
 - `WASD` pans the camera; configurable edge scroll is enabled by default.
-- `B` constructs a Relay at the nearest owned substation; `U` queues a Courier.
+- `B` restores a relay Dynamo at the nearest owned substation; `U` queues a Courier scout.
 - `F` casts Arc Pulse at the pointer; `Space` or `Esc` pauses; `O` opens settings.
 - `Enter` starts from the briefing; `R` restarts from pause/result; `Esc` exits from briefing/result.
 
