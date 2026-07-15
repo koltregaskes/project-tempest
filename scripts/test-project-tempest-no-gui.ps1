@@ -8,6 +8,7 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $fixedUnattendedSurfaces = @(
     ".github/workflows/ci.yml",
     ".github/workflows/build-toolchain.yml",
+    "scripts/build-windows.ps1",
     "scripts/test-project-tempest-assets.ps1",
     "scripts/test-w3d-pipeline.ps1",
     "scripts/prepare-w3dview-compat.ps1"
@@ -43,6 +44,7 @@ $forbiddenProcessLaunchPatterns = @(
     "(?i)\bWScript\.Shell\b",
     "(?i)\bShellExecute\b",
     "(?i)\bStart-Job\b",
+    "(?i)\bInvoke-Expression\b",
     "(?i)\bRegister-ScheduledTask\b",
     "(?i)\bschtasks(?:\.exe)?\b",
     "(?i)\bcmd(?:\.exe)?\s+\/c\s+start\b",
@@ -50,6 +52,64 @@ $forbiddenProcessLaunchPatterns = @(
     "(?im)^\s*&\s+.*(?:W3DViewV|W3DViewZH|ProjectTempestDemo|generalsv|generalszh|WorldBuilderV|WorldBuilderZH)\.exe\b",
     "(?im)^\s*(?:\.\\|\.\/).*?(?:W3DViewV|W3DViewZH|ProjectTempestDemo|generalsv|generalszh|WorldBuilderV|WorldBuilderZH)\.exe\b"
 )
+
+function Get-UnattendedScriptPolicyViolations {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Content,
+        [Parameter(Mandatory = $true)]
+        [string]$RelativePath
+    )
+
+    $tokens = $null
+    $parseErrors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseInput(
+        $Content,
+        [ref]$tokens,
+        [ref]$parseErrors
+    )
+    $violations = [System.Collections.Generic.List[string]]::new()
+    foreach ($parseError in $parseErrors) {
+        $violations.Add("PowerShell parse error at offset $($parseError.Extent.StartOffset): $($parseError.Message)")
+    }
+
+    $commands = $ast.FindAll({
+        param($node)
+        $node -is [System.Management.Automation.Language.CommandAst]
+    }, $true)
+    foreach ($command in $commands) {
+        $commandName = $command.GetCommandName()
+        if ($commandName -and $commandName -match '(?i)^(?:Start-Process|Invoke-Item|Invoke-Expression|Start-Job|Register-ScheduledTask|schtasks(?:\.exe)?)$') {
+            $violations.Add("forbidden command '$commandName'")
+            continue
+        }
+        if ($commandName -and $commandName -match '(?i)(?:^|[\\/])(?:W3DViewV|W3DViewZH|ProjectTempestDemo|generalsv|generalszh|WorldBuilderV|WorldBuilderZH)\.exe$') {
+            $violations.Add("forbidden GUI executable '$commandName'")
+            continue
+        }
+
+        if ($command.InvocationOperator -ne [System.Management.Automation.Language.TokenKind]::Ampersand -or $commandName) {
+            continue
+        }
+
+        $firstElement = $command.CommandElements[0].Extent.Text
+        $commandText = $command.Extent.Text
+        $isSafeBlender = (
+            $firstElement -ieq '$BlenderPath' -and
+            $commandText -match '(?i)--background\b' -and
+            $commandText -match '(?i)--factory-startup\b'
+        )
+        $isSafeBuildTool = (
+            $RelativePath -ieq 'scripts/build-windows.ps1' -and
+            $firstElement -in @('$cmake', '$vswhere')
+        )
+        if (-not $isSafeBlender -and -not $isSafeBuildTool) {
+            $violations.Add("unapproved dynamic invocation '$firstElement'")
+        }
+    }
+
+    return @($violations)
+}
 
 foreach ($relativePath in $unattendedSurfaces) {
     $path = Join-Path $repositoryRoot $relativePath
@@ -62,6 +122,37 @@ foreach ($relativePath in $unattendedSurfaces) {
         if ($content -match $pattern) {
             throw "Interactive process-launch primitive '$pattern' is forbidden in unattended surface '$relativePath'."
         }
+    }
+
+    if ([IO.Path]::GetExtension($relativePath) -ieq ".ps1") {
+        $astViolations = @(Get-UnattendedScriptPolicyViolations -Content $content -RelativePath $relativePath)
+        if ($astViolations.Count -gt 0) {
+            throw "Unattended PowerShell policy violation in '$relativePath': $($astViolations -join '; ')"
+        }
+    }
+}
+
+# These fixtures prove that renaming or constructing a GUI path cannot bypass the AST gate.
+$adversarialFixtures = @(
+    '$tool = Join-Path $root "W3DViewV.exe"; & $tool',
+    '$renamed = "ProjectTempestDemo.exe"; & $renamed',
+    '& (Join-Path $root "WorldBuilderV.exe")'
+)
+foreach ($fixture in $adversarialFixtures) {
+    $fixtureViolations = @(Get-UnattendedScriptPolicyViolations -Content $fixture -RelativePath "adversarial-fixture.ps1")
+    if ($fixtureViolations.Count -eq 0) {
+        throw "The no-GUI AST gate failed to reject adversarial fixture: $fixture"
+    }
+}
+
+$safeFixtures = @(
+    @{ Content = '& $BlenderPath --background --factory-startup --python $pythonScript'; Path = 'scripts/create-fixture.ps1' },
+    @{ Content = '& $cmake --preset $Preset'; Path = 'scripts/build-windows.ps1' }
+)
+foreach ($fixture in $safeFixtures) {
+    $fixtureViolations = @(Get-UnattendedScriptPolicyViolations -Content $fixture.Content -RelativePath $fixture.Path)
+    if ($fixtureViolations.Count -gt 0) {
+        throw "The no-GUI AST gate rejected a documented headless fixture: $($fixtureViolations -join '; ')"
     }
 }
 
@@ -101,4 +192,4 @@ foreach ($requiredPolicy in @(
 }
 
 Write-Host "Validated Project Tempest's no-visible-GUI unattended execution contract across $($unattendedSurfaces.Count) surfaces."
-Write-Host "Confirmed that no prohibited GUI process is running and no automatic renderer retry is declared."
+Write-Host "Confirmed with AST adversarial fixtures that no prohibited GUI process is running and no automatic renderer retry is declared."

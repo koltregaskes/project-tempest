@@ -55,10 +55,10 @@ containers and Workbench preview PNGs are provenance-pinned review artifacts, no
 
 The runtime W3D has a captured frame from the repository's native `W3DViewV.exe`. The viewer is blocked under Microsoft
 Remote Display. On 15 July 2026, unattended launches from `build/ci-w3dview-fixed/W3DViewV.exe` caused repeated
-focus-stealing render-device dialogs and Application Error event 1000 crashes at 10:52:08, 10:55:30, 10:59:11, and
-10:59:45 (exception codes `0xc0000005` and `0xc000041d`). This is an unattended-execution safety incident first and a
-renderer-compatibility defect second. The following command may prepare dependencies, but it never launches or retries
-the viewer:
+focus-stealing render-device dialogs and six Application Error event 1000 records at 10:49:40, 10:50:40, 10:52:08,
+10:55:30, 10:59:11, and 10:59:45 BST (exception codes `0xc0000005` and `0xc000041d`). This is an unattended-execution
+safety incident first and a renderer-compatibility defect second. The following command may prepare dependencies, but
+it never launches or retries the viewer:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\prepare-w3dview-compat.ps1 `
@@ -75,6 +75,8 @@ All unattended validation is compile-, package-, data-, import-, or offscreen-on
 and automated test scripts must never launch `W3DViewV.exe`, `ProjectTempestDemo.exe`, `generalsv.exe`,
 `WorldBuilderV.exe`, Blender's interactive UI, a render-device selector, or any other visible game/tool window.
 `scripts/test-project-tempest-no-gui.ps1` enforces the no-process-launch contract on Project Tempest validation surfaces.
+It parses unattended PowerShell entry points and exercises adversarial variable/indirect-path fixtures, so renaming a
+GUI executable variable cannot bypass the gate. `scripts/build-windows.ps1` is explicitly covered.
 
 Interactive renderer and gameplay checks are manual-only actions initiated by the user on a suitable non-RDP desktop.
 If that environment is unavailable, record visual/gameplay verification as blocked and continue with headless evidence;
