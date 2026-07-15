@@ -39,6 +39,10 @@ Import-Module $devShellModule
 Enter-VsDevShell -VsInstallPath $vsInstall -SkipAutomaticLocation -DevCmdArguments "-arch=x86 -host_arch=x64"
 $env:PATH = "$ninjaDirectory;$env:PATH"
 
+if (-not $env:VCToolsInstallDir) {
+    throw "Visual Studio's developer shell did not set VCToolsInstallDir for the x86 toolchain."
+}
+
 $atlHeader = Join-Path $env:VCToolsInstallDir "atlmfc\include\atlbase.h"
 if (-not (Test-Path -LiteralPath $atlHeader)) {
     $installer = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\setup.exe"
