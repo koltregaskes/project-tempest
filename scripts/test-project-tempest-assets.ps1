@@ -250,6 +250,10 @@ foreach ($audioAsset in $audioAssets) {
 }
 
 $cmakeContent = Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/CMakeLists.txt") -Raw
+$ciContent = Get-Content -LiteralPath (Join-Path $repositoryRoot ".github/workflows/ci.yml") -Raw
+if ($ciContent -notmatch [regex]::Escape("scripts/create-tempest-audio.py")) {
+    throw "Project Tempest CI path filtering must include the deterministic audio generator."
+}
 foreach ($packagedAsset in @(
     "drone.w3d",
     "relay.w3d",
