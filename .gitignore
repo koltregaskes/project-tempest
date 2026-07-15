@@ -67,3 +67,7 @@ build.ninja
 ## Python
 __pycache__/
 *.pyc
+
+## Blender automatic backup files (the governed .blend master is versioned)
+*.blend1
+*.blend2
