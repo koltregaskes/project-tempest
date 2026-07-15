@@ -311,6 +311,9 @@ if (
 ) {
     throw "Project Tempest briefing must render the current remappable settings shortcut."
 }
+if ($demoSource -notmatch [regex]::Escape('transform.Scale(isChorus ? 0.72F : 1.0F);')) {
+    throw "Project Tempest unit rendering must scale Chorus models through the current faction flag."
+}
 
 foreach ($interfaceSource in @("Code/TempestInterface.cpp", "Code/TempestInterface.h")) {
     if ($cmakeContent -notmatch [regex]::Escape($interfaceSource)) {

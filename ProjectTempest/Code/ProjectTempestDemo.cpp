@@ -1032,7 +1032,7 @@ bool SyncUnitVisuals()
             static_cast<float>(facingPoint.x - unit.position.x));
         Matrix3D transform(1);
         transform.Rotate_Z(heading);
-        transform.Scale(isDrone ? 0.72F : 1.0F);
+        transform.Scale(isChorus ? 0.72F : 1.0F);
         transform.Set_Translation(Vector3(
             static_cast<float>(unit.position.x) * kSimulationToWorld,
             static_cast<float>(unit.position.y) * kSimulationToWorld,
