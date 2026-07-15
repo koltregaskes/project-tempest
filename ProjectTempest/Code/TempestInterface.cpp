@@ -511,8 +511,8 @@ const char *InterfaceState::ActionName(Action action)
         case Action::MoveDown: return "Pan camera down";
         case Action::MoveLeft: return "Pan camera left";
         case Action::MoveRight: return "Pan camera right";
-        case Action::BuildRelay: return "Build grid relay";
-        case Action::ProduceCourier: return "Produce Courier";
+        case Action::BuildRelay: return "Restore grid relay";
+        case Action::ProduceCourier: return "Produce Courier scout";
         case Action::ArcPulse: return "Arc Pulse";
         case Action::Pause: return "Pause";
         case Action::OpenSettings: return "Settings";

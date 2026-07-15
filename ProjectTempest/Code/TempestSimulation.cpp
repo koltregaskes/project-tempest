@@ -1,6 +1,7 @@
 #include "TempestSimulation.h"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdlib>
 #include <limits>
@@ -8,19 +9,48 @@
 namespace Tempest {
 namespace {
 
-constexpr std::int32_t CourierMaximumHitPoints = 180;
-constexpr std::int32_t DroneMaximumHitPoints = 110;
 constexpr std::int32_t MoveDistancePerTick = 120;
 constexpr std::int32_t CaptureRange = 700;
 constexpr std::int32_t CaptureTicksRequired = TicksPerSecond * 4;
 constexpr std::int32_t AttackRange = 2200;
 constexpr std::int32_t ArcPulseRange = 3200;
-constexpr std::int32_t RelayCost = 200;
-constexpr std::int32_t CourierCost = 150;
-constexpr std::int32_t RelayBuildTicks = TicksPerSecond * 4;
-constexpr std::int32_t CourierBuildTicks = TicksPerSecond * 3;
-constexpr std::int32_t ArcPulsePowerCost = 25;
+constexpr std::int32_t ArcPulseAbilityChargeCost = 25;
 constexpr std::int32_t ArcPulseCooldownTicks = TicksPerSecond * 12;
+
+constexpr std::array<UnitDefinition, static_cast<std::size_t>(UnitKind::Count)> UnitDefinitions {{
+    { "Fabricator rig", Faction::Freegrid, 240, 250, TicksPerSecond * 5, 2, 8, 12 },
+    { "Courier scout", Faction::Freegrid, 180, 150, TicksPerSecond * 3, 1, 20, 9 },
+    { "Lancer crew", Faction::Freegrid, 260, 240, TicksPerSecond * 6, 2, 28, 10 },
+    { "Coil carrier", Faction::Freegrid, 520, 450, TicksPerSecond * 10, 4, 55, 18 },
+    { "Skitter", Faction::Chorus, 110, 0, 0, 0, 11, 12 },
+    { "Warden", Faction::Chorus, 280, 0, 0, 0, 24, 14 },
+    { "Harrower", Faction::Chorus, 650, 0, 0, 0, 48, 20 },
+}};
+
+constexpr std::array<BuildingDefinition, static_cast<std::size_t>(BuildingKind::Count)> BuildingDefinitions {{
+    { "Relay Core", Faction::Freegrid, 900, 0, 0, 4 },
+    { "Fabricator Bay", Faction::Freegrid, 650, 300, TicksPerSecond * 6, 2 },
+    { "Dynamo", Faction::Freegrid, 260, 200, TicksPerSecond * 4, 4 },
+    { "Arc Sentry", Faction::Freegrid, 400, 250, TicksPerSecond * 5, 0 },
+    { "Machine Nest", Faction::Chorus, 500, 0, 0, 0 },
+    { "Signal Pylon", Faction::Chorus, 340, 0, 0, 0 },
+    { "Chorus Spire", Faction::Chorus, 800, 0, 0, 0 },
+}};
+
+constexpr std::array<AbilityDefinition, static_cast<std::size_t>(AbilityKind::Count)> AbilityDefinitions {{
+    { "Grid-link scan", 20, TicksPerSecond * 15, TicksPerSecond * 6 },
+    { "Emergency overcharge", 35, TicksPerSecond * 24, TicksPerSecond * 8 },
+}};
+
+template <typename Kind, typename Definitions>
+const typename Definitions::value_type &DefinitionAt(Kind kind, const Definitions &definitions)
+{
+    const std::size_t index = static_cast<std::size_t>(kind);
+    if (index >= definitions.size()) {
+        std::abort();
+    }
+    return definitions[index];
+}
 
 std::int64_t DistanceSquared(Point left, Point right)
 {
@@ -61,6 +91,21 @@ void HashValue(std::uint64_t &hash, Value value)
 
 } // namespace
 
+const UnitDefinition &GetUnitDefinition(UnitKind kind)
+{
+    return DefinitionAt(kind, UnitDefinitions);
+}
+
+const BuildingDefinition &GetBuildingDefinition(BuildingKind kind)
+{
+    return DefinitionAt(kind, BuildingDefinitions);
+}
+
+const AbilityDefinition &GetAbilityDefinition(AbilityKind kind)
+{
+    return DefinitionAt(kind, AbilityDefinitions);
+}
+
 Simulation::Simulation()
 {
     Reset();
@@ -72,12 +117,15 @@ void Simulation::Reset()
     m_commands.clear();
     m_nextCommandSequence = 1;
     m_restartedDuringCommand = false;
-    m_state.freegridCredits = 500;
-    m_state.freegridPower = 50;
+    m_state.salvage = 500;
+    m_state.abilityCharge = 50;
 
-    AddUnit(Faction::Freegrid, UnitKind::Courier, { -12000, -9000 });
-    AddBuilding(Faction::Freegrid, BuildingKind::Workshop, { -14500, -10500 });
-    AddBuilding(Faction::Chorus, BuildingKind::ChorusCore, { 14500, 10500 });
+    AddUnit(Faction::Freegrid, UnitKind::FabricatorRig, { -12400, -9400 });
+    AddUnit(Faction::Freegrid, UnitKind::CourierScout, { -11600, -8600 });
+    AddBuilding(Faction::Freegrid, BuildingKind::RelayCore, { -14500, -10500 });
+    AddBuilding(Faction::Freegrid, BuildingKind::FabricatorBay, { -12800, -10800 });
+    AddBuilding(Faction::Chorus, BuildingKind::MachineNest, { 12600, 9400 });
+    AddBuilding(Faction::Chorus, BuildingKind::ChorusSpire, { 14500, 10500 });
 
     for (Point position : { Point { -4500, -2500 }, Point { 1000, 2500 }, Point { 6500, 6500 } }) {
         ControlNode node;
@@ -86,7 +134,7 @@ void Simulation::Reset()
         m_state.nodes.push_back(node);
     }
 
-    const std::uint32_t droneId = AddUnit(Faction::Chorus, UnitKind::ChorusDrone, { 9000, 7000 });
+    const std::uint32_t droneId = AddUnit(Faction::Chorus, UnitKind::Skitter, { 9000, 7000 });
     if (Unit *drone = FindUnit(droneId)) {
         drone->order = OrderKind::Attack;
         drone->targetId = m_state.units.front().id;
@@ -170,13 +218,14 @@ const Building *Simulation::FindBuilding(std::uint32_t id) const
 
 std::uint32_t Simulation::AddUnit(Faction faction, UnitKind kind, Point position)
 {
+    const UnitDefinition &definition = GetUnitDefinition(kind);
     Unit unit;
     unit.id = m_state.nextEntityId++;
     unit.faction = faction;
     unit.kind = kind;
     unit.position = position;
     unit.destination = position;
-    unit.maximumHitPoints = kind == UnitKind::Courier ? CourierMaximumHitPoints : DroneMaximumHitPoints;
+    unit.maximumHitPoints = definition.maximumHitPoints;
     unit.hitPoints = unit.maximumHitPoints;
     m_state.units.push_back(unit);
     return unit.id;
@@ -188,17 +237,52 @@ std::uint32_t Simulation::AddBuilding(
     Point position,
     bool complete)
 {
+    const BuildingDefinition &definition = GetBuildingDefinition(kind);
     Building building;
     building.id = m_state.nextEntityId++;
     building.faction = faction;
     building.kind = kind;
     building.position = position;
     building.complete = complete;
-    building.remainingBuildTicks = complete ? 0 : RelayBuildTicks;
-    building.maximumHitPoints = kind == BuildingKind::ChorusCore ? 500 : (kind == BuildingKind::Relay ? 260 : 650);
+    building.remainingBuildTicks = complete ? 0 : definition.buildTicks;
+    building.maximumHitPoints = definition.maximumHitPoints;
     building.hitPoints = building.maximumHitPoints;
     m_state.buildings.push_back(building);
     return building.id;
+}
+
+std::int32_t Simulation::FreegridCapacity() const
+{
+    std::int32_t capacity = 0;
+    for (const Building &building : m_state.buildings) {
+        if (building.faction == Faction::Freegrid && building.complete && building.hitPoints > 0) {
+            capacity += GetBuildingDefinition(building.kind).capacityProvided;
+        }
+    }
+    return capacity;
+}
+
+std::int32_t Simulation::UsedFreegridCapacity() const
+{
+    std::int32_t used = 0;
+    for (const Unit &unit : m_state.units) {
+        if (unit.faction == Faction::Freegrid && unit.alive) {
+            used += GetUnitDefinition(unit.kind).capacityCost;
+        }
+    }
+    for (const ProductionOrder &order : m_state.production) {
+        used += GetUnitDefinition(order.kind).capacityCost;
+    }
+    return used;
+}
+
+bool Simulation::CanProduceUnit(std::uint32_t producerId, UnitKind kind) const
+{
+    const Building *producer = FindBuilding(producerId);
+    const UnitDefinition &unit = GetUnitDefinition(kind);
+    return producer && producer->faction == Faction::Freegrid && producer->complete && producer->hitPoints > 0 &&
+        producer->kind == BuildingKind::FabricatorBay && unit.faction == Faction::Freegrid &&
+        m_state.salvage >= unit.salvageCost && UsedFreegridCapacity() + unit.capacityCost <= FreegridCapacity();
 }
 
 void Simulation::ExecuteDueCommands()
@@ -227,30 +311,30 @@ void Simulation::Execute(const Command &command)
 
     Unit *actor = FindUnit(command.actorId);
     if (command.kind == CommandKind::BuildRelay) {
+        const BuildingDefinition &dynamo = GetBuildingDefinition(BuildingKind::Dynamo);
         ControlNode *node = FindNode(command.targetId);
-        if (!node || node->owner != Faction::Freegrid || m_state.freegridCredits < RelayCost) {
+        if (!node || node->owner != Faction::Freegrid || m_state.salvage < dynamo.salvageCost) {
             return;
         }
         const bool alreadyBuilt = std::any_of(
             m_state.buildings.begin(), m_state.buildings.end(), [node](const Building &building) {
-                return building.kind == BuildingKind::Relay && building.hitPoints > 0 &&
+                return building.kind == BuildingKind::Dynamo && building.hitPoints > 0 &&
                     IsWithin(building.position, node->position, 100);
             });
         if (!alreadyBuilt) {
-            m_state.freegridCredits -= RelayCost;
-            AddBuilding(Faction::Freegrid, BuildingKind::Relay, node->position, false);
+            m_state.salvage -= dynamo.salvageCost;
+            AddBuilding(Faction::Freegrid, BuildingKind::Dynamo, node->position, false);
         }
         return;
     }
 
     if (command.kind == CommandKind::ProduceCourier) {
-        Building *producer = FindBuilding(command.actorId);
-        if (!producer || producer->faction != Faction::Freegrid || !producer->complete ||
-            producer->kind != BuildingKind::Workshop || m_state.freegridCredits < CourierCost) {
+        const UnitDefinition &courier = GetUnitDefinition(UnitKind::CourierScout);
+        if (!CanProduceUnit(command.actorId, UnitKind::CourierScout)) {
             return;
         }
-        m_state.freegridCredits -= CourierCost;
-        m_state.production.push_back({ producer->id, UnitKind::Courier, CourierBuildTicks });
+        m_state.salvage -= courier.salvageCost;
+        m_state.production.push_back({ command.actorId, UnitKind::CourierScout, courier.buildTicks });
         return;
     }
 
@@ -284,9 +368,9 @@ void Simulation::Execute(const Command &command)
             }
             break;
         case CommandKind::ArcPulse:
-            if (actor->abilityCooldownTicks == 0 && m_state.freegridPower >= ArcPulsePowerCost &&
+            if (actor->abilityCooldownTicks == 0 && m_state.abilityCharge >= ArcPulseAbilityChargeCost &&
                 IsWithin(actor->position, command.point, ArcPulseRange)) {
-                m_state.freegridPower -= ArcPulsePowerCost;
+                m_state.abilityCharge -= ArcPulseAbilityChargeCost;
                 actor->abilityCooldownTicks = ArcPulseCooldownTicks;
                 for (Unit &unit : m_state.units) {
                     if (unit.alive && unit.faction == Faction::Chorus && IsWithin(unit.position, command.point, ArcPulseRange)) {
@@ -418,8 +502,9 @@ void Simulation::UpdateCombat()
             continue;
         }
 
-        *targetHitPoints -= attacker.kind == UnitKind::Courier ? 20 : 11;
-        attacker.attackCooldownTicks = attacker.kind == UnitKind::Courier ? 9 : 12;
+        const UnitDefinition &definition = GetUnitDefinition(attacker.kind);
+        *targetHitPoints -= definition.attackDamage;
+        attacker.attackCooldownTicks = definition.attackCooldownTicks;
     }
 
     for (Unit &unit : m_state.units) {
@@ -442,20 +527,20 @@ void Simulation::UpdateEconomyAndAi()
             m_state.nodes.begin(), m_state.nodes.end(), [](const ControlNode &node) {
                 return node.owner == Faction::Freegrid;
             }));
-        m_state.freegridCredits += ownedNodes * 10;
-        m_state.freegridPower = std::min(100, m_state.freegridPower + (ownedNodes * 3));
+        m_state.salvage += ownedNodes * 10;
+        m_state.abilityCharge = std::min(100, m_state.abilityCharge + (ownedNodes * 3));
     }
 
-    const Building *chorusCore = nullptr;
+    const Building *machineNest = nullptr;
     for (const Building &building : m_state.buildings) {
-        if (building.kind == BuildingKind::ChorusCore && building.hitPoints > 0) {
-            chorusCore = &building;
+        if (building.kind == BuildingKind::MachineNest && building.hitPoints > 0) {
+            machineNest = &building;
             break;
         }
     }
-    if (chorusCore && ++m_state.chorusSpawnTicks >= TicksPerSecond * 15) {
+    if (machineNest && ++m_state.chorusSpawnTicks >= TicksPerSecond * 15) {
         m_state.chorusSpawnTicks = 0;
-        AddUnit(Faction::Chorus, UnitKind::ChorusDrone, { chorusCore->position.x - 900, chorusCore->position.y - 500 });
+        AddUnit(Faction::Chorus, UnitKind::Skitter, { machineNest->position.x - 900, machineNest->position.y - 500 });
     }
 
     for (Unit &drone : m_state.units) {
@@ -539,17 +624,17 @@ void Simulation::UpdateEconomyAndAi()
 
 void Simulation::UpdateOutcome()
 {
-    bool freegridWorkshopAlive = false;
-    bool chorusCoreAlive = false;
+    bool relayCoreAlive = false;
+    bool chorusSpireAlive = false;
     for (const Building &building : m_state.buildings) {
-        freegridWorkshopAlive |= building.faction == Faction::Freegrid &&
-            building.kind == BuildingKind::Workshop && building.hitPoints > 0;
-        chorusCoreAlive |= building.faction == Faction::Chorus &&
-            building.kind == BuildingKind::ChorusCore && building.hitPoints > 0;
+        relayCoreAlive |= building.faction == Faction::Freegrid &&
+            building.kind == BuildingKind::RelayCore && building.hitPoints > 0;
+        chorusSpireAlive |= building.faction == Faction::Chorus &&
+            building.kind == BuildingKind::ChorusSpire && building.hitPoints > 0;
     }
-    if (!chorusCoreAlive) {
+    if (!chorusSpireAlive) {
         m_state.outcome = MatchOutcome::Victory;
-    } else if (!freegridWorkshopAlive) {
+    } else if (!relayCoreAlive) {
         m_state.outcome = MatchOutcome::Defeat;
     }
 }
@@ -560,8 +645,8 @@ std::uint64_t Simulation::Checksum() const
     HashValue(hash, m_state.tick);
     HashValue(hash, static_cast<std::uint8_t>(m_state.paused));
     HashValue(hash, static_cast<std::uint8_t>(m_state.outcome));
-    HashValue(hash, m_state.freegridCredits);
-    HashValue(hash, m_state.freegridPower);
+    HashValue(hash, m_state.salvage);
+    HashValue(hash, m_state.abilityCharge);
     HashValue(hash, m_state.incomeRemainderTicks);
     HashValue(hash, m_state.chorusSpawnTicks);
     HashValue(hash, m_state.nextEntityId);

@@ -61,7 +61,7 @@ POINT g_pointerClient = {};
 double g_simulationAccumulator = 0.0;
 float g_cameraCenterX = 0.0F;
 float g_cameraCenterY = 0.0F;
-char g_feedback[160] = "Select a Courier and restore the first substation.";
+char g_feedback[160] = "Select a Courier scout and restore the first substation.";
 DWORD g_feedbackUntil = 0;
 
 WW3DAssetManager *g_assetManager = nullptr;
@@ -278,7 +278,7 @@ void ResetPrototype()
     UpdateCameraTransform();
     g_selectedUnitId = 0;
     for (const Tempest::Unit &unit : g_simulation.GetState().units) {
-        if (unit.alive && unit.faction == Tempest::Faction::Freegrid && unit.kind == Tempest::UnitKind::Courier) {
+        if (unit.alive && unit.faction == Tempest::Faction::Freegrid && unit.kind == Tempest::UnitKind::CourierScout) {
             g_selectedUnitId = unit.id;
             g_pointerPoint = unit.position;
             break;
@@ -293,7 +293,7 @@ bool SelectFromScreen(int mouseX, int mouseY)
     g_selectedUnitId = 0;
     std::int64_t closestDistance = static_cast<std::int64_t>(kScreenPickRadius) * kScreenPickRadius;
     for (const Tempest::Unit &unit : g_simulation.GetState().units) {
-        if (!unit.alive || unit.faction != Tempest::Faction::Freegrid || unit.kind != Tempest::UnitKind::Courier) {
+        if (!unit.alive || unit.faction != Tempest::Faction::Freegrid || unit.kind != Tempest::UnitKind::CourierScout) {
             continue;
         }
         const std::int64_t distance = DistanceSquared(unit.position, g_pointerPoint);
@@ -302,7 +302,7 @@ bool SelectFromScreen(int mouseX, int mouseY)
             g_selectedUnitId = unit.id;
         }
     }
-    SetFeedback(g_selectedUnitId != 0 ? "Courier selected." : "No Freegrid unit at cursor.");
+    SetFeedback(g_selectedUnitId != 0 ? "Courier scout selected." : "No selectable Freegrid scout at cursor.");
     UpdateWindowTitle();
     return g_selectedUnitId != 0;
 }
@@ -382,7 +382,7 @@ bool BuildRelayAtNearestOwnedNode()
     }
     if (targetId != 0) {
         g_simulation.Submit(MakeCommand(Tempest::CommandKind::BuildRelay, 0, targetId));
-        SetFeedback("Relay construction requested at the nearest owned node.");
+        SetFeedback("Grid relay restoration requested at the nearest owned node.");
         return true;
     }
     return false;
@@ -396,9 +396,10 @@ bool ProduceCourier()
     for (const Tempest::Building &building : g_simulation.GetState().buildings) {
         if (building.hitPoints > 0 && building.complete &&
             building.faction == Tempest::Faction::Freegrid &&
-            building.kind == Tempest::BuildingKind::Workshop) {
+            building.kind == Tempest::BuildingKind::FabricatorBay &&
+            g_simulation.CanProduceUnit(building.id, Tempest::UnitKind::CourierScout)) {
             g_simulation.Submit(MakeCommand(Tempest::CommandKind::ProduceCourier, building.id));
-            SetFeedback("Courier production queued.");
+            SetFeedback("Courier scout production queued.");
             return true;
         }
     }
@@ -515,7 +516,7 @@ void HandleInterfaceEvent(HWND window, const Tempest::Ui::InputEvent &event)
                     SetFeedback("Arc Pulse requested at cursor.");
                 } else {
                     g_audio.Play(Tempest::Audio::Cue::Alert);
-                    SetFeedback("Arc Pulse is unavailable while paused or without a selected Courier.");
+                    SetFeedback("Arc Pulse is unavailable while paused or without a selected Courier scout.");
                 }
                 break;
             case Tempest::Ui::Action::PrimarySelect:
@@ -922,9 +923,12 @@ void SyncMarkerVisuals()
         }
         CrossVisual *visual = EnsureCrossVisual(g_buildingVisuals, building.id);
         const Vector3 &color = building.faction == Tempest::Faction::Chorus ? chorusColor : freegridColor;
-        const float extent = building.kind == Tempest::BuildingKind::ChorusCore
+        const float extent = building.kind == Tempest::BuildingKind::ChorusSpire
             ? 3.2F
-            : (building.kind == Tempest::BuildingKind::Workshop ? 2.7F : 2.1F);
+            : (building.kind == Tempest::BuildingKind::RelayCore ||
+                      building.kind == Tempest::BuildingKind::FabricatorBay
+                    ? 2.7F
+                    : 2.1F);
         UpdateCrossVisual(*visual, building.position, extent, color, building.faction);
     }
 }
@@ -933,7 +937,7 @@ bool SyncBuildingModelVisuals()
 {
     for (auto visual = g_buildingModelVisuals.begin(); visual != g_buildingModelVisuals.end();) {
         const Tempest::Building *building = FindBuilding(visual->id);
-        if (building && building->kind == Tempest::BuildingKind::Relay) {
+        if (building && building->kind == Tempest::BuildingKind::Dynamo) {
             ++visual;
         } else {
             RemoveRenderObject(visual->object);
@@ -942,7 +946,7 @@ bool SyncBuildingModelVisuals()
     }
 
     for (const Tempest::Building &building : g_simulation.GetState().buildings) {
-        if (building.hitPoints <= 0 || building.kind != Tempest::BuildingKind::Relay) {
+        if (building.hitPoints <= 0 || building.kind != Tempest::BuildingKind::Dynamo) {
             continue;
         }
         auto found = std::find_if(
@@ -987,9 +991,9 @@ bool SyncUnitVisuals()
         if (!unit.alive) {
             continue;
         }
-        const bool isDrone = unit.kind == Tempest::UnitKind::ChorusDrone;
-        const bool damaged = !isDrone && unit.hitPoints * 2 <= unit.maximumHitPoints;
-        const char *modelName = isDrone ? "drone" : (damaged ? "courierd" : "courier");
+        const bool isChorus = unit.faction == Tempest::Faction::Chorus;
+        const bool damaged = !isChorus && unit.hitPoints * 2 <= unit.maximumHitPoints;
+        const char *modelName = isChorus ? "drone" : (damaged ? "courierd" : "courier");
         auto found = std::find_if(g_unitVisuals.begin(), g_unitVisuals.end(), [&unit](const UnitVisual &visual) {
             return visual.id == unit.id;
         });
@@ -1253,9 +1257,11 @@ void DrawHud(HDC device, const RECT &client, float scale)
     std::snprintf(
         status,
         sizeof(status),
-        "SUBSTATION 9    SALVAGE %d    GRID CHARGE %d%%    RELAYS [F] %d / [C] %d / 3    %02llu:%02llu",
-        match.freegridCredits,
-        match.freegridPower,
+        "SUBSTATION 9    SALVAGE %d    CAPACITY %d/%d    ABILITY CHARGE %d%%    RELAYS [F] %d / [C] %d / 3    %02llu:%02llu",
+        match.salvage,
+        g_simulation.UsedFreegridCapacity(),
+        g_simulation.FreegridCapacity(),
+        match.abilityCharge,
         freegridNodes,
         chorusNodes,
         static_cast<unsigned long long>(match.tick / Tempest::TicksPerSecond / 60),
@@ -1479,8 +1485,8 @@ void DrawModalOverlay(HDC device, const RECT &client, float scale)
             briefing,
             sizeof(briefing),
             "2089. Chorus has colonised the basin's abandoned control grid.\n\n"
-            "SELECT a Freegrid Courier. CAPTURE substations to earn salvage and grid charge. "
-            "BUILD Relays, PRODUCE Couriers, then destroy the Chorus Spire [C]. "
+            "SELECT a Freegrid Courier scout. CAPTURE substations to earn salvage and ability charge. "
+            "RESTORE grid relays, PRODUCE Courier scouts, then destroy the Chorus Spire [C]. "
             "If your Relay Core [F] falls, the district is lost.\n\n"
             "ENTER  establish link and begin     [%s]  settings     ESC  exit",
             settingsKey);
@@ -1529,13 +1535,13 @@ void DrawModalOverlay(HDC device, const RECT &client, float scale)
         std::snprintf(
             copy,
             sizeof(copy),
-            "%s\n\nDecisive state: %d of 3 substations linked, %d salvage banked, %d%% grid charge.\n\n[%s]  restart without returning to desktop\n[%s]  settings\nESC  exit",
+            "%s\n\nDecisive state: %d of 3 substations linked, %d salvage banked, %d%% ability charge.\n\n[%s]  restart without returning to desktop\n[%s]  settings\nESC  exit",
             victory
                 ? "You severed the Chorus Spire and returned the grid to Freegrid control."
                 : "The Relay Core fell before the Chorus signal could be isolated.",
             freegridNodes,
-            match.freegridCredits,
-            match.freegridPower,
+            match.salvage,
+            match.abilityCharge,
             restartKey,
             settingsKey);
         DrawLabel(device, g_hudFont, RGB(195, 224, 228), body, copy, DT_LEFT | DT_TOP | DT_WORDBREAK);

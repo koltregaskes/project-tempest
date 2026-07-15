@@ -284,9 +284,9 @@ foreach ($requiredLoad in @("Load_3D_Assets(`"drone.w3d`")", "Load_3D_Assets(`"r
 }
 if (
     $demoSource -notmatch [regex]::Escape('Create_Render_Obj("relay")') -or
-    $demoSource -notmatch [regex]::Escape('isDrone ? "drone"')
+    $demoSource -notmatch [regex]::Escape('isChorus ? "drone"')
 ) {
-    throw "Project Tempest renderer does not map Relay/Chorus simulation entities to their dedicated runtime models."
+    throw "Project Tempest renderer does not map Dynamo/Chorus simulation entities to their dedicated runtime models."
 }
 if (
     $demoSource -notmatch [regex]::Escape('const HGDIOBJ previousFont = SelectObject(device, font);') -or
@@ -348,6 +348,22 @@ foreach ($interfaceContract in @(
     if ($combinedInterfaceSource -notmatch [regex]::Escape($interfaceContract)) {
         throw "Project Tempest interface contract is missing '$interfaceContract'."
     }
+}
+$simulationHeader = Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/Code/TempestSimulation.h") -Raw
+$simulationSource = Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/Code/TempestSimulation.cpp") -Raw
+foreach ($contentRole in @(
+    "FabricatorRig", "CourierScout", "LancerCrew", "CoilCarrier",
+    "Skitter", "Warden", "Harrower", "RelayCore", "FabricatorBay",
+    "Dynamo", "ArcSentry", "MachineNest", "SignalPylon", "ChorusSpire",
+    "GridLinkScan", "EmergencyOvercharge", "salvage", "abilityCharge"
+)) {
+    if (($simulationHeader + $simulationSource) -notmatch [regex]::Escape($contentRole)) {
+        throw "Project Tempest content model is missing '$contentRole'."
+    }
+}
+if (($demoSource + $simulationHeader + $simulationSource) -match
+    'freegridCredits|freegridPower|BuildingKind::Workshop|BuildingKind::ChorusCore') {
+    throw "Project Tempest still contains retired credits/power or Workshop/Chorus Core vocabulary."
 }
 
 $validated | Format-Table -AutoSize
