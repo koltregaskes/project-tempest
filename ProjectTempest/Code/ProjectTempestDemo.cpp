@@ -49,6 +49,7 @@ constexpr double kSimulationTickSeconds = 1.0 / static_cast<double>(Tempest::Tic
 bool g_keys[256] = {};
 bool g_rendererReady = false;
 bool g_applicationActive = true;
+bool g_pointerInClient = false;
 std::uint32_t g_selectedUnitId = 0;
 Tempest::Point g_pointerPoint;
 POINT g_pointerClient = {};
@@ -398,14 +399,30 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
             }
             return 0;
 
-        case WM_MOUSEMOVE:
+        case WM_MOUSEMOVE: {
             g_pointerClient = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            RECT pointerClient = {};
+            GetClientRect(window, &pointerClient);
+            const bool pointerInside = g_pointerClient.x >= pointerClient.left &&
+                g_pointerClient.x < pointerClient.right && g_pointerClient.y >= pointerClient.top &&
+                g_pointerClient.y < pointerClient.bottom;
+            if (pointerInside && !g_pointerInClient) {
+                TRACKMOUSEEVENT tracking { sizeof(TRACKMOUSEEVENT), TME_LEAVE, window, 0 };
+                TrackMouseEvent(&tracking);
+            }
+            g_pointerInClient = pointerInside;
             g_pointerPoint = ScreenToSimulationPoint(g_pointerClient.x, g_pointerClient.y);
+            return 0;
+        }
+
+        case WM_MOUSELEAVE:
+            g_pointerInClient = false;
             return 0;
 
         case WM_ACTIVATEAPP:
             g_applicationActive = wParam != 0;
             if (!wParam) {
+                g_pointerInClient = false;
                 std::fill_n(g_keys, 256, false);
                 if (g_interface.GetScreen() == Tempest::Ui::Screen::Playing) {
                     g_interface.HandleKey(Tempest::Ui::KeyEscape);
@@ -531,7 +548,7 @@ void UpdateCameraPan(float deltaSeconds)
 
     RECT client = {};
     GetClientRect(ApplicationHWnd, &client);
-    if (g_interface.GetSettings().edgeScroll && !g_interface.GetSettings().reducedMotion &&
+    if (g_pointerInClient && g_interface.GetSettings().edgeScroll && !g_interface.GetSettings().reducedMotion &&
         client.right > 0 && client.bottom > 0) {
         const int clientWidth = static_cast<int>(client.right);
         const int clientHeight = static_cast<int>(client.bottom);
