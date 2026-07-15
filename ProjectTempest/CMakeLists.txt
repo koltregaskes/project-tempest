@@ -1,5 +1,7 @@
 add_executable(project_tempest_demo WIN32
     Code/ProjectTempestDemo.cpp
+    Code/TempestInterface.cpp
+    Code/TempestInterface.h
     Code/TempestSimulation.cpp
 )
 
@@ -65,6 +67,8 @@ add_custom_target(project_tempest_runtime_assets
 add_dependencies(project_tempest_demo project_tempest_runtime_assets)
 
 add_executable(project_tempest_sim_tests
+    Code/TempestInterface.cpp
+    Code/TempestInterface.h
     Code/TempestSimulation.cpp
     Tests/TempestSimulationTests.cpp
 )

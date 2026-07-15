@@ -110,8 +110,9 @@ The standalone code now includes a deterministic Substation 9 simulation core in
 `Code/TempestSimulation.h` and `Code/TempestSimulation.cpp`. It advances at a fixed 20 ticks per second, accepts
 sequence-stable commands, and models Courier movement, three capturable substations, credit/power income, Relay
 construction, Courier production, combat, Arc Pulse, Chorus reinforcement/target AI, pause, restart, victory, and
-defeat. `Tests/TempestSimulationTests.cpp` validates those rules and proves that identical command streams yield an
-identical checksum on every tick.
+defeat. `Code/TempestInterface.*` owns the original briefing, play, pause, settings, and result state machine without
+coupling presentation state to the deterministic match checksum. `Tests/TempestSimulationTests.cpp` validates both
+surfaces and proves that identical command streams yield an identical checksum on every tick.
 
 Build and run the console-only test target without opening a renderer:
 
@@ -121,25 +122,37 @@ ctest --test-dir .\build\win32 -C Release --output-on-failure
 ```
 
 The rendered prototype now drives that simulation at the same fixed 20 Hz, converts player input into sequenced
-commands, and presents the current match through a neon procedural grid, faction-coloured substation/building markers,
-selection brackets, dedicated Courier/Chorus Drone visuals, pristine/damaged Courier switching, an authored Relay model,
-and a live title-bar status strip. This is a compile-proven integration checkpoint; safe manual gameplay/legibility
-verification, dedicated Workshop/Core art, and an in-window production HUD remain required before the skirmish is
-release-quality.
+commands, and presents the current match through a neon procedural grid, faction-coloured and shape-distinct
+substation/building markers, selection brackets, dedicated Courier/Chorus Drone visuals, pristine/damaged Courier
+switching, an authored Relay model, and a scalable in-window HUD. The original interface includes a loading panel,
+mission briefing, live resources/objective/selection state, visible command acknowledgement, pause, settings, and a
+victory/defeat explanation with restart and settings available without leaving the process. This is a compile- and
+headless-test-proven integration checkpoint; safe manual gameplay/legibility verification and dedicated Workshop/Core
+art remain required before the skirmish is release-quality.
 
 Modern Generals Win32 builds also produce `ProjectTempestDemo.exe`, a retail-asset-free executable that loads the
-Courier, damaged Courier, Chorus Drone, and Freegrid Relay directly from this tree. Its current Substation 9 integration slice provides a fixed RTS camera, bounded unit
+Courier, damaged Courier, Chorus Drone, and Freegrid Relay directly from this tree. Its current Substation 9 integration slice provides a bounded panning RTS camera, bounded unit
 selection, context-sensitive movement/capture/attack orders, node income, Relay construction, Courier production,
-combat, Arc Pulse, pause/restart, Chorus reinforcements, and victory/defeat. It is an executable integration checkpoint,
-not the final polished vertical slice.
+combat, Arc Pulse, pause/settings/restart/result flow, Chorus reinforcements, and victory/defeat. It is an executable
+integration checkpoint, not the final polished vertical slice.
 
 Controls:
 
 - Left-click selects a Freegrid Courier within its screen-space selection bound.
 - Right-click moves, captures a nearby substation, or attacks a nearby Chorus unit/Core.
-- `WASD` or the arrow keys nudge the selected unit through fixed-tick commands.
+- `WASD` pans the camera; configurable edge scroll is enabled by default.
 - `B` constructs a Relay at the nearest owned substation; `U` queues a Courier.
-- `F` casts Arc Pulse at the pointer; `Space` pauses; `R` restarts; `Esc` exits.
+- `F` casts Arc Pulse at the pointer; `Space` or `Esc` pauses; `O` opens settings.
+- `Enter` starts from the briefing; `R` restarts from pause/result; `Esc` exits from briefing/result.
+
+The settings overlay supports camera speed, UI scale, master/music/effects levels, edge-scroll disable, reduced motion,
+reduced flashes, colour-independent ownership cues, and collision-safe remapping for all ten keyboard actions. The HUD
+scales from the current client height and aspect ratio rather than assuming 1280×720. Chorus ownership uses an `X` shape
+and `[C]` text while Freegrid uses a `+` shape and `[F]` text, so hostile state is not communicated by hue alone.
+Reduced motion disables edge-driven camera movement while retaining deliberate keyboard pan, and losing window focus
+clears held inputs and enters the pause screen.
+Original audio playback, persisted settings, mouse-button remapping, and player-visible multi-resolution verification
+remain open M5 work; the current volume values are interface state, not a claim that missing audio content is playing.
 
 Build with a modern Generals preset, for example:
 

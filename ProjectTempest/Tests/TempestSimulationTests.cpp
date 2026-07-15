@@ -1,4 +1,5 @@
 #include "TempestSimulation.h"
+#include "TempestInterface.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -337,6 +338,93 @@ void TestDeterministicReplay()
     Expect(first.back() == ExpectedFinalChecksum, "deterministic replay matches the reviewed golden checksum");
 }
 
+void TestInterfaceFlow()
+{
+    Tempest::Ui::InterfaceState interfaceState;
+    Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Briefing,
+        "interface starts on the original Substation 9 briefing");
+
+    const Tempest::Ui::InputEvent begin = interfaceState.HandleKey(Tempest::Ui::KeyEnter);
+    Expect(begin.intent == Tempest::Ui::Intent::BeginMatch &&
+            interfaceState.GetScreen() == Tempest::Ui::Screen::Playing,
+        "confirm starts the match from the briefing");
+
+    interfaceState.HandleKey(interfaceState.KeyFor(Tempest::Ui::Action::Pause));
+    Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Pause,
+        "the remappable pause action opens the pause screen");
+    interfaceState.HandleKey(interfaceState.KeyFor(Tempest::Ui::Action::OpenSettings));
+    Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Settings &&
+            interfaceState.GetSettingsReturnScreen() == Tempest::Ui::Screen::Pause,
+        "settings opened during play returns to the safe paused screen");
+    interfaceState.HandleKey(Tempest::Ui::KeyEscape);
+    Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Pause,
+        "escape returns from settings to pause without advancing simulation");
+    interfaceState.HandleKey(interfaceState.KeyFor(Tempest::Ui::Action::Pause));
+    Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Playing,
+        "pause action resumes the match");
+
+    interfaceState.SyncOutcome(Tempest::MatchOutcome::Victory);
+    Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Result,
+        "a completed simulation opens the in-window result flow");
+    const Tempest::Ui::InputEvent restart =
+        interfaceState.HandleKey(interfaceState.KeyFor(Tempest::Ui::Action::Restart));
+    Expect(restart.intent == Tempest::Ui::Intent::RestartMatch &&
+            interfaceState.GetScreen() == Tempest::Ui::Screen::Playing,
+        "result flow restarts without returning to the desktop");
+}
+
+void TestSettingsBoundsAndRemapping()
+{
+    Tempest::Ui::InterfaceState interfaceState;
+    interfaceState.HandleKey(interfaceState.KeyFor(Tempest::Ui::Action::OpenSettings));
+    Expect(interfaceState.GetScreen() == Tempest::Ui::Screen::Settings,
+        "briefing exposes essential settings before play");
+
+    for (int index = 0; index < 20; ++index) {
+        interfaceState.HandleKey(Tempest::Ui::KeyLeft);
+    }
+    Expect(interfaceState.GetSettings().cameraSpeedPercent == 50,
+        "camera speed has a readable lower bound");
+    for (int index = 0; index < 30; ++index) {
+        interfaceState.HandleKey(Tempest::Ui::KeyRight);
+    }
+    Expect(interfaceState.GetSettings().cameraSpeedPercent == 200,
+        "camera speed has a stable upper bound");
+
+    interfaceState.HandleKey(Tempest::Ui::KeyDown);
+    for (int index = 0; index < 20; ++index) {
+        interfaceState.HandleKey(Tempest::Ui::KeyRight);
+    }
+    Expect(interfaceState.GetSettings().uiScalePercent == 150,
+        "UI scale remains within the non-clipping two-column layout range");
+    interfaceState.HandleKey(Tempest::Ui::KeyUp);
+
+    for (int row = 0; row < Tempest::Ui::InterfaceState::AdjustableSettingCount; ++row) {
+        interfaceState.HandleKey(Tempest::Ui::KeyDown);
+    }
+    Expect(interfaceState.ActionForSettingsRow(interfaceState.GetSelectedSettingsRow()) ==
+            Tempest::Ui::Action::MoveUp,
+        "settings navigation reaches the first remappable action");
+    interfaceState.HandleKey(Tempest::Ui::KeyEnter);
+    Expect(interfaceState.IsCapturingBinding(), "confirm starts an explicit key capture");
+    const Tempest::Ui::InputEvent rebound = interfaceState.HandleKey('K');
+    Expect(rebound.intent == Tempest::Ui::Intent::BindingChanged &&
+            interfaceState.KeyFor(Tempest::Ui::Action::MoveUp) == 'K',
+        "a free key can replace a gameplay binding");
+
+    interfaceState.HandleKey(Tempest::Ui::KeyDown);
+    interfaceState.HandleKey(Tempest::Ui::KeyEnter);
+    const Tempest::Ui::InputEvent collision = interfaceState.HandleKey('K');
+    Expect(collision.intent == Tempest::Ui::Intent::BindingRejected &&
+            interfaceState.KeyFor(Tempest::Ui::Action::MoveDown) == 'S',
+        "duplicate bindings are rejected without losing the prior key");
+
+    bool keyStates[256] = {};
+    keyStates['K'] = true;
+    Expect(interfaceState.IsActionPressed(Tempest::Ui::Action::MoveUp, keyStates, 256),
+        "the runtime input query consumes the remapped key");
+}
+
 } // namespace
 
 int main()
@@ -348,6 +436,8 @@ int main()
     TestCommandValidationAndChorusTerritoryAi();
     TestVictoryAndDefeat();
     TestDeterministicReplay();
+    TestInterfaceFlow();
+    TestSettingsBoundsAndRemapping();
     std::cout << "PASS: Project Tempest deterministic simulation tests\n";
     return 0;
 }

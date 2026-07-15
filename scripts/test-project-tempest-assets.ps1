@@ -195,9 +195,52 @@ if (
 ) {
     throw "Project Tempest renderer does not map Relay/Chorus simulation entities to their dedicated runtime models."
 }
+if (
+    $demoSource -notmatch [regex]::Escape('const HGDIOBJ previousFont = SelectObject(device, font);') -or
+    $demoSource -notmatch [regex]::Escape('SelectObject(device, previousFont);')
+) {
+    throw "Project Tempest HUD drawing must restore the prior GDI font before scalable fonts can be deleted."
+}
+if (
+    $demoSource -notmatch [regex]::Escape('FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));') -or
+    $demoSource -notmatch [regex]::Escape('"ENTER  establish link and begin     [%s]  settings     ESC  exit"')
+) {
+    throw "Project Tempest briefing must render the current remappable settings shortcut."
+}
+foreach ($pointerLeaveContract in @(
+    "g_pointerInClient",
+    "TRACKMOUSEEVENT",
+    "TME_LEAVE",
+    "TrackMouseEvent(&tracking)",
+    "WM_MOUSELEAVE"
+)) {
+    if ($demoSource -notmatch [regex]::Escape($pointerLeaveContract)) {
+        throw "Project Tempest edge scrolling is missing pointer-leave contract '$pointerLeaveContract'."
+    }
+}
+
+foreach ($interfaceSource in @("Code/TempestInterface.cpp", "Code/TempestInterface.h")) {
+    if ($cmakeContent -notmatch [regex]::Escape($interfaceSource)) {
+        throw "Project Tempest CMake contract is missing '$interfaceSource'."
+    }
+}
+$combinedInterfaceSource = $demoSource +
+    (Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/Code/TempestInterface.cpp") -Raw)
+foreach ($interfaceContract in @(
+    "DrawHud",
+    "DrawSettingsOverlay",
+    "DrawModalOverlay",
+    "SyncOutcome",
+    "colourIndependentCues",
+    "RestartMatch"
+)) {
+    if ($combinedInterfaceSource -notmatch [regex]::Escape($interfaceContract)) {
+        throw "Project Tempest interface contract is missing '$interfaceContract'."
+    }
+}
 
 $validated | Format-Table -AutoSize
-Write-Host "Validated $($validated.Count) Project Tempest assets, Courier/Drone/Relay runtime contracts, and the manual-only renderer policy."
+Write-Host "Validated $($validated.Count) Project Tempest assets, runtime/interface contracts, and the manual-only renderer policy."
 
 if ($VerifyReproducibility) {
     $reproducibilityScript = Join-Path $PSScriptRoot "test-project-tempest-reproducibility.ps1"
