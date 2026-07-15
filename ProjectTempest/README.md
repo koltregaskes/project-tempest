@@ -81,20 +81,25 @@ cmake --build --preset win32 --target project_tempest_sim_tests
 ctest --test-dir .\build\win32 -C Release --output-on-failure
 ```
 
-The rendered prototype compiles this simulation core but does not yet expose its complete command set or match state
-through the player-facing UI. That integration remains required before the Substation 9 skirmish is playable.
+The rendered prototype now drives that simulation at the same fixed 20 Hz, converts player input into sequenced
+commands, and presents the current match through a neon procedural grid, faction-coloured substation/building markers,
+selection brackets, per-unit visuals, pristine/damaged Courier switching, and a live title-bar status strip. This is a
+compile-proven integration checkpoint; safe manual gameplay/legibility verification, a purpose-built Chorus Drone and
+building art pass, and an in-window production HUD remain required before the skirmish is release-quality.
 
 Modern Generals Win32 builds also produce `ProjectTempestDemo.exe`, a retail-asset-free executable that loads the
-Courier directly from this tree. Its current M2 interaction slice provides a fixed RTS camera, selection, right-click
-movement, keyboard movement, restart, and a simple uplink objective. It is an executable integration checkpoint, not
-the final Substation 9 vertical slice.
+Courier directly from this tree. Its current Substation 9 integration slice provides a fixed RTS camera, bounded unit
+selection, context-sensitive movement/capture/attack orders, node income, Relay construction, Courier production,
+combat, Arc Pulse, pause/restart, Chorus reinforcements, and victory/defeat. It is an executable integration checkpoint,
+not the final polished vertical slice.
 
 Controls:
 
-- Left-click selects the Courier.
-- Right-click sets a movement target on the flat prototype arena.
-- `WASD` or the arrow keys nudge the selected unit.
-- `R` restarts the prototype objective; `Esc` exits.
+- Left-click selects a Freegrid Courier within its screen-space selection bound.
+- Right-click moves, captures a nearby substation, or attacks a nearby Chorus unit/Core.
+- `WASD` or the arrow keys nudge the selected unit through fixed-tick commands.
+- `B` constructs a Relay at the nearest owned substation; `U` queues a Courier.
+- `F` casts Arc Pulse at the pointer; `Space` pauses; `R` restarts; `Esc` exits.
 
 Build with a modern Generals preset, for example:
 

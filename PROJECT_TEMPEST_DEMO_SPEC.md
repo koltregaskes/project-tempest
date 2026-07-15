@@ -133,9 +133,11 @@ protocol, renderer replacement, and broad platform abstraction are outside this 
 The first standalone simulation surface is implemented in `ProjectTempest/Code/TempestSimulation.*`. It uses integer
 state and a fixed 20 Hz tick, sequences commands deterministically, and owns Substation 9 movement, capture, economy,
 construction, production, combat, Arc Pulse, basic Chorus AI, pause/restart, and outcomes. A console-only test target
-replays the same command stream twice and compares every per-tick checksum. This proves the headless rules core; the
-rendered prototype still requires explicit input, HUD, and presentation integration before it constitutes the governed
-skirmish demo.
+replays the same command stream twice and compares every per-tick checksum. The standalone renderer now consumes that
+state, converts mouse/keyboard input into sequenced commands, and visualises units, control nodes, buildings, selection,
+and damage state with original/procedural content. This proves the compile-time rules/presentation seam; safe manual
+gameplay evidence, dedicated Chorus/building assets, and a full in-window HUD remain required before it constitutes the
+governed skirmish demo.
 
 ### Golden asset and format decision
 

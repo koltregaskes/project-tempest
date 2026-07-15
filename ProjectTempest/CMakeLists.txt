@@ -3,7 +3,7 @@ add_executable(project_tempest_demo WIN32
     Code/TempestSimulation.cpp
 )
 
-target_compile_features(project_tempest_demo PRIVATE cxx_std_17)
+target_compile_features(project_tempest_demo PRIVATE cxx_std_20)
 target_compile_definitions(project_tempest_demo PRIVATE
     NOMINMAX
     WIN32_LEAN_AND_MEAN
