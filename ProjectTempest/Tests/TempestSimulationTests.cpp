@@ -64,6 +64,33 @@ std::vector<std::uint32_t> FindCouriers(const Tempest::MatchState &state)
     return ids;
 }
 
+const Tempest::Unit *FindUnitById(const Tempest::MatchState &state, std::uint32_t id)
+{
+    for (const Tempest::Unit &unit : state.units) {
+        if (unit.id == id) {
+            return &unit;
+        }
+    }
+    return nullptr;
+}
+
+std::uint32_t FindDrone(const Tempest::MatchState &state)
+{
+    for (const Tempest::Unit &unit : state.units) {
+        if (unit.faction == Tempest::Faction::Chorus && unit.kind == Tempest::UnitKind::ChorusDrone && unit.alive) {
+            return unit.id;
+        }
+    }
+    return 0;
+}
+
+bool IsWithin(const Tempest::Point &left, const Tempest::Point &right, std::int32_t range)
+{
+    const std::int64_t dx = static_cast<std::int64_t>(left.x) - right.x;
+    const std::int64_t dy = static_cast<std::int64_t>(left.y) - right.y;
+    return (dx * dx) + (dy * dy) <= static_cast<std::int64_t>(range) * range;
+}
+
 void TestInitialStateAndPause()
 {
     Tempest::Simulation simulation;
@@ -165,6 +192,82 @@ void TestArcPulseRange()
     simulation.Submit(MakeCommand(0, Tempest::CommandKind::ArcPulse, courierId, 0, { 50000, 50000 }));
     simulation.Step();
     Expect(simulation.GetState().freegridPower == initialPower, "Arc Pulse rejects an out-of-range cast point");
+}
+
+void TestLethalArcPulseResolvesBeforeActions()
+{
+    Tempest::Simulation simulation;
+    const std::uint32_t workshopId = FindBuilding(simulation.GetState(), Tempest::BuildingKind::Workshop);
+    simulation.Submit(MakeCommand(0, Tempest::CommandKind::ProduceCourier, workshopId));
+    simulation.Step(Tempest::TicksPerSecond * 3 + 1);
+
+    const std::vector<std::uint32_t> couriers = FindCouriers(simulation.GetState());
+    const std::uint32_t droneId = FindDrone(simulation.GetState());
+    Expect(couriers.size() == 2 && droneId != 0, "lethal Arc Pulse fixture has two casters and one drone");
+    const Tempest::Unit *drone = FindUnitById(simulation.GetState(), droneId);
+    Expect(drone != nullptr, "lethal Arc Pulse fixture can inspect its drone");
+    const Tempest::Point meetingPoint = drone->position;
+    for (const std::uint32_t courierId : couriers) {
+        simulation.Submit(MakeCommand(
+            simulation.GetState().tick,
+            Tempest::CommandKind::Move,
+            courierId,
+            0,
+            meetingPoint));
+    }
+
+    bool armed = false;
+    for (int tick = 0; tick < 500; ++tick) {
+        simulation.Step();
+        drone = FindUnitById(simulation.GetState(), droneId);
+        if (!drone || !drone->alive) {
+            continue;
+        }
+        const Tempest::Unit *firstCaster = FindUnitById(simulation.GetState(), couriers[0]);
+        const Tempest::Unit *secondCaster = FindUnitById(simulation.GetState(), couriers[1]);
+        if (firstCaster && secondCaster && firstCaster->alive && secondCaster->alive &&
+            IsWithin(firstCaster->position, drone->position, 3200) &&
+            IsWithin(secondCaster->position, drone->position, 3200)) {
+            armed = true;
+            break;
+        }
+    }
+    Expect(armed, "lethal Arc Pulse fixture moves both casters within pulse range");
+
+    drone = FindUnitById(simulation.GetState(), droneId);
+    Expect(drone != nullptr, "drone remains inspectable before lethal damage");
+    const Tempest::Point pulsePoint = drone->position;
+    const Tempest::Point dronePositionBeforePulse = drone->position;
+    std::vector<std::int32_t> chorusCaptureBeforePulse;
+    for (const Tempest::ControlNode &node : simulation.GetState().nodes) {
+        chorusCaptureBeforePulse.push_back(node.chorusCaptureTicks);
+    }
+
+    simulation.Submit(MakeCommand(
+        simulation.GetState().tick,
+        Tempest::CommandKind::ArcPulse,
+        couriers[0],
+        0,
+        pulsePoint));
+    simulation.Submit(MakeCommand(
+        simulation.GetState().tick,
+        Tempest::CommandKind::ArcPulse,
+        couriers[1],
+        0,
+        pulsePoint));
+    simulation.Step();
+
+    drone = FindUnitById(simulation.GetState(), droneId);
+    Expect(drone && !drone->alive && drone->hitPoints == 0 &&
+            drone->order == Tempest::OrderKind::Idle && drone->targetId == 0,
+        "lethal Arc Pulse immediately clears the drone's live action state");
+    Expect(drone && drone->position.x == dronePositionBeforePulse.x &&
+            drone->position.y == dronePositionBeforePulse.y,
+        "a drone killed by Arc Pulse cannot move later in the same tick");
+    for (std::size_t index = 0; index < simulation.GetState().nodes.size(); ++index) {
+        Expect(simulation.GetState().nodes[index].chorusCaptureTicks == chorusCaptureBeforePulse[index],
+            "a drone killed by Arc Pulse cannot advance capture progress in the same tick");
+    }
 }
 
 void TestVictoryAndDefeat()
@@ -329,6 +432,7 @@ int main()
     TestInitialStateAndPause();
     TestEconomyConstructionAndProduction();
     TestArcPulseRange();
+    TestLethalArcPulseResolvesBeforeActions();
     TestCommandValidationAndChorusTerritoryAi();
     TestVictoryAndDefeat();
     TestDeterministicReplay();

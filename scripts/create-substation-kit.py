@@ -291,7 +291,7 @@ def artifact(path):
     return {"path": os.path.relpath(path, output_root).replace("\\", "/"), "sha256": sha256(path)}
 
 
-def export_asset(name, source_parts, groups, specs, collision_center, collision_size, preview_extent, target_z):
+def export_asset(name, built_objects, groups, specs, collision_center, collision_size, preview_extent, target_z):
     source_root = os.path.join(output_root, "ProjectTempest", "SourceAssets", "Models", *name["source_parts"])
     os.makedirs(source_root, exist_ok=True)
     blend_path = os.path.join(source_root, f"{name['slug']}-master-v1.blend")
@@ -318,11 +318,11 @@ def export_asset(name, source_parts, groups, specs, collision_center, collision_
     lod1_collection.children.link(lod2_collection)
     lod1 = [
         create_lod(source, lod1_collection, f"{prefix}1", ratio1)
-        for source, (_mat, prefix, ratio1, _ratio2) in zip(lod0, specs)
+        for source, (_mat, prefix, ratio1, _ratio2) in zip(lod0, specs, strict=True)
     ]
     lod2 = [
         create_lod(source, lod2_collection, f"{prefix}2", ratio2)
-        for source, (_mat, prefix, _ratio1, ratio2) in zip(lod0, specs)
+        for source, (_mat, prefix, _ratio1, ratio2) in zip(lod0, specs, strict=True)
     ]
     quantize_uvs(lod0 + lod1 + lod2)
     runtime_names = [obj.name for obj in lod0 + lod1 + lod2] + [collision.name]
@@ -394,7 +394,7 @@ def export_asset(name, source_parts, groups, specs, collision_center, collision_
 
     return {
         "name": name["slug"],
-        "source_part_count": len(source_parts),
+        "source_part_count": len(built_objects),
         "authored_lod_vertex_counts": authored_counts,
         "imported_render_mesh_count": len(imported_render),
         "imported_render_mesh_names": imported_render_names,

@@ -50,11 +50,11 @@ $forbiddenProcessLaunchPatterns = @(
     "(?i)\bschtasks(?:\.exe)?\b",
     "(?i)\bcmd(?:\.exe)?\s+\/c\s+start\b",
     '(?im)^\s*&\s+\$(?:viewerPath|executablePath|gamePath|demoPath|worldBuilderPath)\b',
-    "(?im)^\s*&\s+.*(?:W3DViewV|W3DViewZH|ProjectTempestDemo|generalsv|generalszh|WorldBuilderV|WorldBuilderZH)\.exe\b",
-    "(?im)^\s*(?:\.\\|\.\/).*?(?:W3DViewV|W3DViewZH|ProjectTempestDemo|generalsv|generalszh|WorldBuilderV|WorldBuilderZH)\.exe\b"
+    "(?im)^\s*&\s+.*(?:W3DViewV|W3DViewZH|ProjectTempestDemo|generalsv|generalszh|WorldBuilderV|WorldBuilderZH)(?:\.exe)?\b",
+    "(?im)^\s*(?:\.\\|\.\/).*?(?:W3DViewV|W3DViewZH|ProjectTempestDemo|generalsv|generalszh|WorldBuilderV|WorldBuilderZH)(?:\.exe)?\b"
 )
 
-function Get-UnattendedScriptPolicyViolations {
+function Get-UnattendedScriptPolicyViolation {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Content,
@@ -84,7 +84,7 @@ function Get-UnattendedScriptPolicyViolations {
             $violations.Add("forbidden command '$commandName'")
             continue
         }
-        if ($commandName -and $commandName -match '(?i)(?:^|[\\/])(?:W3DViewV|W3DViewZH|ProjectTempestDemo|generalsv|generalszh|WorldBuilderV|WorldBuilderZH)\.exe$') {
+        if ($commandName -and $commandName -match '(?i)(?:^|[\\/])(?:W3DViewV|W3DViewZH|ProjectTempestDemo|generalsv|generalszh|WorldBuilderV|WorldBuilderZH)(?:\.exe)?$') {
             $violations.Add("forbidden GUI executable '$commandName'")
             continue
         }
@@ -126,7 +126,7 @@ foreach ($relativePath in $unattendedSurfaces) {
     }
 
     if ([IO.Path]::GetExtension($relativePath) -ieq ".ps1") {
-        $astViolations = @(Get-UnattendedScriptPolicyViolations -Content $content -RelativePath $relativePath)
+        $astViolations = @(Get-UnattendedScriptPolicyViolation -Content $content -RelativePath $relativePath)
         if ($astViolations.Count -gt 0) {
             throw "Unattended PowerShell policy violation in '$relativePath': $($astViolations -join '; ')"
         }
@@ -136,11 +136,13 @@ foreach ($relativePath in $unattendedSurfaces) {
 # These fixtures prove that renaming or constructing a GUI path cannot bypass the AST gate.
 $adversarialFixtures = @(
     '$tool = Join-Path $root "W3DViewV.exe"; & $tool',
+    '$tool = Join-Path $root "W3DViewV"; & $tool',
     '$renamed = "ProjectTempestDemo.exe"; & $renamed',
+    '.\ProjectTempestDemo',
     '& (Join-Path $root "WorldBuilderV.exe")'
 )
 foreach ($fixture in $adversarialFixtures) {
-    $fixtureViolations = @(Get-UnattendedScriptPolicyViolations -Content $fixture -RelativePath "adversarial-fixture.ps1")
+    $fixtureViolations = @(Get-UnattendedScriptPolicyViolation -Content $fixture -RelativePath "adversarial-fixture.ps1")
     if ($fixtureViolations.Count -eq 0) {
         throw "The no-GUI AST gate failed to reject adversarial fixture: $fixture"
     }
@@ -151,7 +153,7 @@ $safeFixtures = @(
     @{ Content = '& $cmake --preset $Preset'; Path = 'scripts/build-windows.ps1' }
 )
 foreach ($fixture in $safeFixtures) {
-    $fixtureViolations = @(Get-UnattendedScriptPolicyViolations -Content $fixture.Content -RelativePath $fixture.Path)
+    $fixtureViolations = @(Get-UnattendedScriptPolicyViolation -Content $fixture.Content -RelativePath $fixture.Path)
     if ($fixtureViolations.Count -gt 0) {
         throw "The no-GUI AST gate rejected a documented headless fixture: $($fixtureViolations -join '; ')"
     }

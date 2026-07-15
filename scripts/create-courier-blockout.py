@@ -379,7 +379,7 @@ def create_lod1(source, object_name, ratio):
 
 lod1_objects = [
     create_lod1(lod0, f"{prefix}1", ratio)
-    for lod0, (_mat, prefix, ratio) in zip(lod0_objects, mesh_specs)
+    for lod0, (_mat, prefix, ratio) in zip(lod0_objects, mesh_specs, strict=True)
 ]
 
 

@@ -41,8 +41,10 @@ include(cmake/compilers.cmake)
 if(MSVC AND NOT IS_VS6_BUILD)
     include(CheckIncludeFileCXX)
     # This machine-level prerequisite can be installed between configure attempts. Do not preserve a stale failure in
-    # CMakeCache.txt after the user adds the ATL component.
-    unset(RTS_HAS_MSVC_ATL CACHE)
+    # CMakeCache.txt after the user adds the ATL component, while preserving successful detections.
+    if(NOT RTS_HAS_MSVC_ATL)
+        unset(RTS_HAS_MSVC_ATL CACHE)
+    endif()
     check_include_file_cxx(atlbase.h RTS_HAS_MSVC_ATL)
     if(NOT RTS_HAS_MSVC_ATL)
         message(FATAL_ERROR
