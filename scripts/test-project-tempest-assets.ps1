@@ -218,6 +218,17 @@ if (
 ) {
     throw "Project Tempest briefing must render the current remappable settings shortcut."
 }
+foreach ($pointerLeaveContract in @(
+    "g_pointerInClient",
+    "TRACKMOUSEEVENT",
+    "TME_LEAVE",
+    "TrackMouseEvent(&tracking)",
+    "WM_MOUSELEAVE"
+)) {
+    if ($demoSource -notmatch [regex]::Escape($pointerLeaveContract)) {
+        throw "Project Tempest edge scrolling is missing pointer-leave contract '$pointerLeaveContract'."
+    }
+}
 
 foreach ($interfaceSource in @("Code/TempestInterface.cpp", "Code/TempestInterface.h")) {
     if ($cmakeContent -notmatch [regex]::Escape($interfaceSource)) {
