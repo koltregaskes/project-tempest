@@ -198,10 +198,37 @@ $runbook = Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/R
 foreach ($requiredPolicy in @(
     "manual-only",
     "do not retry a visible GUI",
-    "No agent, automation, CI job, or scheduled task may perform these manual checks"
+    "No agent, automation, CI job, or scheduled task may perform these manual checks",
+    "no unattended wrapper may invoke them or retry them"
 )) {
     if ($runbook -notmatch [regex]::Escape($requiredPolicy)) {
         throw "Project Tempest runbook is missing required no-GUI policy text: '$requiredPolicy'."
+    }
+}
+
+foreach ($forbiddenExecutable in @(
+    "W3DViewV.exe",
+    "W3DViewZH.exe",
+    "ProjectTempestDemo.exe",
+    "generalsv.exe",
+    "generalszh.exe",
+    "WorldBuilderV.exe",
+    "WorldBuilderZH.exe"
+)) {
+    if ($runbook -notmatch [regex]::Escape($forbiddenExecutable)) {
+        throw "Project Tempest runbook is missing prohibited executable '$forbiddenExecutable'."
+    }
+}
+
+$testingGuide = Get-Content -LiteralPath (Join-Path $repositoryRoot "TESTING.md") -Raw
+foreach ($requiredTestingPolicy in @(
+    "manual-only user action",
+    "unattended scripts must not run it",
+    "record that evidence as blocked",
+    "not retry the executable"
+)) {
+    if ($testingGuide -notmatch [regex]::Escape($requiredTestingPolicy)) {
+        throw "Testing guide is missing required no-GUI policy text: '$requiredTestingPolicy'."
     }
 }
 

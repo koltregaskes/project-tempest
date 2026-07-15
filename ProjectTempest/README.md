@@ -97,8 +97,10 @@ materials or renderer stability; the production texture/material pass remains op
 ## Windows execution safety
 
 All unattended validation is compile-, package-, data-, import-, or offscreen-only. Agents, CI jobs, scheduled tasks,
-and automated test scripts must never launch `W3DViewV.exe`, `ProjectTempestDemo.exe`, `generalsv.exe`,
-`WorldBuilderV.exe`, Blender's interactive UI, a render-device selector, or any other visible game/tool window.
+and automated test scripts must never launch `W3DViewV.exe`, `W3DViewZH.exe`, `ProjectTempestDemo.exe`,
+`generalsv.exe`, `generalszh.exe`, `WorldBuilderV.exe`, `WorldBuilderZH.exe`, Blender's interactive UI, a render-device
+selector, or any other visible game/tool window. Manual commands in this runbook are documentation for a user-operated,
+non-RDP desktop only; no unattended wrapper may invoke them or retry them.
 `scripts/test-project-tempest-no-gui.ps1` enforces the no-process-launch contract on Project Tempest validation surfaces.
 It parses unattended PowerShell entry points and exercises adversarial variable/indirect-path fixtures, so renaming a
 GUI executable variable cannot bypass the gate. `scripts/build-windows.ps1` is explicitly covered.
