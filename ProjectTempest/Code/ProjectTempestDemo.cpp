@@ -70,9 +70,15 @@ struct CrossVisual {
     Line3DClass *vertical = nullptr;
 };
 
+struct BuildingModelVisual {
+    std::uint32_t id = 0;
+    RenderObjClass *object = nullptr;
+};
+
 std::vector<UnitVisual> g_unitVisuals;
 std::vector<CrossVisual> g_nodeVisuals;
 std::vector<CrossVisual> g_buildingVisuals;
+std::vector<BuildingModelVisual> g_buildingModelVisuals;
 std::vector<Line3DClass *> g_gridLines;
 Line3DClass *g_selectionHorizontal = nullptr;
 Line3DClass *g_selectionVertical = nullptr;
@@ -499,6 +505,49 @@ void SyncMarkerVisuals()
     }
 }
 
+bool SyncBuildingModelVisuals()
+{
+    for (auto visual = g_buildingModelVisuals.begin(); visual != g_buildingModelVisuals.end();) {
+        const Tempest::Building *building = FindBuilding(visual->id);
+        if (building && building->kind == Tempest::BuildingKind::Relay) {
+            ++visual;
+        } else {
+            RemoveRenderObject(visual->object);
+            visual = g_buildingModelVisuals.erase(visual);
+        }
+    }
+
+    for (const Tempest::Building &building : g_simulation.GetState().buildings) {
+        if (building.hitPoints <= 0 || building.kind != Tempest::BuildingKind::Relay) {
+            continue;
+        }
+        auto found = std::find_if(
+            g_buildingModelVisuals.begin(),
+            g_buildingModelVisuals.end(),
+            [&building](const BuildingModelVisual &visual) { return visual.id == building.id; });
+        if (found == g_buildingModelVisuals.end()) {
+            BuildingModelVisual visual;
+            visual.id = building.id;
+            visual.object = g_assetManager->Create_Render_Obj("relay");
+            if (!visual.object) {
+                return false;
+            }
+            g_scene->Add_Render_Object(visual.object);
+            g_buildingModelVisuals.push_back(visual);
+            found = g_buildingModelVisuals.end() - 1;
+        }
+
+        Matrix3D transform(1);
+        transform.Set_Translation(Vector3(
+            static_cast<float>(building.position.x) * kSimulationToWorld,
+            static_cast<float>(building.position.y) * kSimulationToWorld,
+            0.0F));
+        found->object->Set_Transform(transform);
+        found->object->Set_ObjectColor(0x16D9FF);
+    }
+    return true;
+}
+
 bool SyncUnitVisuals()
 {
     for (auto visual = g_unitVisuals.begin(); visual != g_unitVisuals.end();) {
@@ -514,7 +563,9 @@ bool SyncUnitVisuals()
         if (!unit.alive) {
             continue;
         }
-        const bool damaged = unit.hitPoints * 2 <= unit.maximumHitPoints;
+        const bool isDrone = unit.kind == Tempest::UnitKind::ChorusDrone;
+        const bool damaged = !isDrone && unit.hitPoints * 2 <= unit.maximumHitPoints;
+        const char *modelName = isDrone ? "drone" : (damaged ? "courierd" : "courier");
         auto found = std::find_if(g_unitVisuals.begin(), g_unitVisuals.end(), [&unit](const UnitVisual &visual) {
             return visual.id == unit.id;
         });
@@ -522,7 +573,7 @@ bool SyncUnitVisuals()
             UnitVisual visual;
             visual.id = unit.id;
             visual.damaged = damaged;
-            visual.object = g_assetManager->Create_Render_Obj(damaged ? "courierd" : "courier");
+            visual.object = g_assetManager->Create_Render_Obj(modelName);
             if (!visual.object) {
                 return false;
             }
@@ -530,7 +581,7 @@ bool SyncUnitVisuals()
             g_unitVisuals.push_back(visual);
             found = g_unitVisuals.end() - 1;
         } else if (found->damaged != damaged) {
-            RenderObjClass *replacement = g_assetManager->Create_Render_Obj(damaged ? "courierd" : "courier");
+            RenderObjClass *replacement = g_assetManager->Create_Render_Obj(modelName);
             if (!replacement) {
                 return false;
             }
@@ -553,7 +604,7 @@ bool SyncUnitVisuals()
             static_cast<float>(facingPoint.x - unit.position.x));
         Matrix3D transform(1);
         transform.Rotate_Z(heading);
-        transform.Scale(unit.kind == Tempest::UnitKind::ChorusDrone ? 0.72F : 1.0F);
+        transform.Scale(isDrone ? 0.72F : 1.0F);
         transform.Set_Translation(Vector3(
             static_cast<float>(unit.position.x) * kSimulationToWorld,
             static_cast<float>(unit.position.y) * kSimulationToWorld,
@@ -611,7 +662,9 @@ bool InitialiseRenderer()
 
     g_assetManager = new WW3DAssetManager;
     if (!g_assetManager || !g_assetManager->Load_3D_Assets("courier.w3d") ||
-        !g_assetManager->Load_3D_Assets("courierd.w3d")) {
+        !g_assetManager->Load_3D_Assets("courierd.w3d") ||
+        !g_assetManager->Load_3D_Assets("drone.w3d") ||
+        !g_assetManager->Load_3D_Assets("relay.w3d")) {
         return false;
     }
 
@@ -643,7 +696,7 @@ bool InitialiseRenderer()
     CreateArenaGrid();
     ResetPrototype();
     SyncMarkerVisuals();
-    return SyncUnitVisuals();
+    return SyncBuildingModelVisuals() && SyncUnitVisuals();
 }
 
 void UpdatePrototype(float deltaSeconds)
@@ -673,7 +726,7 @@ void UpdatePrototype(float deltaSeconds)
     }
 
     SyncMarkerVisuals();
-    if (!SyncUnitVisuals()) {
+    if (!SyncBuildingModelVisuals() || !SyncUnitVisuals()) {
         PostQuitMessage(3);
     }
 
@@ -711,6 +764,10 @@ void ShutdownRenderer()
         RemoveLine(visual.vertical);
     }
     g_buildingVisuals.clear();
+    for (BuildingModelVisual &visual : g_buildingModelVisuals) {
+        RemoveRenderObject(visual.object);
+    }
+    g_buildingModelVisuals.clear();
     for (Line3DClass *&line : g_gridLines) {
         RemoveLine(line);
     }
@@ -760,7 +817,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
     if (!InitialiseRenderer()) {
         MessageBoxA(
             ApplicationHWnd,
-            "The renderer or courier.w3d could not be initialised. Run the compatibility preparation script and verify the demo package.",
+            "The renderer or a required Project Tempest W3D could not be initialised. Verify the demo package.",
             "Project Tempest startup failed",
             MB_ICONERROR);
         ShutdownRenderer();

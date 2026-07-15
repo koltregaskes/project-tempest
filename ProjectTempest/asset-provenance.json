@@ -268,6 +268,176 @@
       "distribution": "internal_development_only"
     },
     {
+      "asset_id": "PT-MODEL-CH-DRONE-001",
+      "path": "SourceAssets/Models/Chorus/Drone/drone-master-v1.blend",
+      "role": "editable procedural Chorus Drone master with authored three-level LOD and collision sources",
+      "faction": "Chorus",
+      "subject": "Drone harassment unit",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "a0c8a6fae8d9961569263a1c8371ce18a9480be91d4676e5bb66390f1c71a270",
+      "review": {
+        "creative": "approved_as_dedicated_chorus_runtime_blockout",
+        "top_down_readability": "pass_distinct_three_arm_radial_silhouette",
+        "faction_readability": "pass_magenta_machine_palette",
+        "lod_and_collision": "pass_scripted_three_lods_and_box_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-CH-DRONE-001",
+      "path": "SourceAssets/Models/Chorus/Drone/drone-top-v1.png",
+      "role": "orthographic RTS-view Chorus Drone review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-CH-DRONE-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "da25da87dff6211d507f660567f3c768b24440ae5b9db8ef9f49d37b30058733",
+      "review": {
+        "frame": "nonblank_960x720",
+        "top_down_silhouette": "pass",
+        "faction_contrast": "pass_magenta_emissive_against_charcoal",
+        "normal_zoom_engine_readability": "pending_manual_only_non_rdp"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-CH-DRONE-001",
+      "path": "Content/Art/W3D/drone.w3d",
+      "role": "engine-format Chorus Drone with three HLOD states, single-pass materials, textures, and collision",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-CH-DRONE-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "63704dfc3275f38b7ddf6cc2e4a36b2d38ee6293fb4c8774f9bffb90f63097f1",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod_vertex_counts": [640, 345, 194],
+        "imported_render_mesh_count": 9,
+        "imported_box_count": 1,
+        "material_passes_per_render_mesh": 1,
+        "render_meshes": [
+          "DRBODY0",
+          "DRBODY1",
+          "DRBODY2",
+          "DRGLOW0",
+          "DRGLOW1",
+          "DRGLOW2",
+          "DRMAG0",
+          "DRMAG1",
+          "DRMAG2"
+        ],
+        "texture_files": ["ptcyan.tga", "ptmagnta.tga", "ptsteel.tga"],
+        "collision_flags": ["PHYSICAL", "PROJECTILE", "VIS", "VEHICLE"],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "lod_roundtrip": "pass_three_levels",
+        "collision_roundtrip": "pass",
+        "texture_roundtrip": "pass",
+        "engine_render": "pending_manual_only_non_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-FG-RELAY-001",
+      "path": "SourceAssets/Models/Freegrid/Relay/relay-master-v1.blend",
+      "role": "editable procedural Freegrid Relay master with authored three-level LOD and collision sources",
+      "faction": "Freegrid",
+      "subject": "Relay territory and capacity structure",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "4808c800fce534cda7e7f20f0c814fa8ecc688cd603ddff7e70aef7c2af3bfd9",
+      "review": {
+        "creative": "approved_as_first_buildable_structure_blockout",
+        "top_down_readability": "pass_radial_grid_node_silhouette",
+        "team_colour": "pass_native_housecolor_meshes_in_three_lods",
+        "lod_and_collision": "pass_scripted_three_lods_and_box_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-FG-RELAY-001",
+      "path": "SourceAssets/Models/Freegrid/Relay/relay-top-v1.png",
+      "role": "orthographic RTS-view Freegrid Relay review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-FG-RELAY-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "1aae1c69b3852aa9d00bdcc61a6c47554d47ef08e770851ea068bd91217c8289",
+      "review": {
+        "frame": "nonblank_960x720",
+        "top_down_silhouette": "pass",
+        "faction_contrast": "pass_cyan_status_nodes_and_warm_armour",
+        "normal_zoom_engine_readability": "pending_manual_only_non_rdp"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-FG-RELAY-001",
+      "path": "Content/Art/W3D/relay.w3d",
+      "role": "engine-format Freegrid Relay with three HLOD states, native house-colour meshes, textures, and collision",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-FG-RELAY-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "98901f5ffdc4465c8bfc8d61275316686c46d9d5273f4f0f4f301de3e4ce8e58",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod_vertex_counts": [636, 350, 191],
+        "imported_render_mesh_count": 9,
+        "imported_box_count": 1,
+        "material_passes_per_render_mesh": 1,
+        "render_meshes": [
+          "HouseColor0",
+          "HouseColor1",
+          "HouseColor2",
+          "RLARMOR0",
+          "RLARMOR1",
+          "RLARMOR2",
+          "RLBODY0",
+          "RLBODY1",
+          "RLBODY2"
+        ],
+        "texture_files": ["ptcyan.tga", "ptsteel.tga", "ptwhite.tga"],
+        "house_color_meshes": ["HouseColor0", "HouseColor1", "HouseColor2"],
+        "collision_flags": ["PHYSICAL", "PROJECTILE", "VIS", "VEHICLE"],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "lod_roundtrip": "pass_three_levels",
+        "collision_roundtrip": "pass",
+        "texture_roundtrip": "pass",
+        "team_colour_roundtrip": "pass_native_housecolor_mesh_names",
+        "engine_render": "pending_manual_only_non_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-TEXTURE-CH-DRONE-001",
+      "path": "Content/Art/Textures/ptmagnta.tga",
+      "role": "Chorus Drone magenta circuit and emissive material map",
+      "origin": "procedurally_authored_original",
+      "tool": "Blender 5.1.2 Python --background",
+      "source_script": "../scripts/create-substation-kit.py",
+      "sha256": "8c0d9121c4beddf2a8c660079d14d1fa98d81fbd810fcafae619c42f330baf02",
+      "distribution": "internal_development_only"
+    },
+    {
       "asset_id": "PT-EVIDENCE-FG-COURIER-001",
       "path": "ReviewEvidence/courier-w3dview-engine.png",
       "role": "native W3D Viewer render evidence for the Courier HLOD blockout",

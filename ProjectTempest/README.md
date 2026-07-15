@@ -40,6 +40,19 @@ deformed sensor housing, powered-off cyan elements, two LODs, and the same colli
 models are re-imported in an empty Blender scene; the test fails unless all expected render meshes and texture references
 survive. The current executable package includes both W3Ds and all seven textures beside the executable.
 
+Generate the dedicated Chorus Drone and Freegrid Relay kit through the same pinned, headless pipeline:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\create-substation-kit.ps1
+```
+
+The Drone uses a three-arm radial machine silhouette, magenta circuitry, cyan emitters, and three strictly decreasing
+LOD states (640, 345, and 194 authored vertices). The Relay uses a radial grid-node silhouette, three native
+`HouseColor` meshes, and 636, 350, and 191 authored vertices. Each W3D round trip must recover nine single-material
+render meshes, its exact texture set, one collision box, and the physical/projectile/visibility/vehicle collision flags.
+Two clean background regenerations produced byte-identical `drone.w3d`, `relay.w3d`, and `ptmagnta.tga` outputs. Blender
+containers and Workbench preview PNGs are provenance-pinned review artifacts, not deterministic build keys.
+
 The runtime W3D has a captured frame from the repository's native `W3DViewV.exe`. The viewer is blocked under Microsoft
 Remote Display. On 15 July 2026, unattended launches from `build/ci-w3dview-fixed/W3DViewV.exe` caused repeated
 focus-stealing render-device dialogs and Application Error event 1000 crashes at 10:52:08, 10:55:30, 10:59:11, and
@@ -98,12 +111,13 @@ ctest --test-dir .\build\win32 -C Release --output-on-failure
 
 The rendered prototype now drives that simulation at the same fixed 20 Hz, converts player input into sequenced
 commands, and presents the current match through a neon procedural grid, faction-coloured substation/building markers,
-selection brackets, per-unit visuals, pristine/damaged Courier switching, and a live title-bar status strip. This is a
-compile-proven integration checkpoint; safe manual gameplay/legibility verification, a purpose-built Chorus Drone and
-building art pass, and an in-window production HUD remain required before the skirmish is release-quality.
+selection brackets, dedicated Courier/Chorus Drone visuals, pristine/damaged Courier switching, an authored Relay model,
+and a live title-bar status strip. This is a compile-proven integration checkpoint; safe manual gameplay/legibility
+verification, dedicated Workshop/Core art, and an in-window production HUD remain required before the skirmish is
+release-quality.
 
 Modern Generals Win32 builds also produce `ProjectTempestDemo.exe`, a retail-asset-free executable that loads the
-Courier directly from this tree. Its current Substation 9 integration slice provides a fixed RTS camera, bounded unit
+Courier, damaged Courier, Chorus Drone, and Freegrid Relay directly from this tree. Its current Substation 9 integration slice provides a fixed RTS camera, bounded unit
 selection, context-sensitive movement/capture/attack orders, node income, Relay construction, Courier production,
 combat, Arc Pulse, pause/restart, Chorus reinforcements, and victory/defeat. It is an executable integration checkpoint,
 not the final polished vertical slice.

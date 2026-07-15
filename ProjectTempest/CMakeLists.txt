@@ -31,6 +31,8 @@ set_target_properties(project_tempest_demo PROPERTIES
 set(PROJECT_TEMPEST_RUNTIME_ASSETS
     "Content/Art/W3D/courier.w3d"
     "Content/Art/W3D/courierd.w3d"
+    "Content/Art/W3D/drone.w3d"
+    "Content/Art/W3D/relay.w3d"
     "Content/Art/Textures/ptburn.tga"
     "Content/Art/Textures/ptcable.tga"
     "Content/Art/Textures/ptcyan.tga"
@@ -38,6 +40,7 @@ set(PROJECT_TEMPEST_RUNTIME_ASSETS
     "Content/Art/Textures/ptrubber.tga"
     "Content/Art/Textures/ptsteel.tga"
     "Content/Art/Textures/ptwhite.tga"
+    "Content/Art/Textures/ptmagnta.tga"
 )
 
 foreach(asset IN LISTS PROJECT_TEMPEST_RUNTIME_ASSETS)

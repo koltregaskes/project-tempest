@@ -115,5 +115,81 @@ if ($textureAssets.Count -ne 7) {
     throw "The Courier requires exactly seven original, provenance-tracked runtime textures; found $($textureAssets.Count)."
 }
 
+$requiredSubstationAssetIds = @(
+    "PT-MODEL-CH-DRONE-001",
+    "PT-PREVIEW-CH-DRONE-001",
+    "PT-RUNTIME-CH-DRONE-001",
+    "PT-MODEL-FG-RELAY-001",
+    "PT-PREVIEW-FG-RELAY-001",
+    "PT-RUNTIME-FG-RELAY-001",
+    "PT-TEXTURE-CH-DRONE-001"
+)
+$recordedAssetIds = @($manifest.assets.asset_id)
+$missingSubstationAssetIds = @($requiredSubstationAssetIds | Where-Object { $_ -notin $recordedAssetIds })
+if ($missingSubstationAssetIds.Count -gt 0) {
+    throw "Substation-kit provenance entries are missing: $($missingSubstationAssetIds -join ', ')"
+}
+
+$droneRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-CH-DRONE-001" }
+$relayRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-RELAY-001" }
+$expectedKitCollisionFlags = "PHYSICAL,PROJECTILE,VEHICLE,VIS"
+$expectedDroneMeshes = "DRBODY0,DRBODY1,DRBODY2,DRGLOW0,DRGLOW1,DRGLOW2,DRMAG0,DRMAG1,DRMAG2"
+$expectedRelayMeshes = "HouseColor0,HouseColor1,HouseColor2,RLARMOR0,RLARMOR1,RLARMOR2,RLBODY0,RLBODY1,RLBODY2"
+
+if (
+    $null -eq $droneRuntimeAsset -or
+    $droneRuntimeAsset.validation.repeat_export_hash_stable -ne $true -or
+    $droneRuntimeAsset.validation.roundtrip_import -ne "pass" -or
+    $droneRuntimeAsset.validation.export_mode -ne "HM" -or
+    $droneRuntimeAsset.validation.imported_render_mesh_count -ne 9 -or
+    $droneRuntimeAsset.validation.imported_box_count -ne 1 -or
+    $droneRuntimeAsset.validation.material_passes_per_render_mesh -ne 1 -or
+    (@($droneRuntimeAsset.validation.authored_lod_vertex_counts) -join ",") -ne "640,345,194" -or
+    (@($droneRuntimeAsset.validation.render_meshes) -join ",") -ne $expectedDroneMeshes -or
+    (@($droneRuntimeAsset.validation.texture_files) -join ",") -ne "ptcyan.tga,ptmagnta.tga,ptsteel.tga" -or
+    (@($droneRuntimeAsset.validation.collision_flags | Sort-Object) -join ",") -ne $expectedKitCollisionFlags -or
+    $droneRuntimeAsset.review.automation_policy -ne "manual_only_never_unattended"
+) {
+    throw "The Chorus Drone three-LOD runtime/provenance contract is incomplete."
+}
+
+if (
+    $null -eq $relayRuntimeAsset -or
+    $relayRuntimeAsset.validation.repeat_export_hash_stable -ne $true -or
+    $relayRuntimeAsset.validation.roundtrip_import -ne "pass" -or
+    $relayRuntimeAsset.validation.export_mode -ne "HM" -or
+    $relayRuntimeAsset.validation.imported_render_mesh_count -ne 9 -or
+    $relayRuntimeAsset.validation.imported_box_count -ne 1 -or
+    $relayRuntimeAsset.validation.material_passes_per_render_mesh -ne 1 -or
+    (@($relayRuntimeAsset.validation.authored_lod_vertex_counts) -join ",") -ne "636,350,191" -or
+    (@($relayRuntimeAsset.validation.render_meshes) -join ",") -ne $expectedRelayMeshes -or
+    (@($relayRuntimeAsset.validation.texture_files) -join ",") -ne "ptcyan.tga,ptsteel.tga,ptwhite.tga" -or
+    (@($relayRuntimeAsset.validation.house_color_meshes) -join ",") -ne "HouseColor0,HouseColor1,HouseColor2" -or
+    (@($relayRuntimeAsset.validation.collision_flags | Sort-Object) -join ",") -ne $expectedKitCollisionFlags -or
+    $relayRuntimeAsset.review.automation_policy -ne "manual_only_never_unattended"
+) {
+    throw "The Freegrid Relay three-LOD runtime/provenance contract is incomplete."
+}
+
+$cmakeContent = Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/CMakeLists.txt") -Raw
+foreach ($packagedAsset in @("drone.w3d", "relay.w3d", "ptmagnta.tga")) {
+    if ($cmakeContent -notmatch [regex]::Escape($packagedAsset)) {
+        throw "Project Tempest package contract is missing '$packagedAsset'."
+    }
+}
+
+$demoSource = Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/Code/ProjectTempestDemo.cpp") -Raw
+foreach ($requiredLoad in @("Load_3D_Assets(`"drone.w3d`")", "Load_3D_Assets(`"relay.w3d`")")) {
+    if ($demoSource -notmatch [regex]::Escape($requiredLoad)) {
+        throw "Project Tempest renderer does not declare required asset load '$requiredLoad'."
+    }
+}
+if (
+    $demoSource -notmatch [regex]::Escape('Create_Render_Obj("relay")') -or
+    $demoSource -notmatch [regex]::Escape('isDrone ? "drone"')
+) {
+    throw "Project Tempest renderer does not map Relay/Chorus simulation entities to their dedicated runtime models."
+}
+
 $validated | Format-Table -AutoSize
-Write-Host "Validated $($validated.Count) Project Tempest assets, textured pristine/damaged Courier HLODs, and the manual-only renderer policy."
+Write-Host "Validated $($validated.Count) Project Tempest assets, Courier/Drone/Relay runtime contracts, and the manual-only renderer policy."

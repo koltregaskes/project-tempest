@@ -136,8 +136,12 @@ construction, production, combat, Arc Pulse, basic Chorus AI, pause/restart, and
 replays the same command stream twice and compares every per-tick checksum. The standalone renderer now consumes that
 state, converts mouse/keyboard input into sequenced commands, and visualises units, control nodes, buildings, selection,
 and damage state with original/procedural content. This proves the compile-time rules/presentation seam; safe manual
-gameplay evidence, dedicated Chorus/building assets, and a full in-window HUD remain required before it constitutes the
-governed skirmish demo.
+gameplay evidence and a full in-window HUD remain required before it constitutes the governed skirmish demo. Dedicated
+Chorus Drone and Freegrid Relay assets now replace their Courier/procedural proxies: each has three authored LOD states,
+single-pass textured meshes, collision, exact round-trip validation, complete internal-development provenance, and a
+package/load contract. The Relay additionally uses native `HouseColor0`/`HouseColor1`/`HouseColor2` mesh names. Their
+W3Ds and shared magenta texture are byte-stable across clean background regenerations; normal-zoom in-engine readability
+remains a manual-only non-RDP gate.
 
 ### Golden asset and format decision
 
