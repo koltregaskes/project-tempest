@@ -6,20 +6,31 @@ Set-StrictMode -Version Latest
 
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $fixedUnattendedSurfaces = @(
-    ".github/workflows/ci.yml",
     ".github/workflows/build-toolchain.yml",
     "scripts/build-windows.ps1",
-    "scripts/test-project-tempest-assets.ps1",
-    "scripts/test-project-tempest-reproducibility.ps1",
     "scripts/test-w3d-pipeline.ps1",
     "scripts/prepare-w3dview-compat.ps1"
 )
 
-# Asset generators are unattended surfaces too. Discover them instead of maintaining a
-# fragile allow-list so every future create-*.ps1 wrapper inherits this gate immediately.
-$assetGeneratorSurfaces = Get-ChildItem -LiteralPath (Join-Path $repositoryRoot "scripts") -Filter "create-*.ps1" -File |
+# Discover current and future Project Tempest validation/generation wrappers instead of
+# relying on an allow-list that can silently omit a newly added unattended entry point.
+$scriptSurfaces = Get-ChildItem -LiteralPath (Join-Path $repositoryRoot "scripts") -File -Filter "*.ps1" |
+    Where-Object {
+        $_.Name -ne "test-project-tempest-no-gui.ps1" -and
+        $_.Name -match '^(?:create-.*|test-project-tempest-.*)\.ps1$'
+    } |
     ForEach-Object { "scripts/$($_.Name)" }
-$unattendedSurfaces = @($fixedUnattendedSurfaces + $assetGeneratorSurfaces | Sort-Object -Unique)
+
+# A workflow that names Project Tempest is part of the unattended surface even when it
+# invokes a binary directly instead of going through one of the guarded wrappers.
+$workflowSurfaces = Get-ChildItem -LiteralPath (Join-Path $repositoryRoot ".github/workflows") -File |
+    Where-Object {
+        $_.Extension -in @(".yml", ".yaml") -and
+        (Get-Content -LiteralPath $_.FullName -Raw) -match '(?i)project[ -]tempest'
+    } |
+    ForEach-Object { ".github/workflows/$($_.Name)" }
+
+$unattendedSurfaces = @($fixedUnattendedSurfaces + $scriptSurfaces + $workflowSurfaces | Sort-Object -Unique)
 
 $forbiddenProcessNames = @(
     "W3DViewV",
