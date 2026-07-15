@@ -176,8 +176,93 @@ if (
     throw "The Freegrid Relay three-LOD runtime/provenance contract is incomplete."
 }
 
+$requiredAudioAssetIds = @(
+    "PT-AUDIO-MUSIC-SUBSTATION-001",
+    "PT-AUDIO-MUSIC-PRESSURE-001",
+    "PT-AUDIO-MUSIC-CRISIS-001",
+    "PT-AUDIO-SFX-CONFIRM-001",
+    "PT-AUDIO-SFX-SELECT-001",
+    "PT-AUDIO-SFX-COMMAND-001",
+    "PT-AUDIO-SFX-ARC-PULSE-001",
+    "PT-AUDIO-SFX-ALERT-001"
+)
+$audioAssets = @($manifest.assets | Where-Object { $_.asset_id -in $requiredAudioAssetIds })
+if ($audioAssets.Count -ne $requiredAudioAssetIds.Count) {
+    $missingAudioAssetIds = @($requiredAudioAssetIds | Where-Object { $_ -notin $audioAssets.asset_id })
+    throw "Original audio provenance entries are missing: $($missingAudioAssetIds -join ', ')"
+}
+foreach ($audioAsset in $audioAssets) {
+    if (
+        $audioAsset.origin -ne "procedurally_authored_original" -or
+        $audioAsset.rights_basis -ne "original synthesis with no third-party samples or generated-service inputs" -or
+        $audioAsset.validation.format -ne "PCM16 stereo 48000 Hz" -or
+        $audioAsset.validation.repeat_generation_hash_stable -ne $true
+    ) {
+        throw "Audio provenance/format contract is incomplete for $($audioAsset.asset_id)."
+    }
+
+    $audioPath = Join-Path $contentRoot $audioAsset.path
+    $bytes = [IO.File]::ReadAllBytes($audioPath)
+    if (
+        $bytes.Length -lt 44 -or
+        [Text.Encoding]::ASCII.GetString($bytes, 0, 4) -ne "RIFF" -or
+        [BitConverter]::ToUInt32($bytes, 4) + 8 -ne $bytes.Length -or
+        [Text.Encoding]::ASCII.GetString($bytes, 8, 4) -ne "WAVE" -or
+        [Text.Encoding]::ASCII.GetString($bytes, 12, 4) -ne "fmt " -or
+        [BitConverter]::ToUInt32($bytes, 16) -ne 16 -or
+        [BitConverter]::ToUInt16($bytes, 20) -ne 1 -or
+        [BitConverter]::ToUInt16($bytes, 22) -ne 2 -or
+        [BitConverter]::ToUInt32($bytes, 24) -ne 48000 -or
+        [BitConverter]::ToUInt16($bytes, 34) -ne 16 -or
+        [Text.Encoding]::ASCII.GetString($bytes, 36, 4) -ne "data" -or
+        [BitConverter]::ToUInt32($bytes, 40) + 44 -ne $bytes.Length
+    ) {
+        throw "Audio file is not canonical stereo 48 kHz PCM16 WAV: $($audioAsset.path)"
+    }
+}
+
+$audioGenerator = Join-Path $repositoryRoot "scripts/create-tempest-audio.py"
+if (-not (Test-Path -LiteralPath $audioGenerator -PathType Leaf)) {
+    throw "The deterministic original-audio generator is missing."
+}
+$audioReproRoot = [IO.Path]::GetFullPath((Join-Path $repositoryRoot "build/project-tempest-audio-repro"))
+$buildPrefix = [IO.Path]::GetFullPath((Join-Path $repositoryRoot "build")).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+if (-not $audioReproRoot.StartsWith($buildPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "Audio reproducibility output escaped the repository build tree."
+}
+$audioReportJson = if (Get-Command python -ErrorAction SilentlyContinue) {
+    & python $audioGenerator --output-root $audioReproRoot
+} elseif (Get-Command python3 -ErrorAction SilentlyContinue) {
+    & python3 $audioGenerator --output-root $audioReproRoot
+} else {
+    throw "Python 3 is required for deterministic original-audio validation."
+}
+if ($LASTEXITCODE -ne 0) {
+    throw "Original-audio deterministic regeneration failed with exit code $LASTEXITCODE."
+}
+$audioReport = ($audioReportJson -join [Environment]::NewLine) | ConvertFrom-Json
+foreach ($audioAsset in $audioAssets) {
+    $expectedReportPath = "ProjectTempest/$($audioAsset.path)"
+    $reproduced = $audioReport.assets | Where-Object { $_.path -eq $expectedReportPath }
+    if ($null -eq $reproduced -or $reproduced.sha256 -ne $audioAsset.sha256) {
+        throw "Audio regeneration hash mismatch for $($audioAsset.asset_id)."
+    }
+}
+
 $cmakeContent = Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/CMakeLists.txt") -Raw
-foreach ($packagedAsset in @("drone.w3d", "relay.w3d", "ptmagnta.tga")) {
+foreach ($packagedAsset in @(
+    "drone.w3d",
+    "relay.w3d",
+    "ptmagnta.tga",
+    "pt_music_substation.wav",
+    "pt_music_pressure.wav",
+    "pt_music_crisis.wav",
+    "pt_ui_confirm.wav",
+    "pt_select.wav",
+    "pt_command.wav",
+    "pt_arc_pulse.wav",
+    "pt_alert.wav"
+)) {
     if ($cmakeContent -notmatch [regex]::Escape($packagedAsset)) {
         throw "Project Tempest package contract is missing '$packagedAsset'."
     }
@@ -199,6 +284,23 @@ if (
 foreach ($interfaceSource in @("Code/TempestInterface.cpp", "Code/TempestInterface.h")) {
     if ($cmakeContent -notmatch [regex]::Escape($interfaceSource)) {
         throw "Project Tempest CMake contract is missing '$interfaceSource'."
+    }
+}
+$combinedAudioSource = $demoSource +
+    (Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/Code/TempestAudio.cpp") -Raw) +
+    (Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/Code/TempestAudioWin32.cpp") -Raw)
+foreach ($audioContract in @(
+    "XAudio2Create",
+    "StartMusic",
+    "SetMusicPressure",
+    "MusicGainsForPressure",
+    "SetSuspended",
+    "VolumeGain",
+    "pt_music_substation.wav",
+    "Tempest::Audio::Cue::ArcPulse"
+)) {
+    if ($combinedAudioSource -notmatch [regex]::Escape($audioContract)) {
+        throw "Project Tempest audio implementation is missing '$audioContract'."
     }
 }
 $combinedInterfaceSource = $demoSource +

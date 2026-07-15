@@ -31,6 +31,7 @@
 #include "matrix3d.h"
 #include "rendobj.h"
 #include "scene.h"
+#include "TempestAudio.h"
 #include "TempestInterface.h"
 #include "TempestSimulation.h"
 #include "vector3.h"
@@ -70,6 +71,8 @@ LightClass *g_keyLight = nullptr;
 
 Tempest::Simulation g_simulation;
 Tempest::Ui::InterfaceState g_interface;
+Tempest::Audio::AudioSystem g_audio;
+Tempest::MatchOutcome g_previousOutcome = Tempest::MatchOutcome::InProgress;
 std::filesystem::path g_settingsPath;
 
 HFONT g_hudFont = nullptr;
@@ -148,6 +151,50 @@ const Tempest::Building *FindBuilding(std::uint32_t id)
     return nullptr;
 }
 
+float CalculateMusicPressure()
+{
+    const Tempest::MatchState &state = g_simulation.GetState();
+    if (state.outcome == Tempest::MatchOutcome::Defeat) {
+        return 1.0F;
+    }
+    if (state.outcome == Tempest::MatchOutcome::Victory) {
+        return 0.0F;
+    }
+
+    int freegridUnits = 0;
+    int chorusUnits = 0;
+    int chorusNodes = 0;
+    for (const Tempest::Unit &unit : state.units) {
+        if (!unit.alive) {
+            continue;
+        }
+        if (unit.faction == Tempest::Faction::Freegrid) {
+            ++freegridUnits;
+        } else if (unit.faction == Tempest::Faction::Chorus) {
+            ++chorusUnits;
+        }
+    }
+    for (const Tempest::ControlNode &node : state.nodes) {
+        if (node.owner == Tempest::Faction::Chorus) {
+            ++chorusNodes;
+        }
+    }
+    if (freegridUnits == 0) {
+        return 1.0F;
+    }
+    const float territory = static_cast<float>(chorusNodes) / 3.0F;
+    const float forceDisadvantage = std::clamp(
+        static_cast<float>(chorusUnits - freegridUnits) / 4.0F,
+        0.0F,
+        1.0F);
+    const float elapsed = std::clamp(
+        static_cast<float>(state.tick) / static_cast<float>(Tempest::TicksPerSecond * 600),
+        0.0F,
+        1.0F);
+    return std::clamp(0.10F + (0.45F * territory) +
+        (0.25F * forceDisadvantage) + (0.20F * elapsed), 0.0F, 1.0F);
+}
+
 Tempest::Point ScreenToSimulationPoint(int mouseX, int mouseY)
 {
     if (!g_camera) {
@@ -188,6 +235,12 @@ void SetFeedback(const char *message)
     g_feedbackUntil = timeGetTime() + 2600;
 }
 
+void ApplyAudioSettings()
+{
+    const Tempest::Ui::Settings &settings = g_interface.GetSettings();
+    g_audio.SetVolumes(settings.masterVolume, settings.musicVolume, settings.effectsVolume);
+}
+
 void RemoveRenderObject(RenderObjClass *&object)
 {
     if (object) {
@@ -218,6 +271,7 @@ void UpdateWindowTitle()
 void ResetPrototype()
 {
     g_simulation.Reset();
+    g_previousOutcome = Tempest::MatchOutcome::InProgress;
     g_simulationAccumulator = 0.0;
     g_cameraCenterX = 0.0F;
     g_cameraCenterY = 0.0F;
@@ -233,7 +287,7 @@ void ResetPrototype()
     UpdateWindowTitle();
 }
 
-void SelectFromScreen(int mouseX, int mouseY)
+bool SelectFromScreen(int mouseX, int mouseY)
 {
     g_pointerPoint = ScreenToSimulationPoint(mouseX, mouseY);
     g_selectedUnitId = 0;
@@ -250,14 +304,15 @@ void SelectFromScreen(int mouseX, int mouseY)
     }
     SetFeedback(g_selectedUnitId != 0 ? "Courier selected." : "No Freegrid unit at cursor.");
     UpdateWindowTitle();
+    return g_selectedUnitId != 0;
 }
 
-void IssueContextOrder(int mouseX, int mouseY)
+bool IssueContextOrder(int mouseX, int mouseY)
 {
     g_pointerPoint = ScreenToSimulationPoint(mouseX, mouseY);
     const Tempest::Unit *selected = FindUnit(g_selectedUnitId);
     if (!selected || selected->faction != Tempest::Faction::Freegrid || g_simulation.GetState().paused) {
-        return;
+        return false;
     }
 
     std::uint32_t targetId = 0;
@@ -285,7 +340,7 @@ void IssueContextOrder(int mouseX, int mouseY)
     if (targetId != 0) {
         g_simulation.Submit(MakeCommand(Tempest::CommandKind::Attack, selected->id, targetId));
         SetFeedback("Attack order acknowledged.");
-        return;
+        return true;
     }
 
     targetId = 0;
@@ -304,13 +359,14 @@ void IssueContextOrder(int mouseX, int mouseY)
         g_simulation.Submit(MakeCommand(Tempest::CommandKind::Move, selected->id, 0, g_pointerPoint));
         SetFeedback("Move order acknowledged.");
     }
+    return true;
 }
 
-void BuildRelayAtNearestOwnedNode()
+bool BuildRelayAtNearestOwnedNode()
 {
     const Tempest::Unit *selected = FindUnit(g_selectedUnitId);
     if (!selected || g_simulation.GetState().paused) {
-        return;
+        return false;
     }
     std::uint32_t targetId = 0;
     std::int64_t closestDistance = std::numeric_limits<std::int64_t>::max();
@@ -327,10 +383,12 @@ void BuildRelayAtNearestOwnedNode()
     if (targetId != 0) {
         g_simulation.Submit(MakeCommand(Tempest::CommandKind::BuildRelay, 0, targetId));
         SetFeedback("Relay construction requested at the nearest owned node.");
+        return true;
     }
+    return false;
 }
 
-void ProduceCourier()
+bool ProduceCourier()
 {
     for (const Tempest::Building &building : g_simulation.GetState().buildings) {
         if (building.hitPoints > 0 && building.complete &&
@@ -338,9 +396,10 @@ void ProduceCourier()
             building.kind == Tempest::BuildingKind::Workshop) {
             g_simulation.Submit(MakeCommand(Tempest::CommandKind::ProduceCourier, building.id));
             SetFeedback("Courier production queued.");
-            return;
+            return true;
         }
     }
+    return false;
 }
 
 bool SaveInterfaceConfiguration()
@@ -414,24 +473,33 @@ void HandleInterfaceEvent(HWND window, const Tempest::Ui::InputEvent &event)
         DestroyWindow(window);
     } else if (event.intent == Tempest::Ui::Intent::BeginMatch) {
         ResetPrototype();
+        g_audio.Play(Tempest::Audio::Cue::UiConfirm);
         SetFeedback("Link established. Capture a substation, build a Relay, then break the Chorus Spire.");
     } else if (event.intent == Tempest::Ui::Intent::RestartMatch) {
         ResetPrototype();
+        g_audio.Play(Tempest::Audio::Cue::UiConfirm);
         SetFeedback("Substation 9 restarted.");
     } else if (event.intent == Tempest::Ui::Intent::SettingsChanged ||
                event.intent == Tempest::Ui::Intent::BindingChanged) {
+        ApplyAudioSettings();
+        g_audio.Play(Tempest::Audio::Cue::UiConfirm);
         SetFeedback(SaveInterfaceConfiguration()
                 ? "Settings saved to your local profile."
                 : "Setting changed, but the local profile could not be saved.");
     } else if (event.intent == Tempest::Ui::Intent::BindingRejected) {
+        g_audio.Play(Tempest::Audio::Cue::Alert);
         SetFeedback("That input is reserved or already assigned.");
     } else if (event.intent == Tempest::Ui::Intent::GameplayAction) {
         switch (event.action) {
             case Tempest::Ui::Action::BuildRelay:
-                BuildRelayAtNearestOwnedNode();
+                g_audio.Play(BuildRelayAtNearestOwnedNode()
+                        ? Tempest::Audio::Cue::Command
+                        : Tempest::Audio::Cue::Alert);
                 break;
             case Tempest::Ui::Action::ProduceCourier:
-                ProduceCourier();
+                g_audio.Play(ProduceCourier()
+                        ? Tempest::Audio::Cue::Command
+                        : Tempest::Audio::Cue::Alert);
                 break;
             case Tempest::Ui::Action::ArcPulse:
                 if (g_selectedUnitId != 0) {
@@ -440,14 +508,19 @@ void HandleInterfaceEvent(HWND window, const Tempest::Ui::InputEvent &event)
                         g_selectedUnitId,
                         0,
                         g_pointerPoint));
+                    g_audio.Play(Tempest::Audio::Cue::ArcPulse);
                     SetFeedback("Arc Pulse requested at cursor.");
                 }
                 break;
             case Tempest::Ui::Action::PrimarySelect:
-                SelectFromScreen(g_pointerClient.x, g_pointerClient.y);
+                g_audio.Play(SelectFromScreen(g_pointerClient.x, g_pointerClient.y)
+                        ? Tempest::Audio::Cue::Select
+                        : Tempest::Audio::Cue::Alert);
                 break;
             case Tempest::Ui::Action::ContextCommand:
-                IssueContextOrder(g_pointerClient.x, g_pointerClient.y);
+                g_audio.Play(IssueContextOrder(g_pointerClient.x, g_pointerClient.y)
+                        ? Tempest::Audio::Cue::Command
+                        : Tempest::Audio::Cue::Alert);
                 break;
             default:
                 break;
@@ -557,6 +630,7 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
 
         case WM_ACTIVATEAPP:
             g_applicationActive = wParam != 0;
+            g_audio.SetSuspended(wParam == 0);
             if (!wParam) {
                 std::fill_n(g_keys, 256, false);
                 std::fill(std::begin(g_mouseButtons), std::end(g_mouseButtons), false);
@@ -1490,9 +1564,16 @@ void UpdatePrototype(float deltaSeconds)
     }
     while (g_interface.AdvancesSimulation() && g_simulationAccumulator >= kSimulationTickSeconds) {
         g_simulation.Step();
-        g_interface.SyncOutcome(g_simulation.GetState().outcome);
+        const Tempest::MatchOutcome outcome = g_simulation.GetState().outcome;
+        g_interface.SyncOutcome(outcome);
+        if (g_previousOutcome == Tempest::MatchOutcome::InProgress &&
+            outcome != Tempest::MatchOutcome::InProgress) {
+            g_audio.Play(Tempest::Audio::Cue::Alert);
+        }
+        g_previousOutcome = outcome;
         g_simulationAccumulator -= kSimulationTickSeconds;
     }
+    g_audio.SetMusicPressure(CalculateMusicPressure());
 
     SyncMarkerVisuals();
     if (!SyncBuildingModelVisuals() || !SyncUnitVisuals()) {
@@ -1614,7 +1695,18 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
         ShutdownRenderer();
         return 2;
     }
-    if (configurationLoad == ConfigurationLoadResult::Loaded) {
+    std::string audioError;
+    const bool audioReady = g_audio.Initialize(std::filesystem::current_path(), audioError);
+    if (audioReady) {
+        ApplyAudioSettings();
+        g_audio.StartMusic();
+        g_audio.SetSuspended(!g_applicationActive);
+    } else {
+        OutputDebugStringA(("Project Tempest audio unavailable: " + audioError + "\n").c_str());
+    }
+    if (!audioReady) {
+        SetFeedback("Original audio is unavailable; gameplay remains active with visual feedback.");
+    } else if (configurationLoad == ConfigurationLoadResult::Loaded) {
         SetFeedback("Local settings restored. Press ENTER to establish the Freegrid link.");
     } else if (configurationLoad == ConfigurationLoadResult::Rejected) {
         SetFeedback("Local settings were invalid or unreadable; safe defaults are active.");
@@ -1657,6 +1749,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
         Sleep(1);
     }
 
+    g_audio.Shutdown();
     ShutdownRenderer();
     return exitCode;
 }

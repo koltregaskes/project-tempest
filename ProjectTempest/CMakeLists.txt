@@ -1,5 +1,8 @@
 add_executable(project_tempest_demo WIN32
     Code/ProjectTempestDemo.cpp
+    Code/TempestAudio.cpp
+    Code/TempestAudio.h
+    Code/TempestAudioWin32.cpp
     Code/TempestInterface.cpp
     Code/TempestInterface.h
     Code/TempestSimulation.cpp
@@ -21,9 +24,11 @@ target_link_libraries(project_tempest_demo PRIVATE
     gi_always
     imm32
     milesstub
+    ole32
     Version
     vfw32
     winmm
+    xaudio2
 )
 
 set_target_properties(project_tempest_demo PROPERTIES
@@ -43,6 +48,14 @@ set(PROJECT_TEMPEST_RUNTIME_ASSETS
     "Content/Art/Textures/ptsteel.tga"
     "Content/Art/Textures/ptwhite.tga"
     "Content/Art/Textures/ptmagnta.tga"
+    "Content/Audio/pt_music_substation.wav"
+    "Content/Audio/pt_music_pressure.wav"
+    "Content/Audio/pt_music_crisis.wav"
+    "Content/Audio/pt_ui_confirm.wav"
+    "Content/Audio/pt_select.wav"
+    "Content/Audio/pt_command.wav"
+    "Content/Audio/pt_arc_pulse.wav"
+    "Content/Audio/pt_alert.wav"
 )
 
 set(PROJECT_TEMPEST_RUNTIME_ASSET_SOURCES)
@@ -67,6 +80,8 @@ add_custom_target(project_tempest_runtime_assets
 add_dependencies(project_tempest_demo project_tempest_runtime_assets)
 
 add_executable(project_tempest_sim_tests
+    Code/TempestAudio.cpp
+    Code/TempestAudio.h
     Code/TempestInterface.cpp
     Code/TempestInterface.h
     Code/TempestSimulation.cpp

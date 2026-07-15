@@ -89,6 +89,7 @@ jobs:
         shell: bash
         run: |
           g++ -std=c++20 -Wall -Wextra -Werror -pedantic \
+            ProjectTempest/Code/TempestAudio.cpp \
             ProjectTempest/Code/TempestInterface.cpp \
             ProjectTempest/Code/TempestSimulation.cpp \
             ProjectTempest/Tests/TempestSimulationTests.cpp \
