@@ -280,6 +280,23 @@ if (
 ) {
     throw "Project Tempest renderer does not map Relay/Chorus simulation entities to their dedicated runtime models."
 }
+if (
+    $demoSource -notmatch [regex]::Escape('const HGDIOBJ previousFont = SelectObject(device, font);') -or
+    $demoSource -notmatch [regex]::Escape('SelectObject(device, previousFont);')
+) {
+    throw "Project Tempest HUD drawing must restore the prior GDI font before scalable fonts can be deleted."
+}
+foreach ($mouseCaptureContract in @(
+    "SetCapture(window)",
+    "ReleaseCapture()",
+    "WM_CAPTURECHANGED",
+    "WM_CANCELMODE",
+    "ClearHeldMouseButtons(window, true)"
+)) {
+    if ($demoSource -notmatch [regex]::Escape($mouseCaptureContract)) {
+        throw "Project Tempest mouse capture lifecycle is missing '$mouseCaptureContract'."
+    }
+}
 
 foreach ($interfaceSource in @("Code/TempestInterface.cpp", "Code/TempestInterface.h")) {
     if ($cmakeContent -notmatch [regex]::Escape($interfaceSource)) {

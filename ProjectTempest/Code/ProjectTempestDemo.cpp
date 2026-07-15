@@ -536,15 +536,28 @@ void HandleMouseButtonDown(HWND window, Tempest::Ui::MouseButton button, int x, 
     const std::size_t index = static_cast<std::size_t>(button);
     if (index < std::size(g_mouseButtons)) {
         g_mouseButtons[index] = true;
+        SetCapture(window);
     }
     HandleInterfaceEvent(window, g_interface.HandleMouseButton(button));
 }
 
-void HandleMouseButtonUp(Tempest::Ui::MouseButton button)
+void ClearHeldMouseButtons(HWND window, bool releaseCapture)
+{
+    std::fill(std::begin(g_mouseButtons), std::end(g_mouseButtons), false);
+    if (releaseCapture && GetCapture() == window) {
+        ReleaseCapture();
+    }
+}
+
+void HandleMouseButtonUp(HWND window, Tempest::Ui::MouseButton button)
 {
     const std::size_t index = static_cast<std::size_t>(button);
     if (index < std::size(g_mouseButtons)) {
         g_mouseButtons[index] = false;
+    }
+    if (std::none_of(std::begin(g_mouseButtons), std::end(g_mouseButtons), [](bool held) { return held; }) &&
+        GetCapture() == window) {
+        ReleaseCapture();
     }
 }
 
@@ -605,23 +618,32 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
             return TRUE;
 
         case WM_LBUTTONUP:
-            HandleMouseButtonUp(Tempest::Ui::MouseButton::Left);
+            HandleMouseButtonUp(window, Tempest::Ui::MouseButton::Left);
             return 0;
 
         case WM_RBUTTONUP:
-            HandleMouseButtonUp(Tempest::Ui::MouseButton::Right);
+            HandleMouseButtonUp(window, Tempest::Ui::MouseButton::Right);
             return 0;
 
         case WM_MBUTTONUP:
-            HandleMouseButtonUp(Tempest::Ui::MouseButton::Middle);
+            HandleMouseButtonUp(window, Tempest::Ui::MouseButton::Middle);
             return 0;
 
         case WM_XBUTTONUP:
             HandleMouseButtonUp(
+                window,
                 GET_XBUTTON_WPARAM(wParam) == XBUTTON1
                     ? Tempest::Ui::MouseButton::Extra1
                     : Tempest::Ui::MouseButton::Extra2);
             return TRUE;
+
+        case WM_CAPTURECHANGED:
+            ClearHeldMouseButtons(window, false);
+            return 0;
+
+        case WM_CANCELMODE:
+            ClearHeldMouseButtons(window, true);
+            return 0;
 
         case WM_MOUSEMOVE:
             g_pointerClient = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
@@ -633,7 +655,7 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
             g_audio.SetSuspended(wParam == 0);
             if (!wParam) {
                 std::fill_n(g_keys, 256, false);
-                std::fill(std::begin(g_mouseButtons), std::end(g_mouseButtons), false);
+                ClearHeldMouseButtons(window, true);
                 if (g_interface.GetScreen() == Tempest::Ui::Screen::Playing) {
                     g_interface.HandleKey(Tempest::Ui::KeyEscape);
                     SetFeedback("Paused because the game window lost focus.");
@@ -1155,10 +1177,13 @@ void DrawLabel(
     const char *text,
     UINT flags = DT_LEFT | DT_TOP | DT_SINGLELINE)
 {
-    SelectObject(device, font);
+    const HGDIOBJ previousFont = SelectObject(device, font);
     SetTextColor(device, color);
     RECT drawRect = rect;
     DrawTextA(device, text, -1, &drawRect, flags | DT_NOPREFIX);
+    if (previousFont && previousFont != HGDI_ERROR) {
+        SelectObject(device, previousFont);
+    }
 }
 
 void FormatBindingName(Tempest::Ui::InputBinding binding, char *buffer, std::size_t bufferSize)
