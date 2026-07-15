@@ -104,6 +104,32 @@ The least invasive route is preferred: a new standalone content root and loose-d
 new archive format. Retail compatibility remains available behind an explicit build/runtime mode until a deliberate
 protocol boundary is approved.
 
+### Verified engine flow and first edit surface
+
+```text
+scripts/build-windows.ps1 -> CMakePresets.json -> GeneralsMD targets
+    -> GeneralsMD/Code/GameEngine/Source/Common/GameEngine.cpp
+    -> local filesystem first, archive filesystem second
+    -> Data/INI subsystem definitions -> thing/weapon/locomotor/AI factories
+    -> W3D asset manager and model draw -> rendered units
+    -> WorldBuilder map -> skirmish load -> simulation/replay command stream
+```
+
+The local-first lookup in `Core/GameEngine/Source/Common/System/FileSystem.cpp` is the critical seam: loose original
+files can override archive content during development. Archive discovery is owned by
+`Core/GameEngineDevice/Source/Win32Device/Common/Win32BIGFileSystem.cpp` and mod archive loading by
+`Core/GameEngine/Source/Common/System/ArchiveFileSystem.cpp`. INI discovery/parsing is owned by
+`Core/GameEngine/Source/Common/INI/INI.cpp`; the Zero Hour bootstrap enumerates the exact data stores in
+`GeneralsMD/Code/GameEngine/Source/Common/GameEngine.cpp`.
+
+The first unit render path is owned by
+`GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DAssetManager.cpp` and
+`Core/GameEngineDevice/Source/W3DDevice/GameClient/Drawable/Draw/W3DModelDraw.cpp`. Map authoring is owned by
+`GeneralsMD/Code/Tools/WorldBuilder`; format inspection can use `Core/Tools/W3DView`. The initial implementation surface
+should stay within the build scripts/CMake prerequisite checks, a new original loose-content root, the W3D export
+automation, data definitions, and the smallest bootstrap selection needed to enter Substation 9. Networking, replay
+protocol, renderer replacement, and broad platform abstraction are outside this slice unless evidence shows they block it.
+
 ### Golden asset and format decision
 
 The first end-to-end asset is the **Freegrid Courier**, a small wheeled scout with no skeletal-animation dependency.
