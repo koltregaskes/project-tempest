@@ -74,3 +74,8 @@ The first milestone is intentionally narrow:
 
 Large renderer, 64-bit, multiplayer, or asset-pipeline work must be split into independently verifiable slices. A plan or
 successful compile is not evidence that the game is playable.
+
+The first standalone playable is governed by
+[PROJECT_TEMPEST_DEMO_SPEC.md](PROJECT_TEMPEST_DEMO_SPEC.md). Where that specification narrows this programme to a
+finishable demo, its content budget, milestone evidence, and review gates control the work; this delivery contract
+continues to govern the longer programme and public-release boundary.
