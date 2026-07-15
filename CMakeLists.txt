@@ -109,5 +109,11 @@ if(RTS_BUILD_GENERALS)
     add_subdirectory(Generals)
 endif()
 
+# Project Tempest is a clean-room content/demo target built on the GPL Generals
+# renderer. It intentionally targets the supported modern Win32 toolchain only.
+if(RTS_BUILD_GENERALS AND NOT IS_VS6_BUILD)
+    add_subdirectory(ProjectTempest)
+endif()
+
 feature_summary(WHAT ENABLED_FEATURES DESCRIPTION "Enabled features:")
 feature_summary(WHAT DISABLED_FEATURES DESCRIPTION "Disabled features:")

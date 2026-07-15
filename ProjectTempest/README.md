@@ -46,3 +46,27 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\prepare-w3dvie
 The captured engine result is
 [`courier-w3dview-engine.png`](ReviewEvidence/courier-w3dview-engine.png). It proves geometry and HLOD loading, not final
 materials; the production texture/material pass remains open.
+
+## Standalone prototype
+
+Modern Generals Win32 builds also produce `ProjectTempestDemoG.exe`, a retail-asset-free executable that loads the
+Courier directly from this tree. Its current M2 interaction slice provides a fixed RTS camera, selection, right-click
+movement, keyboard movement, restart, and a simple uplink objective. It is an executable integration checkpoint, not
+the final Substation 9 vertical slice.
+
+Controls:
+
+- Left-click selects the Courier.
+- Right-click sets a movement target on the flat prototype arena.
+- `WASD` or the arrow keys nudge the selected unit.
+- `R` restarts the prototype objective; `Esc` exits.
+
+Build with a modern Generals preset, for example:
+
+```powershell
+cmake --preset win32
+cmake --build --preset win32 --target project_tempest_demo
+```
+
+The build places `courier.w3d` beside the executable. For machines where native Direct3D 8 cannot initialise, use the
+same pinned compatibility preparation used by W3DView, pointing `-ViewerDirectory` at the demo executable directory.

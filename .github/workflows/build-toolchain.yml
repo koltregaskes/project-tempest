@@ -191,8 +191,16 @@ jobs:
 
           if ("${{ inputs.preset }}" -like "win32*") {
             $configToUse = if ("${{ inputs.preset }}" -match "debug") { "Debug" } else { "Release" }
-            $files = Get-ChildItem -Path "$buildDir\Core\$configToUse","$buildDir\${{ inputs.game }}\$configToUse" -File |
-              Where-Object { $_.Extension -in @(".exe", ".dll", ".pdb") } -Verbose
+            $artifactSources = @(
+              "$buildDir\Core\$configToUse"
+              "$buildDir\${{ inputs.game }}\$configToUse"
+            )
+            $tempestDir = "$buildDir\ProjectTempest\$configToUse"
+            if (Test-Path -LiteralPath $tempestDir) {
+              $artifactSources += $tempestDir
+            }
+            $files = Get-ChildItem -Path $artifactSources -File |
+              Where-Object { $_.Extension -in @(".exe", ".dll", ".pdb", ".w3d") } -Verbose
           } else {
             $files = Get-ChildItem -Path "$buildDir\Core","$buildDir\${{ inputs.game }}" -File |
               Where-Object { $_.Extension -in @(".exe", ".dll", ".pdb") } -Verbose
