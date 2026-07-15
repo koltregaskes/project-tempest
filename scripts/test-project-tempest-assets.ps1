@@ -305,6 +305,12 @@ foreach ($mouseCaptureContract in @(
         throw "Project Tempest mouse capture lifecycle is missing '$mouseCaptureContract'."
     }
 }
+if (
+    $demoSource -notmatch [regex]::Escape('FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));') -or
+    $demoSource -notmatch [regex]::Escape('"ENTER  establish link and begin     [%s]  settings     ESC  exit"')
+) {
+    throw "Project Tempest briefing must render the current remappable settings shortcut."
+}
 
 foreach ($interfaceSource in @("Code/TempestInterface.cpp", "Code/TempestInterface.h")) {
     if ($cmakeContent -notmatch [regex]::Escape($interfaceSource)) {
