@@ -153,8 +153,11 @@ Primary selection and context command are remappable alongside keyboard actions,
 5 support. Settings use a strict versioned format, reject corrupt/partial/duplicate data atomically, and save through a
 same-directory temporary file to `%LOCALAPPDATA%\ProjectTempest\settings.ini`. The camera and HUD consume applicable
 settings immediately; reduced motion disables edge-driven camera motion, and losing focus clears all held keyboard and
-mouse inputs and pauses the interface. Audio playback, normal-zoom readability, target-resolution clipping, and manual
-runtime proof of persistence/remapping remain open; adjustable volume state is not proof of an audio pipeline.
+mouse inputs and pauses the interface. Three synchronised deterministic PCM score stems add pressure/crisis layers from
+presentation-only match pressure, while five original cue types provide action feedback; all now pass provenance,
+repeat-generation, strict WAV parsing, package, and XAudio2 compile gates. Master/music/effects settings drive separate
+runtime submixes. Audible balance/device behavior, normal-zoom readability, target-resolution clipping, and manual runtime
+proof of audio, persistence, and remapping remain open user-only gates.
 
 ### Golden asset and format decision
 

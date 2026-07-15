@@ -1,6 +1,8 @@
 #include "TempestSimulation.h"
+#include "TempestAudio.h"
 #include "TempestInterface.h"
 
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -15,6 +17,45 @@ void Expect(bool condition, const std::string &message)
         std::cerr << "FAIL: " << message << '\n';
         std::exit(1);
     }
+}
+
+void AppendU16(std::vector<std::uint8_t> &bytes, std::uint16_t value)
+{
+    bytes.push_back(static_cast<std::uint8_t>(value & 0xFFU));
+    bytes.push_back(static_cast<std::uint8_t>((value >> 8U) & 0xFFU));
+}
+
+void AppendU32(std::vector<std::uint8_t> &bytes, std::uint32_t value)
+{
+    for (unsigned shift = 0; shift < 32; shift += 8) {
+        bytes.push_back(static_cast<std::uint8_t>((value >> shift) & 0xFFU));
+    }
+}
+
+void AppendTag(std::vector<std::uint8_t> &bytes, const char *tag)
+{
+    bytes.insert(bytes.end(), tag, tag + 4);
+}
+
+std::vector<std::uint8_t> MakePcmWave()
+{
+    constexpr std::uint32_t dataSize = 8;
+    std::vector<std::uint8_t> bytes;
+    AppendTag(bytes, "RIFF");
+    AppendU32(bytes, 36 + dataSize);
+    AppendTag(bytes, "WAVE");
+    AppendTag(bytes, "fmt ");
+    AppendU32(bytes, 16);
+    AppendU16(bytes, 1);
+    AppendU16(bytes, 2);
+    AppendU32(bytes, 48'000);
+    AppendU32(bytes, 192'000);
+    AppendU16(bytes, 4);
+    AppendU16(bytes, 16);
+    AppendTag(bytes, "data");
+    AppendU32(bytes, dataSize);
+    bytes.insert(bytes.end(), dataSize, 0);
+    return bytes;
 }
 
 Tempest::Command MakeCommand(
@@ -481,6 +522,51 @@ void TestConfigurationPersistence()
         "a rejected settings file cannot partially mutate live settings");
 }
 
+void TestAudioContract()
+{
+    std::vector<std::uint8_t> bytes = MakePcmWave();
+    Tempest::Audio::WaveAsset asset;
+    std::string error;
+    Expect(Tempest::Audio::ParsePcmWave(bytes, asset, error),
+        "a valid stereo 48 kHz PCM16 WAV parses");
+    Expect(asset.channels == 2 && asset.sampleRate == 48'000 &&
+            asset.bitsPerSample == 16 && asset.pcm.size() == 8,
+        "the WAV parser preserves the runtime format and sample payload");
+
+    const Tempest::Audio::WaveAsset pristine = asset;
+    bytes[24] = 0x44;
+    bytes[25] = 0xAC;
+    bytes[26] = 0;
+    bytes[27] = 0;
+    bytes[28] = 0x10;
+    bytes[29] = 0xB1;
+    bytes[30] = 0x02;
+    bytes[31] = 0;
+    Expect(!Tempest::Audio::ParsePcmWave(bytes, asset, error),
+        "a non-48 kHz WAV is rejected");
+    Expect(asset.channels == pristine.channels && asset.sampleRate == pristine.sampleRate &&
+            asset.bitsPerSample == pristine.bitsPerSample && asset.pcm == pristine.pcm,
+        "a rejected WAV cannot partially mutate the destination asset");
+
+    bytes = MakePcmWave();
+    bytes.pop_back();
+    Expect(!Tempest::Audio::ParsePcmWave(bytes, asset, error),
+        "a truncated WAV is rejected");
+    Expect(std::abs(Tempest::Audio::VolumeGain(80, 65) - 0.52F) < 0.0001F,
+        "master and channel volume controls multiply predictably");
+    Expect(Tempest::Audio::VolumeGain(-10, 150) == 0.0F &&
+            Tempest::Audio::VolumeGain(150, 150) == 1.0F,
+        "volume gain clamps both controls to the supported range");
+    const Tempest::Audio::MusicLayerGains calm = Tempest::Audio::MusicGainsForPressure(0.0F);
+    const Tempest::Audio::MusicLayerGains pressured = Tempest::Audio::MusicGainsForPressure(0.7F);
+    const Tempest::Audio::MusicLayerGains crisis = Tempest::Audio::MusicGainsForPressure(1.0F);
+    Expect(calm.base == 1.0F && calm.pressure == 0.0F && calm.crisis == 0.0F,
+        "calm music uses only the base stem");
+    Expect(pressured.pressure > calm.pressure && pressured.crisis > calm.crisis &&
+            crisis.pressure == 1.0F && crisis.crisis == 1.0F,
+        "music layers increase monotonically with match pressure");
+}
+
 } // namespace
 
 int main()
@@ -495,6 +581,7 @@ int main()
     TestInterfaceFlow();
     TestSettingsBoundsAndRemapping();
     TestConfigurationPersistence();
+    TestAudioContract();
     std::cout << "PASS: Project Tempest deterministic simulation tests\n";
     return 0;
 }

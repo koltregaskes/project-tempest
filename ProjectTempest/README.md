@@ -7,7 +7,7 @@ demo. It must never contain copied or derived Electronic Arts retail assets.
 
 - `SourceAssets/Concepts`: original visual references used to author production assets.
 - `SourceAssets/Models`: future editable Blender masters, collision sources, LOD sources, and export settings.
-- `Content`: future loose runtime data using the engine's existing `Data`, `Art`, map, audio, and localisation paths.
+- `Content`: original loose runtime models, textures, audio, and later map/localisation data.
 - `ReviewEvidence`: durable native-engine screenshots linked from the provenance manifest.
 - `asset-provenance.json`: machine-readable origin, prompt, edit, rights-review, hash, and distribution status.
 
@@ -62,6 +62,22 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-project-t
   -VerifyReproducibility
 ```
 
+Generate the original score and interaction cues without a hosted service, third-party sample, or paid credit:
+
+```powershell
+python .\scripts\create-tempest-audio.py
+```
+
+The deterministic standard-library synthesiser produces three synchronised industrial-electronic Substation 9 stems
+(base, pressure, and crisis) plus confirmation, selection, command, Arc Pulse, and alert cues as 48 kHz stereo PCM16
+WAVs. The normal asset gate regenerates all eight files in the ignored build tree and requires byte-identical hashes.
+The standalone demo loads them through a strict WAV parser and Windows XAudio2, adds pressure/crisis layers as Chorus
+territory, force disadvantage, and elapsed match pressure rise, routes music/effects through separate submixes, and
+applies persisted master/music/effects settings immediately. Audio processing suspends when the window loses focus and
+resumes without discarding voice positions. Missing or invalid audio is nonfatal and leaves visual command feedback active.
+Audible balance, loop perception, device switching, and long-session stability remain explicit user-run manual evidence;
+agents must not launch the demo to obtain it.
+
 The runtime W3D has a captured frame from the repository's native `W3DViewV.exe`. The viewer is blocked under Microsoft
 Remote Display. On 15 July 2026, unattended launches from `build/ci-w3dview-fixed/W3DViewV.exe` caused repeated
 focus-stealing render-device dialogs and six Application Error event 1000 records at 10:49:40, 10:50:40, 10:52:08,
@@ -81,8 +97,10 @@ materials or renderer stability; the production texture/material pass remains op
 ## Windows execution safety
 
 All unattended validation is compile-, package-, data-, import-, or offscreen-only. Agents, CI jobs, scheduled tasks,
-and automated test scripts must never launch `W3DViewV.exe`, `ProjectTempestDemo.exe`, `generalsv.exe`,
-`WorldBuilderV.exe`, Blender's interactive UI, a render-device selector, or any other visible game/tool window.
+and automated test scripts must never launch `W3DViewV.exe`, `W3DViewZH.exe`, `ProjectTempestDemo.exe`,
+`generalsv.exe`, `generalszh.exe`, `WorldBuilderV.exe`, `WorldBuilderZH.exe`, Blender's interactive UI, a render-device
+selector, or any other visible game/tool window. Manual commands in this runbook are documentation for a user-operated,
+non-RDP desktop only; no unattended wrapper may invoke them or retry them.
 `scripts/test-project-tempest-no-gui.ps1` enforces the no-process-launch contract on Project Tempest validation surfaces.
 It parses unattended PowerShell entry points and exercises adversarial variable/indirect-path fixtures, so renaming a
 GUI executable variable cannot bypass the gate. `scripts/build-windows.ps1` is explicitly covered.
@@ -155,9 +173,9 @@ held keyboard and mouse inputs and enters the pause screen.
 
 Changes are stored in `%LOCALAPPDATA%\ProjectTempest\settings.ini`. The versioned file contains the complete settings
 and binding set; invalid, partial, out-of-range, or duplicate data is rejected without partially changing live state.
-Saving writes a same-directory temporary file before replacing the prior profile. Original audio playback,
-player-visible multi-resolution verification, and manual runtime proof of persistence/remapping remain open M5 work;
-the current volume values are interface state, not a claim that missing audio content is playing.
+Saving writes a same-directory temporary file before replacing the prior profile. The three volume controls now drive
+the XAudio2 master/music/effects routing used by the original score and cues. Player-visible multi-resolution verification,
+manual audible-quality proof, and manual runtime proof of persistence/remapping remain open M5 work.
 
 Build with a modern Generals preset, for example:
 

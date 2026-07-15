@@ -54,6 +54,7 @@ jobs:
               - 'scripts/build-windows.ps1'
               - 'scripts/create-courier-blockout.*'
               - 'scripts/create-substation-kit.*'
+              - 'scripts/create-tempest-audio.py'
               - 'scripts/prepare-w3dview-compat.ps1'
               - 'scripts/test-project-tempest-assets.ps1'
               - 'scripts/test-project-tempest-no-gui.ps1'
@@ -89,6 +90,7 @@ jobs:
         shell: bash
         run: |
           g++ -std=c++20 -Wall -Wextra -Werror -pedantic \
+            ProjectTempest/Code/TempestAudio.cpp \
             ProjectTempest/Code/TempestInterface.cpp \
             ProjectTempest/Code/TempestSimulation.cpp \
             ProjectTempest/Tests/TempestSimulationTests.cpp \
