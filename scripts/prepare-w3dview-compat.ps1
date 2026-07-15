@@ -2,6 +2,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$ViewerDirectory,
+    [string]$ExecutableName = "W3DViewV.exe",
     [string]$MilesStubPath = "build/win32/_deps/miles-build/Release/mss32.dll"
 )
 
@@ -22,9 +23,9 @@ function Resolve-ProjectPath {
 }
 
 $resolvedViewerDirectory = (Resolve-Path (Resolve-ProjectPath $ViewerDirectory)).Path
-$viewerPath = Join-Path $resolvedViewerDirectory "W3DViewV.exe"
+$viewerPath = Join-Path $resolvedViewerDirectory $ExecutableName
 if (-not (Test-Path -LiteralPath $viewerPath -PathType Leaf)) {
-    throw "W3DViewV.exe was not found in '$resolvedViewerDirectory'."
+    throw "The compatibility target '$ExecutableName' was not found in '$resolvedViewerDirectory'."
 }
 
 $d3d8To9Version = "v1.15.1"
@@ -66,7 +67,8 @@ Copy-DependencyIfNeeded $cachedD3d8Path (Join-Path $resolvedViewerDirectory "d3d
 Copy-DependencyIfNeeded $resolvedMilesStubPath (Join-Path $resolvedViewerDirectory "mss32.dll")
 
 [pscustomobject]@{
-    Viewer = $viewerPath
+    Executable = $viewerPath
+    LaunchPolicy = "manual_only"
     D3D8To9Version = $d3d8To9Version
     D3D8To9Commit = $d3d8To9Commit
     D3D8To9License = "BSD-2-Clause"

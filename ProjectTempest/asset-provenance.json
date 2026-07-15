@@ -114,7 +114,9 @@
         "filename_and_mesh_identifier_limit": 16
       },
       "review": {
-        "engine_render": "pass_ci_w3dview_with_d3d8to9_v1.15.1",
+        "engine_render": "manual_capture_only_unstable_under_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "rdp_stability": "blocked_repeated_application_error_1000",
         "lod_roundtrip": "pass",
         "collision_roundtrip": "pass",
         "team_colour_roundtrip": "pass_native_housecolor_mesh_names",
@@ -147,6 +149,8 @@
       "review": {
         "engine_geometry": "pass",
         "engine_hlod": "pass",
+        "automation_policy": "manual_only_never_unattended",
+        "rdp_stability": "blocked_repeated_application_error_1000",
         "production_materials": "pending"
       },
       "distribution": "internal_development_only"

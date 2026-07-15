@@ -167,11 +167,21 @@ orthographic top-down review renders, and `ProjectTempest/Content/Art/W3D/courie
 team-colour meshes, and one oriented `BOUNDINGBOX` with physical, projectile, visibility, and vehicle collision flags.
 W3D `HM` export is hash-stable across regeneration; immediate round-trip import recovers twelve visible submeshes and
 one collision box (10,998 vertices after the plugin's W3D UV/material vertex splitting). The single-material topology
-keeps every mesh below the engine's four-pass ceiling. CI-built `W3DViewV.exe` then loads the HLOD and renders 3,424
-polygons through the hash-pinned BSD-2-Clause d3d8to9 v1.15.1 bridge on the Windows RDP adapter. This proves
-the original editable source, static hierarchy, first LOD transition payload, collision payload, and engine-format
-serialization, native house-colour routing, and actual engine geometry rendering. M2 remains open until damage state,
-production materials/textures, in-engine team readability, data definition, and selection bounds are proven.
+keeps every mesh below the engine's four-pass ceiling. A CI-built `W3DViewV.exe` produced one manually captured HLOD
+frame showing 3,424 polygons through the hash-pinned BSD-2-Clause d3d8to9 v1.15.1 bridge. Windows Application Error
+event 1000 subsequently recorded repeated access-violation and unhandled-exception crashes under Microsoft Remote
+Display, so the frame proves static geometry/HLOD loading but not renderer stability. M2 remains open until damage state,
+production materials/textures, in-engine team readability, data definition, selection bounds, and safe manual runtime
+verification on a suitable non-RDP desktop are proven.
+
+### Windows no-visible-GUI policy
+
+Unattended agents, CI, scheduled tasks, and automated test scripts must never launch the game, W3DView, WorldBuilder,
+Blender's interactive UI, a render-device selector, or any other visible renderer window. Automated evidence is limited
+to compilation, packaging, static/data validation, Blender `--background`, import/export round trips, and genuinely
+headless/offscreen paths. Interactive gameplay and renderer checks are explicit manual-only actions initiated by the
+user on a suitable non-RDP desktop. When no safe headless route exists, mark that evidence blocked; never retry a visible
+GUI. The repository's no-GUI test is a required CI gate.
 
 ## Capability and tool routing
 
@@ -189,7 +199,7 @@ has not been exercised, so the review score is intentionally `null`.
 | Image-to-3D | Magnific GLB generation | Optional accelerator only. It consumes credits in this environment and requires explicit spend approval; GLB still needs cleanup and an engine bridge. |
 | Video | Runway, Fal, Magnific, FFmpeg | FFmpeg is ready for evidence capture. Generative video is optional promotional work, not a demo dependency, and remains behind spend approval. |
 | Music/voice | music/TTS generation tools plus audio editor | Optional for original prototypes; distribution rights, loudness, looping, accessibility, and provenance must be checked. No cloned or impersonated voice. |
-| Play/visual review | local game review and captured-frame inspection | Required at each playable milestone. Browser-first Games Lab prompts are reference material only; native C++/W3D evidence governs this project. |
+| Play/visual review | explicit user-run manual session plus captured-frame inspection | Required at playable milestones, but never agent-launched or unattended. When a safe non-RDP manual session is unavailable, record the gate blocked and rely only on headless evidence. |
 
 Highest-value next action: prove the installed Windows build path, then prove the Courier pipeline. More media generation
 before those two facts are known increases rerun cost without reducing the core risk.

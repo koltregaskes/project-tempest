@@ -35,8 +35,9 @@ collision box survive the round trip. This one-material-per-submesh rule is requ
 than four render passes per mesh. The W3D output is deterministic; Workbench preview PNG and Blender container hashes are
 recorded for the committed artifacts but are not deterministic build keys.
 
-The runtime W3D is also proven in the repository's native `W3DViewV.exe`. On current Windows RDP sessions, prepare the
-viewer directory with the hash-pinned BSD-2-Clause d3d8to9 bridge and GPL Miles stub before opening the model:
+The runtime W3D has a captured frame from the repository's native `W3DViewV.exe`. The viewer is unstable under Microsoft
+Remote Display: repeated Application Error event 1000 crashes occurred even with the compatibility bridge. Therefore
+the following command may prepare dependencies, but it does not launch the viewer:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\prepare-w3dview-compat.ps1 `
@@ -45,11 +46,23 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\prepare-w3dvie
 
 The captured engine result is
 [`courier-w3dview-engine.png`](ReviewEvidence/courier-w3dview-engine.png). It proves geometry and HLOD loading, not final
-materials; the production texture/material pass remains open.
+materials or renderer stability; the production texture/material pass remains open.
+
+## Windows execution safety
+
+All unattended validation is compile-, package-, data-, import-, or offscreen-only. Agents, CI jobs, scheduled tasks,
+and automated test scripts must never launch `W3DViewV.exe`, `ProjectTempestDemo.exe`, `generalsv.exe`,
+`WorldBuilderV.exe`, Blender's interactive UI, a render-device selector, or any other visible game/tool window.
+`scripts/test-project-tempest-no-gui.ps1` enforces the no-process-launch contract on Project Tempest validation surfaces.
+
+Interactive renderer and gameplay checks are manual-only actions initiated by the user on a suitable non-RDP desktop.
+If that environment is unavailable, record visual/gameplay verification as blocked and continue with headless evidence;
+do not retry a visible GUI. `prepare-w3dview-compat.ps1` only verifies and copies dependencies and reports
+`LaunchPolicy=manual_only`.
 
 ## Standalone prototype
 
-Modern Generals Win32 builds also produce `ProjectTempestDemoG.exe`, a retail-asset-free executable that loads the
+Modern Generals Win32 builds also produce `ProjectTempestDemo.exe`, a retail-asset-free executable that loads the
 Courier directly from this tree. Its current M2 interaction slice provides a fixed RTS camera, selection, right-click
 movement, keyboard movement, restart, and a simple uplink objective. It is an executable integration checkpoint, not
 the final Substation 9 vertical slice.
@@ -68,5 +81,12 @@ cmake --preset win32
 cmake --build --preset win32 --target project_tempest_demo
 ```
 
-The build places `courier.w3d` beside the executable. For machines where native Direct3D 8 cannot initialise, use the
-same pinned compatibility preparation used by W3DView, pointing `-ViewerDirectory` at the demo executable directory.
+The build places `courier.w3d` beside the executable. A user performing an explicit manual test on a non-RDP desktop
+may prepare the demo directory with the same hash-pinned compatibility layer used by W3DView:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\prepare-w3dview-compat.ps1 `
+  -ViewerDirectory .\build\win32\ProjectTempest\Release `
+  -ExecutableName ProjectTempestDemo.exe `
+  -MilesStubPath .\build\win32\_deps\miles-build\Release\mss32.dll
+```

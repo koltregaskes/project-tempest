@@ -78,9 +78,17 @@ if ((@($runtimeAsset.validation.house_color_meshes) -join ",") -ne "HouseColor0,
     throw "The Courier runtime asset must use the native HouseColor mesh convention in both LODs."
 }
 
-if ($runtimeAsset.review.engine_render -notlike "pass_*") {
-    throw "The Courier runtime asset must have native W3D Viewer render evidence."
+if ($runtimeAsset.review.engine_render -ne "manual_capture_only_unstable_under_rdp") {
+    throw "The Courier renderer record must preserve the manual-only unstable-RDP status."
+}
+
+if ($runtimeAsset.review.automation_policy -ne "manual_only_never_unattended") {
+    throw "Interactive Project Tempest rendering must never run during unattended validation."
+}
+
+if ($runtimeAsset.review.rdp_stability -ne "blocked_repeated_application_error_1000") {
+    throw "The known W3D Viewer RDP stability blocker must remain explicit."
 }
 
 $validated | Format-Table -AutoSize
-Write-Host "Validated $($validated.Count) Project Tempest assets and the Courier HM/LOD/collision/team-colour contract."
+Write-Host "Validated $($validated.Count) Project Tempest assets, the Courier contract, and the manual-only renderer policy."
