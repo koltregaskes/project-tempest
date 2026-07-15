@@ -209,7 +209,13 @@ foreach ($interfaceContract in @(
     "DrawModalOverlay",
     "SyncOutcome",
     "colourIndependentCues",
-    "RestartMatch"
+    "RestartMatch",
+    "SerializeConfiguration",
+    "LoadConfiguration",
+    "HandleMouseButton",
+    "PrimarySelect",
+    "ContextCommand",
+    "MoveFileExW"
 )) {
     if ($combinedInterfaceSource -notmatch [regex]::Escape($interfaceContract)) {
         throw "Project Tempest interface contract is missing '$interfaceContract'."

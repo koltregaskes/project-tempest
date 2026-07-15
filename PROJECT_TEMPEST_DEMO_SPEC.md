@@ -136,7 +136,7 @@ construction, production, combat, Arc Pulse, basic Chorus AI, pause/restart, and
 replays the same command stream twice and compares every per-tick checksum. The standalone renderer now consumes that
 state, converts mouse/keyboard input into sequenced commands, and visualises units, control nodes, buildings, selection,
 and damage state with original/procedural content. A portable interface controller now owns briefing, play, pause,
-settings, result, restart, bounded settings, and collision-safe keyboard remapping; it is covered by the same strict
+settings, result, restart, bounded settings, versioned persistence, and collision-safe keyboard/mouse remapping; it is covered by the same strict
 headless test executable as the simulation. The renderer consumes that controller through a scalable in-window HUD,
 visible command feedback, a mission/result explanation, adjustable camera/UI/accessibility state, and `+`/`X` plus
 `[F]`/`[C]` colour-independent ownership cues. This proves the compile-time rules/presentation seam; safe manual
@@ -148,11 +148,13 @@ W3Ds and shared magenta texture are byte-stable across clean background regenera
 remains a manual-only non-RDP gate.
 
 Current interface boundary (2026-07-15): camera speed, UI scale, master/music/effects values, edge scroll, reduced
-motion, reduced flashes, colour-independent cues, and ten keyboard bindings can be changed in-window. The camera and
-HUD consume their applicable settings immediately; reduced motion disables edge-driven camera motion, and losing focus
-clears held inputs and pauses the interface. Audio playback, settings persistence, mouse-button remapping,
-normal-zoom readability, and the target-resolution clipping matrix remain open; adjustable volume state is not treated
-as proof of an audio pipeline.
+motion, reduced flashes, colour-independent cues, and twelve keyboard-or-mouse bindings can be changed in-window.
+Primary selection and context command are remappable alongside keyboard actions, with Left/Right/Middle/Mouse 4/Mouse
+5 support. Settings use a strict versioned format, reject corrupt/partial/duplicate data atomically, and save through a
+same-directory temporary file to `%LOCALAPPDATA%\ProjectTempest\settings.ini`. The camera and HUD consume applicable
+settings immediately; reduced motion disables edge-driven camera motion, and losing focus clears all held keyboard and
+mouse inputs and pauses the interface. Audio playback, normal-zoom readability, target-resolution clipping, and manual
+runtime proof of persistence/remapping remain open; adjustable volume state is not proof of an audio pipeline.
 
 ### Golden asset and format decision
 

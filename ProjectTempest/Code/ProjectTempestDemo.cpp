@@ -17,7 +17,11 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <limits>
+#include <string>
 #include <vector>
 
 #include "assetmgr.h"
@@ -47,6 +51,7 @@ constexpr std::int32_t kScreenPickRadius = 2200;
 constexpr double kSimulationTickSeconds = 1.0 / static_cast<double>(Tempest::TicksPerSecond);
 
 bool g_keys[256] = {};
+bool g_mouseButtons[6] = {};
 bool g_rendererReady = false;
 bool g_applicationActive = true;
 std::uint32_t g_selectedUnitId = 0;
@@ -65,6 +70,7 @@ LightClass *g_keyLight = nullptr;
 
 Tempest::Simulation g_simulation;
 Tempest::Ui::InterfaceState g_interface;
+std::filesystem::path g_settingsPath;
 
 HFONT g_hudFont = nullptr;
 HFONT g_hudSmallFont = nullptr;
@@ -337,6 +343,138 @@ void ProduceCourier()
     }
 }
 
+bool SaveInterfaceConfiguration()
+{
+    if (g_settingsPath.empty()) {
+        return false;
+    }
+    std::error_code error;
+    std::filesystem::create_directories(g_settingsPath.parent_path(), error);
+    if (error) {
+        return false;
+    }
+
+    std::filesystem::path temporaryPath = g_settingsPath;
+    temporaryPath += ".tmp";
+    bool writeSucceeded = false;
+    {
+        std::ofstream output(temporaryPath, std::ios::binary | std::ios::trunc);
+        const std::string configuration = g_interface.SerializeConfiguration();
+        output.write(configuration.data(), static_cast<std::streamsize>(configuration.size()));
+        output.flush();
+        writeSucceeded = static_cast<bool>(output);
+    }
+    if (!writeSucceeded) {
+        DeleteFileW(temporaryPath.c_str());
+        return false;
+    }
+    if (!MoveFileExW(
+            temporaryPath.c_str(),
+            g_settingsPath.c_str(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        DeleteFileW(temporaryPath.c_str());
+        return false;
+    }
+    return true;
+}
+
+enum class ConfigurationLoadResult {
+    NotFound,
+    Loaded,
+    Rejected,
+};
+
+ConfigurationLoadResult LoadInterfaceConfiguration()
+{
+    wchar_t localAppData[MAX_PATH] = {};
+    const DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, MAX_PATH);
+    if (length == 0 || length >= MAX_PATH) {
+        return ConfigurationLoadResult::Rejected;
+    }
+    g_settingsPath = std::filesystem::path(localAppData) / L"ProjectTempest" / L"settings.ini";
+    std::error_code error;
+    if (!std::filesystem::exists(g_settingsPath, error)) {
+        return error ? ConfigurationLoadResult::Rejected : ConfigurationLoadResult::NotFound;
+    }
+
+    std::ifstream input(g_settingsPath, std::ios::binary);
+    if (!input) {
+        return ConfigurationLoadResult::Rejected;
+    }
+    const std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    if (input.bad() || !g_interface.LoadConfiguration(content)) {
+        return ConfigurationLoadResult::Rejected;
+    }
+    return ConfigurationLoadResult::Loaded;
+}
+
+void HandleInterfaceEvent(HWND window, const Tempest::Ui::InputEvent &event)
+{
+    if (event.intent == Tempest::Ui::Intent::ExitRequested) {
+        DestroyWindow(window);
+    } else if (event.intent == Tempest::Ui::Intent::BeginMatch) {
+        ResetPrototype();
+        SetFeedback("Link established. Capture a substation, build a Relay, then break the Chorus Spire.");
+    } else if (event.intent == Tempest::Ui::Intent::RestartMatch) {
+        ResetPrototype();
+        SetFeedback("Substation 9 restarted.");
+    } else if (event.intent == Tempest::Ui::Intent::SettingsChanged ||
+               event.intent == Tempest::Ui::Intent::BindingChanged) {
+        SetFeedback(SaveInterfaceConfiguration()
+                ? "Settings saved to your local profile."
+                : "Setting changed, but the local profile could not be saved.");
+    } else if (event.intent == Tempest::Ui::Intent::BindingRejected) {
+        SetFeedback("That input is reserved or already assigned.");
+    } else if (event.intent == Tempest::Ui::Intent::GameplayAction) {
+        switch (event.action) {
+            case Tempest::Ui::Action::BuildRelay:
+                BuildRelayAtNearestOwnedNode();
+                break;
+            case Tempest::Ui::Action::ProduceCourier:
+                ProduceCourier();
+                break;
+            case Tempest::Ui::Action::ArcPulse:
+                if (g_selectedUnitId != 0) {
+                    g_simulation.Submit(MakeCommand(
+                        Tempest::CommandKind::ArcPulse,
+                        g_selectedUnitId,
+                        0,
+                        g_pointerPoint));
+                    SetFeedback("Arc Pulse requested at cursor.");
+                }
+                break;
+            case Tempest::Ui::Action::PrimarySelect:
+                SelectFromScreen(g_pointerClient.x, g_pointerClient.y);
+                break;
+            case Tempest::Ui::Action::ContextCommand:
+                IssueContextOrder(g_pointerClient.x, g_pointerClient.y);
+                break;
+            default:
+                break;
+        }
+    }
+    UpdateWindowTitle();
+}
+
+void HandleMouseButtonDown(HWND window, Tempest::Ui::MouseButton button, int x, int y)
+{
+    g_pointerClient = { x, y };
+    g_pointerPoint = ScreenToSimulationPoint(x, y);
+    const std::size_t index = static_cast<std::size_t>(button);
+    if (index < std::size(g_mouseButtons)) {
+        g_mouseButtons[index] = true;
+    }
+    HandleInterfaceEvent(window, g_interface.HandleMouseButton(button));
+}
+
+void HandleMouseButtonUp(Tempest::Ui::MouseButton button)
+{
+    const std::size_t index = static_cast<std::size_t>(button);
+    if (index < std::size(g_mouseButtons)) {
+        g_mouseButtons[index] = false;
+    }
+}
+
 LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
@@ -349,34 +487,7 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
             }
             {
                 const Tempest::Ui::InputEvent event = g_interface.HandleKey(static_cast<std::uint16_t>(wParam));
-                if (event.intent == Tempest::Ui::Intent::ExitRequested) {
-                    DestroyWindow(window);
-                } else if (event.intent == Tempest::Ui::Intent::BeginMatch) {
-                    ResetPrototype();
-                    SetFeedback("Link established. Capture a substation, build a Relay, then break the Chorus Spire.");
-                } else if (event.intent == Tempest::Ui::Intent::RestartMatch) {
-                    ResetPrototype();
-                    SetFeedback("Substation 9 restarted.");
-                } else if (event.intent == Tempest::Ui::Intent::BindingChanged) {
-                    SetFeedback("Control binding updated.");
-                } else if (event.intent == Tempest::Ui::Intent::BindingRejected) {
-                    SetFeedback("That key is reserved or already assigned.");
-                } else if (event.intent == Tempest::Ui::Intent::GameplayAction &&
-                           event.action == Tempest::Ui::Action::BuildRelay) {
-                    BuildRelayAtNearestOwnedNode();
-                } else if (event.intent == Tempest::Ui::Intent::GameplayAction &&
-                           event.action == Tempest::Ui::Action::ProduceCourier) {
-                    ProduceCourier();
-                } else if (event.intent == Tempest::Ui::Intent::GameplayAction &&
-                           event.action == Tempest::Ui::Action::ArcPulse && g_selectedUnitId != 0) {
-                    g_simulation.Submit(MakeCommand(
-                        Tempest::CommandKind::ArcPulse,
-                        g_selectedUnitId,
-                        0,
-                        g_pointerPoint));
-                    SetFeedback("Arc Pulse requested at cursor.");
-                }
-                UpdateWindowTitle();
+                HandleInterfaceEvent(window, event);
             }
             return 0;
 
@@ -387,16 +498,57 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
             return 0;
 
         case WM_LBUTTONDOWN:
-            if (g_interface.AllowsGameplayInput()) {
-                SelectFromScreen(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            }
+            HandleMouseButtonDown(
+                window,
+                Tempest::Ui::MouseButton::Left,
+                GET_X_LPARAM(lParam),
+                GET_Y_LPARAM(lParam));
             return 0;
 
         case WM_RBUTTONDOWN:
-            if (g_interface.AllowsGameplayInput()) {
-                IssueContextOrder(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            }
+            HandleMouseButtonDown(
+                window,
+                Tempest::Ui::MouseButton::Right,
+                GET_X_LPARAM(lParam),
+                GET_Y_LPARAM(lParam));
             return 0;
+
+        case WM_MBUTTONDOWN:
+            HandleMouseButtonDown(
+                window,
+                Tempest::Ui::MouseButton::Middle,
+                GET_X_LPARAM(lParam),
+                GET_Y_LPARAM(lParam));
+            return 0;
+
+        case WM_XBUTTONDOWN:
+            HandleMouseButtonDown(
+                window,
+                GET_XBUTTON_WPARAM(wParam) == XBUTTON1
+                    ? Tempest::Ui::MouseButton::Extra1
+                    : Tempest::Ui::MouseButton::Extra2,
+                GET_X_LPARAM(lParam),
+                GET_Y_LPARAM(lParam));
+            return TRUE;
+
+        case WM_LBUTTONUP:
+            HandleMouseButtonUp(Tempest::Ui::MouseButton::Left);
+            return 0;
+
+        case WM_RBUTTONUP:
+            HandleMouseButtonUp(Tempest::Ui::MouseButton::Right);
+            return 0;
+
+        case WM_MBUTTONUP:
+            HandleMouseButtonUp(Tempest::Ui::MouseButton::Middle);
+            return 0;
+
+        case WM_XBUTTONUP:
+            HandleMouseButtonUp(
+                GET_XBUTTON_WPARAM(wParam) == XBUTTON1
+                    ? Tempest::Ui::MouseButton::Extra1
+                    : Tempest::Ui::MouseButton::Extra2);
+            return TRUE;
 
         case WM_MOUSEMOVE:
             g_pointerClient = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
@@ -407,6 +559,7 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
             g_applicationActive = wParam != 0;
             if (!wParam) {
                 std::fill_n(g_keys, 256, false);
+                std::fill(std::begin(g_mouseButtons), std::end(g_mouseButtons), false);
                 if (g_interface.GetScreen() == Tempest::Ui::Screen::Playing) {
                     g_interface.HandleKey(Tempest::Ui::KeyEscape);
                     SetFeedback("Paused because the game window lost focus.");
@@ -524,10 +677,30 @@ void UpdateCameraPan(float deltaSeconds)
     }
     float directionX = 0.0F;
     float directionY = 0.0F;
-    directionX += g_interface.IsActionPressed(Tempest::Ui::Action::MoveRight, g_keys, 256) ? 1.0F : 0.0F;
-    directionX -= g_interface.IsActionPressed(Tempest::Ui::Action::MoveLeft, g_keys, 256) ? 1.0F : 0.0F;
-    directionY += g_interface.IsActionPressed(Tempest::Ui::Action::MoveUp, g_keys, 256) ? 1.0F : 0.0F;
-    directionY -= g_interface.IsActionPressed(Tempest::Ui::Action::MoveDown, g_keys, 256) ? 1.0F : 0.0F;
+    directionX += g_interface.IsActionPressed(
+        Tempest::Ui::Action::MoveRight,
+        g_keys,
+        std::size(g_keys),
+        g_mouseButtons,
+        std::size(g_mouseButtons)) ? 1.0F : 0.0F;
+    directionX -= g_interface.IsActionPressed(
+        Tempest::Ui::Action::MoveLeft,
+        g_keys,
+        std::size(g_keys),
+        g_mouseButtons,
+        std::size(g_mouseButtons)) ? 1.0F : 0.0F;
+    directionY += g_interface.IsActionPressed(
+        Tempest::Ui::Action::MoveUp,
+        g_keys,
+        std::size(g_keys),
+        g_mouseButtons,
+        std::size(g_mouseButtons)) ? 1.0F : 0.0F;
+    directionY -= g_interface.IsActionPressed(
+        Tempest::Ui::Action::MoveDown,
+        g_keys,
+        std::size(g_keys),
+        g_mouseButtons,
+        std::size(g_mouseButtons)) ? 1.0F : 0.0F;
 
     RECT client = {};
     GetClientRect(ApplicationHWnd, &client);
@@ -914,8 +1087,22 @@ void DrawLabel(
     DrawTextA(device, text, -1, &drawRect, flags | DT_NOPREFIX);
 }
 
-void FormatKeyName(std::uint16_t key, char *buffer, std::size_t bufferSize)
+void FormatBindingName(Tempest::Ui::InputBinding binding, char *buffer, std::size_t bufferSize)
 {
+    if (binding.device == Tempest::Ui::InputDevice::Mouse) {
+        const char *mouseName = nullptr;
+        switch (static_cast<Tempest::Ui::MouseButton>(binding.code)) {
+            case Tempest::Ui::MouseButton::Left: mouseName = "MOUSE LEFT"; break;
+            case Tempest::Ui::MouseButton::Right: mouseName = "MOUSE RIGHT"; break;
+            case Tempest::Ui::MouseButton::Middle: mouseName = "MOUSE MIDDLE"; break;
+            case Tempest::Ui::MouseButton::Extra1: mouseName = "MOUSE 4"; break;
+            case Tempest::Ui::MouseButton::Extra2: mouseName = "MOUSE 5"; break;
+        }
+        std::snprintf(buffer, bufferSize, "%s", mouseName ? mouseName : "MOUSE ?");
+        return;
+    }
+
+    const std::uint16_t key = binding.code;
     const char *special = nullptr;
     switch (key) {
         case Tempest::Ui::KeySpace: special = "SPACE"; break;
@@ -1007,16 +1194,22 @@ void DrawHud(HDC device, const RECT &client, float scale)
     char pulseKey[24];
     char pauseKey[24];
     char settingsKey[24];
-    FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::BuildRelay), buildKey, sizeof(buildKey));
-    FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::ProduceCourier), produceKey, sizeof(produceKey));
-    FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::ArcPulse), pulseKey, sizeof(pulseKey));
-    FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::Pause), pauseKey, sizeof(pauseKey));
-    FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
+    char selectKey[24];
+    char contextKey[24];
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::PrimarySelect), selectKey, sizeof(selectKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ContextCommand), contextKey, sizeof(contextKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::BuildRelay), buildKey, sizeof(buildKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ProduceCourier), produceKey, sizeof(produceKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::ArcPulse), pulseKey, sizeof(pulseKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::Pause), pauseKey, sizeof(pauseKey));
+    FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
     char commands[512];
     std::snprintf(
         commands,
         sizeof(commands),
-        "LMB SELECT   RMB MOVE / CAPTURE / ATTACK   [%s] RELAY   [%s] COURIER   [%s] ARC PULSE   [%s] PAUSE   [%s] SETTINGS",
+        "[%s] SELECT   [%s] MOVE / CAPTURE / ATTACK   [%s] RELAY   [%s] COURIER   [%s] ARC PULSE   [%s] PAUSE   [%s] SETTINGS",
+        selectKey,
+        contextKey,
         buildKey,
         produceKey,
         pulseKey,
@@ -1125,7 +1318,7 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
             DeleteObject(selected);
         }
         char keyName[24];
-        FormatKeyName(g_interface.KeyFor(action), keyName, sizeof(keyName));
+        FormatBindingName(g_interface.BindingFor(action), keyName, sizeof(keyName));
         char line[180];
         std::snprintf(line, sizeof(line), "%s    [%s]", Tempest::Ui::InterfaceState::ActionName(action), keyName);
         rowRect.left += ScalePixels(8.0F, scale);
@@ -1133,7 +1326,7 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
     }
     if (g_interface.IsCapturingBinding()) {
         RECT capture = { panel.left + padding, panel.bottom - ScalePixels(55.0F, scale), panel.right - padding, panel.bottom };
-        DrawLabel(device, g_hudFont, RGB(255, 184, 67), capture, "PRESS A NEW KEY - ESC CANCELS", DT_CENTER | DT_TOP | DT_SINGLELINE);
+        DrawLabel(device, g_hudFont, RGB(255, 184, 67), capture, "PRESS A NEW KEY OR MOUSE BUTTON - ESC CANCELS", DT_CENTER | DT_TOP | DT_SINGLELINE);
     } else {
         RECT note = { panel.left + padding, panel.bottom - ScalePixels(45.0F, scale), panel.right - padding, panel.bottom };
         DrawLabel(
@@ -1141,7 +1334,7 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
             g_hudSmallFont,
             RGB(128, 164, 173),
             note,
-            "Volume controls are wired to the interface state; original music/effects playback remains an M5 content task.",
+            "Changes save atomically to the local profile; original music/effects playback remains an M5 content task.",
             DT_CENTER | DT_TOP | DT_SINGLELINE);
     }
 }
@@ -1174,25 +1367,33 @@ void DrawModalOverlay(HDC device, const RECT &client, float scale)
     RECT body = { panel.left + padding, panel.top + ScalePixels(98.0F, scale), panel.right - padding, panel.bottom - padding };
     if (screen == Tempest::Ui::Screen::Briefing) {
         DrawLabel(device, g_hudTitleFont, RGB(226, 249, 250), title, "BLACK CURRENT / SUBSTATION 9");
+        char settingsKey[24];
+        FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
+        char briefing[640];
+        std::snprintf(
+            briefing,
+            sizeof(briefing),
+            "2089. Chorus has colonised the basin's abandoned control grid.\n\n"
+            "SELECT a Freegrid Courier. CAPTURE substations to earn salvage and grid charge. "
+            "BUILD Relays, PRODUCE Couriers, then destroy the Chorus Spire [C]. "
+            "If your Relay Core [F] falls, the district is lost.\n\n"
+            "ENTER  establish link and begin     [%s]  settings     ESC  exit",
+            settingsKey);
         DrawLabel(
             device,
             g_hudFont,
             RGB(195, 224, 228),
             body,
-            "2089. Chorus has colonised the basin's abandoned control grid.\n\n"
-            "SELECT a Freegrid Courier. CAPTURE substations to earn salvage and grid charge. "
-            "BUILD Relays, PRODUCE Couriers, then destroy the Chorus Spire [C]. "
-            "If your Relay Core [F] falls, the district is lost.\n\n"
-            "ENTER  establish link and begin     O  settings     ESC  exit",
+            briefing,
             DT_LEFT | DT_TOP | DT_WORDBREAK);
     } else if (screen == Tempest::Ui::Screen::Pause) {
         DrawLabel(device, g_hudTitleFont, RGB(226, 249, 250), title, "NETWORK PAUSED");
         char pauseKey[24];
         char settingsKey[24];
         char restartKey[24];
-        FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::Pause), pauseKey, sizeof(pauseKey));
-        FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
-        FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::Restart), restartKey, sizeof(restartKey));
+        FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::Pause), pauseKey, sizeof(pauseKey));
+        FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
+        FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::Restart), restartKey, sizeof(restartKey));
         char copy[320];
         std::snprintf(
             copy,
@@ -1217,8 +1418,8 @@ void DrawModalOverlay(HDC device, const RECT &client, float scale)
             }));
         char restartKey[24];
         char settingsKey[24];
-        FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::Restart), restartKey, sizeof(restartKey));
-        FormatKeyName(g_interface.KeyFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
+        FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::Restart), restartKey, sizeof(restartKey));
+        FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
         char copy[512];
         std::snprintf(
             copy,
@@ -1392,6 +1593,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
         *separator = '\0';
         SetCurrentDirectoryA(executablePath);
     }
+    const ConfigurationLoadResult configurationLoad = LoadInterfaceConfiguration();
 
     if (!CreateMainWindow(instance, commandShow)) {
         MessageBoxA(nullptr, "Unable to create the Project Tempest window.", "Project Tempest", MB_ICONERROR);
@@ -1412,7 +1614,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
         ShutdownRenderer();
         return 2;
     }
-    SetFeedback("Press ENTER to establish the Freegrid link.");
+    if (configurationLoad == ConfigurationLoadResult::Loaded) {
+        SetFeedback("Local settings restored. Press ENTER to establish the Freegrid link.");
+    } else if (configurationLoad == ConfigurationLoadResult::Rejected) {
+        SetFeedback("Local settings were invalid or unreadable; safe defaults are active.");
+    } else {
+        SetFeedback("Press ENTER to establish the Freegrid link.");
+    }
 
     LARGE_INTEGER frequency = {};
     LARGE_INTEGER previous = {};
