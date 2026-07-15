@@ -46,7 +46,7 @@ bpy.ops.object.select_all(action="SELECT")
 bpy.ops.object.delete(use_global=False)
 
 
-def material(name, color, metallic=0.0, roughness=0.55, emission=None):
+def material(name, color, metallic=0.0, roughness=0.55, emission=None, recolor=False):
     mat = bpy.data.materials.new(name)
     mat.diffuse_color = (*color, 1.0)
     mat.use_nodes = True
@@ -58,12 +58,22 @@ def material(name, color, metallic=0.0, roughness=0.55, emission=None):
         if emission:
             shader.inputs["Emission Color"].default_value = (*emission, 1.0)
             shader.inputs["Emission Strength"].default_value = 3.0
+    if recolor:
+        mat.material_type = "SHADER_MATERIAL"
+        mat.use_recolor = True
+        mat.recolor_mult = 1.0
     return mat
 
 
 dark_steel = material("PT_DARK_STEEL", (0.055, 0.065, 0.07), metallic=0.75, roughness=0.38)
 off_white = material("PT_WORN_WHITE", (0.52, 0.47, 0.36), metallic=0.35, roughness=0.62)
-amber = material("PT_SAFETY_AMBER", (0.74, 0.30, 0.025), metallic=0.35, roughness=0.48)
+amber = material(
+    "PT_TEAM_AMBER",
+    (0.74, 0.30, 0.025),
+    metallic=0.35,
+    roughness=0.48,
+    recolor=True,
+)
 rubber = material("PT_RUBBER", (0.018, 0.022, 0.024), metallic=0.0, roughness=0.9)
 cyan = material(
     "PT_STATUS_CYAN", (0.015, 0.38, 0.45), metallic=0.1, roughness=0.25, emission=(0.0, 0.65, 0.8)
@@ -71,11 +81,14 @@ cyan = material(
 cable_red = material("PT_CABLE_RED", (0.32, 0.025, 0.018), metallic=0.15, roughness=0.58)
 
 vehicle_objects = []
+team_objects = []
 
 
 def remember(obj, mat=None):
     if mat:
         obj.data.materials.append(mat)
+        if mat.use_recolor:
+            team_objects.append(obj)
     vehicle_objects.append(obj)
     return obj
 
@@ -210,17 +223,30 @@ scene.render.filepath = preview_path
 
 bpy.data.objects.remove(ground, do_unlink=True)
 bpy.data.objects.remove(camera, do_unlink=True)
-bpy.ops.object.select_all(action="DESELECT")
-for obj in vehicle_objects:
-    if obj.name in bpy.data.objects:
-        obj.select_set(True)
-bpy.context.view_layer.objects.active = vehicle_objects[0]
-bpy.ops.object.join()
 source_part_count = len(vehicle_objects)
-lod0_object = bpy.context.active_object
-lod0_object.name = "CRLOD0"
-lod0_object.data.name = "CRLOD0_M"
-bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+
+def join_objects(objects, object_name):
+    bpy.ops.object.select_all(action="DESELECT")
+    existing = [obj for obj in objects if obj.name in bpy.data.objects]
+    if not existing:
+        fail(f"No source objects available for {object_name}")
+    for obj in existing:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = existing[0]
+    bpy.ops.object.join()
+    joined = bpy.context.active_object
+    joined.name = object_name
+    joined.data.name = f"{object_name}_M"
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    return joined
+
+
+lod0_object = join_objects(
+    [obj for obj in vehicle_objects if obj not in team_objects],
+    "CRLOD0",
+)
+team0_object = join_objects(team_objects, "CRTEAM0")
 
 # The HLOD exporter treats root-scene meshes as the highest-detail level and each
 # child collection as a successively cheaper level. Keep the collision box at the
@@ -241,20 +267,34 @@ collision_object.hide_render = True
 
 lod1_collection = bpy.data.collections.new("LOD1")
 scene.collection.children.link(lod1_collection)
-lod1_object = lod0_object.copy()
-lod1_object.data = lod0_object.data.copy()
-lod1_object.name = "CRLOD1"
-lod1_object.data.name = "CRLOD1_M"
-lod1_collection.objects.link(lod1_object)
-decimate = lod1_object.modifiers.new("PT_LOD1_DECIMATE", "DECIMATE")
-decimate.ratio = 0.35
-decimate.use_collapse_triangulate = True
-bpy.context.view_layer.objects.active = lod1_object
-lod1_object.select_set(True)
-bpy.ops.object.modifier_apply(modifier=decimate.name)
-lod1_object.select_set(False)
 
-runtime_identifiers = [lod0_object.name, lod1_object.name, collision_object.name]
+
+def create_lod1(source, object_name, ratio):
+    lod = source.copy()
+    lod.data = source.data.copy()
+    lod.name = object_name
+    lod.data.name = f"{object_name}_M"
+    lod1_collection.objects.link(lod)
+    decimate = lod.modifiers.new("PT_LOD1_DECIMATE", "DECIMATE")
+    decimate.ratio = ratio
+    decimate.use_collapse_triangulate = True
+    bpy.context.view_layer.objects.active = lod
+    lod.select_set(True)
+    bpy.ops.object.modifier_apply(modifier=decimate.name)
+    lod.select_set(False)
+    return lod
+
+
+lod1_object = create_lod1(lod0_object, "CRLOD1", 0.35)
+team1_object = create_lod1(team0_object, "CRTEAM1", 0.50)
+
+runtime_identifiers = [
+    lod0_object.name,
+    team0_object.name,
+    lod1_object.name,
+    team1_object.name,
+    collision_object.name,
+]
 if any(len(identifier) > 16 for identifier in runtime_identifiers):
     fail(f"W3D runtime identifier exceeds 16 characters: {runtime_identifiers}")
 
@@ -262,8 +302,8 @@ if any(len(identifier) > 16 for identifier in runtime_identifiers):
 # remains the non-destructive source for regenerating its constituent parts.
 bpy.ops.wm.save_as_mainfile(filepath=blend_path)
 
-lod0_vertex_count = len(lod0_object.data.vertices)
-lod1_vertex_count = len(lod1_object.data.vertices)
+lod0_vertex_count = len(lod0_object.data.vertices) + len(team0_object.data.vertices)
+lod1_vertex_count = len(lod1_object.data.vertices) + len(team1_object.data.vertices)
 if lod1_vertex_count <= 0 or lod1_vertex_count >= lod0_vertex_count:
     fail(
         f"LOD1 simplification failed: lod0={lod0_vertex_count}, "
@@ -282,6 +322,23 @@ imported_meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH
 imported_boxes = [obj for obj in imported_meshes if obj.data.object_type == "BOX"]
 imported_render_meshes = [obj for obj in imported_meshes if obj.data.object_type != "BOX"]
 imported_render_names = sorted(obj.name for obj in imported_render_meshes)
+imported_materials = {
+    material.name: material
+    for obj in imported_render_meshes
+    for material in obj.data.materials
+    if material is not None
+}
+imported_recolor_materials = sorted(
+    name for name, material in imported_materials.items() if material.use_recolor
+)
+expected_recolor_materials = [
+    "CRTEAM0.DefaultW3D.fx",
+    "CRTEAM1.DefaultW3D.fx",
+]
+imported_material_debug = sorted(
+    f"{name}:{material.material_type}:recolor={material.use_recolor}"
+    for name, material in imported_materials.items()
+)
 imported_collision_flags = (
     set(imported_boxes[0].data.box_collision_types) - {"DEFAULT"}
     if len(imported_boxes) == 1
@@ -295,15 +352,18 @@ imported_lod_collections = [
 ]
 if (
     import_result != {"FINISHED"}
-    or imported_render_names != ["CRLOD0", "CRLOD1"]
+    or imported_render_names != ["CRLOD0", "CRLOD1", "CRTEAM0", "CRTEAM1"]
     or len(imported_boxes) != 1
     or imported_collision_flags != expected_collision_flags
+    or imported_recolor_materials != expected_recolor_materials
     or imported_vertex_count == 0
 ):
     fail(
         f"W3D re-import failed: result={import_result}, meshes={len(imported_meshes)}, "
         f"render_meshes={imported_render_names}, boxes={len(imported_boxes)}, "
         f"collision_flags={sorted(imported_collision_flags)}, "
+        f"recolor_materials={imported_recolor_materials}, "
+        f"materials={imported_material_debug}, "
         f"vertices={imported_vertex_count}"
     )
 
@@ -324,6 +384,7 @@ result = {
     "imported_lod_collections": sorted(imported_lod_collections),
     "imported_mesh_count": len(imported_meshes),
     "imported_render_mesh_count": len(imported_render_meshes),
+    "imported_recolor_materials": imported_recolor_materials,
     "imported_vertex_count": imported_vertex_count,
     "lod0_vertex_count": lod0_vertex_count,
     "lod1_vertex_count": lod1_vertex_count,

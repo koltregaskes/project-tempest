@@ -26,7 +26,8 @@ hero/top-down review renders, and runtime W3D with:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\create-courier-blockout.ps1
 ```
 
-The generator authors `CRLOD0`, a 0.35-ratio decimated `CRLOD1`, and a `BOUNDINGBOX` collision primitive with physical,
-projectile, visibility, and vehicle flags. It exports in W3D `HM` mode and immediately re-imports the file, failing unless
-both visible LOD meshes and exactly one collision box survive the round trip. The W3D output is deterministic; Workbench
-preview PNG and Blender container hashes are recorded for the committed artifacts but are not deterministic build keys.
+The generator authors `CRLOD0`, a 0.35-ratio decimated `CRLOD1`, dedicated `CRTEAM0`/`CRTEAM1` house-colour submeshes,
+and a `BOUNDINGBOX` collision primitive with physical, projectile, visibility, and vehicle flags. It exports in W3D `HM`
+mode and immediately re-imports the file, failing unless both LODs, both `UseRecolorColors` materials, and exactly one
+collision box survive the round trip. The W3D output is deterministic; Workbench preview PNG and Blender container hashes
+are recorded for the committed artifacts but are not deterministic build keys.

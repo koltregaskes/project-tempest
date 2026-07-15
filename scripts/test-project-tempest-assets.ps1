@@ -60,8 +60,8 @@ if ($null -eq $runtimeAsset -or $runtimeAsset.validation.export_mode -ne "HM") {
     throw "The Courier runtime asset must record a validated W3D HM export."
 }
 
-if ($runtimeAsset.validation.imported_render_mesh_count -ne 2 -or $runtimeAsset.validation.imported_box_count -ne 1) {
-    throw "The Courier runtime asset must record two imported LOD meshes and one collision box."
+if ($runtimeAsset.validation.imported_render_mesh_count -ne 4 -or $runtimeAsset.validation.imported_box_count -ne 1) {
+    throw "The Courier runtime asset must record four imported LOD/team meshes and one collision box."
 }
 
 $requiredCollisionFlags = @("PHYSICAL", "PROJECTILE", "VEHICLE", "VIS")
@@ -70,5 +70,9 @@ if (($requiredCollisionFlags -join ",") -ne ($recordedCollisionFlags -join ","))
     throw "The Courier collision validation flags are incomplete: $($recordedCollisionFlags -join ', ')"
 }
 
+if (@($runtimeAsset.validation.recolor_materials).Count -ne 2) {
+    throw "The Courier runtime asset must record one house-colour material for each LOD."
+}
+
 $validated | Format-Table -AutoSize
-Write-Host "Validated $($validated.Count) Project Tempest assets and the Courier HM/LOD/collision contract."
+Write-Host "Validated $($validated.Count) Project Tempest assets and the Courier HM/LOD/collision/team-colour contract."
