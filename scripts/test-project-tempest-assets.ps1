@@ -129,6 +129,12 @@ $requiredSubstationAssetIds = @(
     "PT-MODEL-FG-RELAY-001",
     "PT-PREVIEW-FG-RELAY-001",
     "PT-RUNTIME-FG-RELAY-001",
+    "PT-MODEL-FG-SENTRY-001",
+    "PT-PREVIEW-FG-SENTRY-001",
+    "PT-RUNTIME-FG-SENTRY-001",
+    "PT-MODEL-CH-PYLON-001",
+    "PT-PREVIEW-CH-PYLON-001",
+    "PT-RUNTIME-CH-PYLON-001",
     "PT-TEXTURE-CH-DRONE-001"
 )
 $recordedAssetIds = @($manifest.assets.asset_id)
@@ -137,11 +143,33 @@ if ($missingSubstationAssetIds.Count -gt 0) {
     throw "Substation-kit provenance entries are missing: $($missingSubstationAssetIds -join ', ')"
 }
 
+$newStructureAssets = @($manifest.assets | Where-Object {
+    $_.asset_id -in @(
+        "PT-MODEL-FG-SENTRY-001",
+        "PT-RUNTIME-FG-SENTRY-001",
+        "PT-MODEL-CH-PYLON-001",
+        "PT-RUNTIME-CH-PYLON-001"
+    )
+})
+foreach ($asset in $newStructureAssets) {
+    if (
+        $asset.generation_date -ne "2026-07-18" -or
+        $asset.source_script -ne "../scripts/create-substation-kit.py" -or
+        $asset.rights_basis -ne "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input"
+    ) {
+        throw "Original-source provenance is incomplete for $($asset.asset_id)."
+    }
+}
+
 $droneRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-CH-DRONE-001" }
 $relayRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-RELAY-001" }
+$sentryRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-SENTRY-001" }
+$pylonRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-CH-PYLON-001" }
 $expectedKitCollisionFlags = "PHYSICAL,PROJECTILE,VEHICLE,VIS"
 $expectedDroneMeshes = "DRBODY0,DRBODY1,DRBODY2,DRGLOW0,DRGLOW1,DRGLOW2,DRMAG0,DRMAG1,DRMAG2"
 $expectedRelayMeshes = "HouseColor0,HouseColor1,HouseColor2,RLARMOR0,RLARMOR1,RLARMOR2,RLBODY0,RLBODY1,RLBODY2"
+$expectedSentryMeshes = "HouseColor0,HouseColor1,HouseColor2,STARMOR0,STARMOR1,STARMOR2,STBODY0,STBODY1,STBODY2"
+$expectedPylonMeshes = "PYBODY0,PYBODY1,PYBODY2,PYGLOW0,PYGLOW1,PYGLOW2,PYMAG0,PYMAG1,PYMAG2"
 
 if (
     $null -eq $droneRuntimeAsset -or
@@ -174,6 +202,39 @@ if (
     $relayRuntimeAsset.review.automation_policy -ne "manual_only_never_unattended"
 ) {
     throw "The Freegrid Relay three-LOD runtime/provenance contract is incomplete."
+}
+
+if (
+    $null -eq $sentryRuntimeAsset -or
+    $sentryRuntimeAsset.validation.roundtrip_import -ne "pass" -or
+    $sentryRuntimeAsset.validation.export_mode -ne "HM" -or
+    $sentryRuntimeAsset.validation.imported_render_mesh_count -ne 9 -or
+    $sentryRuntimeAsset.validation.imported_box_count -ne 1 -or
+    $sentryRuntimeAsset.validation.material_passes_per_render_mesh -ne 1 -or
+    (@($sentryRuntimeAsset.validation.authored_lod_vertex_counts) -join ",") -ne "880,470,250" -or
+    (@($sentryRuntimeAsset.validation.render_meshes) -join ",") -ne $expectedSentryMeshes -or
+    (@($sentryRuntimeAsset.validation.texture_files) -join ",") -ne "ptcyan.tga,ptsteel.tga,ptwhite.tga" -or
+    (@($sentryRuntimeAsset.validation.house_color_meshes) -join ",") -ne "HouseColor0,HouseColor1,HouseColor2" -or
+    (@($sentryRuntimeAsset.validation.collision_flags | Sort-Object) -join ",") -ne $expectedKitCollisionFlags -or
+    $sentryRuntimeAsset.review.automation_policy -ne "manual_only_never_unattended"
+) {
+    throw "The Freegrid Arc Sentry three-LOD runtime/provenance contract is incomplete."
+}
+
+if (
+    $null -eq $pylonRuntimeAsset -or
+    $pylonRuntimeAsset.validation.roundtrip_import -ne "pass" -or
+    $pylonRuntimeAsset.validation.export_mode -ne "HM" -or
+    $pylonRuntimeAsset.validation.imported_render_mesh_count -ne 9 -or
+    $pylonRuntimeAsset.validation.imported_box_count -ne 1 -or
+    $pylonRuntimeAsset.validation.material_passes_per_render_mesh -ne 1 -or
+    (@($pylonRuntimeAsset.validation.authored_lod_vertex_counts) -join ",") -ne "820,441,238" -or
+    (@($pylonRuntimeAsset.validation.render_meshes) -join ",") -ne $expectedPylonMeshes -or
+    (@($pylonRuntimeAsset.validation.texture_files) -join ",") -ne "ptcyan.tga,ptmagnta.tga,ptsteel.tga" -or
+    (@($pylonRuntimeAsset.validation.collision_flags | Sort-Object) -join ",") -ne $expectedKitCollisionFlags -or
+    $pylonRuntimeAsset.review.automation_policy -ne "manual_only_never_unattended"
+) {
+    throw "The Chorus Signal Pylon three-LOD runtime/provenance contract is incomplete."
 }
 
 $requiredAudioAssetIds = @(
@@ -261,6 +322,8 @@ if ($buildToolchainContent -notmatch '(?s)ProjectTempest.*?Where-Object\s*\{[^}]
 foreach ($packagedAsset in @(
     "drone.w3d",
     "relay.w3d",
+    "sentry.w3d",
+    "pylon.w3d",
     "ptmagnta.tga",
     "pt_music_substation.wav",
     "pt_music_pressure.wav",
@@ -277,16 +340,24 @@ foreach ($packagedAsset in @(
 }
 
 $demoSource = Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/Code/ProjectTempestDemo.cpp") -Raw
-foreach ($requiredLoad in @("Load_3D_Assets(`"drone.w3d`")", "Load_3D_Assets(`"relay.w3d`")")) {
+foreach ($requiredLoad in @(
+    "Load_3D_Assets(`"drone.w3d`")",
+    "Load_3D_Assets(`"relay.w3d`")",
+    "Load_3D_Assets(`"sentry.w3d`")",
+    "Load_3D_Assets(`"pylon.w3d`")"
+)) {
     if ($demoSource -notmatch [regex]::Escape($requiredLoad)) {
         throw "Project Tempest renderer does not declare required asset load '$requiredLoad'."
     }
 }
 if (
-    $demoSource -notmatch [regex]::Escape('Create_Render_Obj("relay")') -or
+    $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::Dynamo:\s*return\s+"relay";' -or
+    $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::ArcSentry:\s*return\s+"sentry";' -or
+    $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::SignalPylon:\s*return\s+"pylon";' -or
+    $demoSource -notmatch [regex]::Escape('visual.object = g_assetManager->Create_Render_Obj(modelName);') -or
     $demoSource -notmatch [regex]::Escape('isChorus ? "drone"')
 ) {
-    throw "Project Tempest renderer does not map Dynamo/Chorus simulation entities to their dedicated runtime models."
+    throw "Project Tempest renderer does not map Dynamo/Arc Sentry/Signal Pylon/Chorus simulation entities to dedicated runtime models."
 }
 if (
     $demoSource -notmatch [regex]::Escape('const HGDIOBJ previousFont = SelectObject(device, font);') -or

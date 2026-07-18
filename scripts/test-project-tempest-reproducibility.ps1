@@ -92,6 +92,8 @@ try {
         @{ Name = "ptoff.tga"; RelativePath = "ProjectTempest\Content\Art\Textures\ptoff.tga"; A = $runA; B = $runB },
         @{ Name = "drone.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\drone.w3d"; A = $runA; B = $runB },
         @{ Name = "relay.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\relay.w3d"; A = $runA; B = $runB },
+        @{ Name = "sentry.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\sentry.w3d"; A = $runA; B = $runB },
+        @{ Name = "pylon.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\pylon.w3d"; A = $runA; B = $runB },
         @{ Name = "ptmagnta.tga"; RelativePath = "ProjectTempest\Content\Art\Textures\ptmagnta.tga"; A = $runA; B = $runB }
     )
 

@@ -1086,11 +1086,26 @@ void SyncMarkerVisuals()
     }
 }
 
+// TheSuperHackers @feature koltregaskes 18/07/2026 Map authored structure art to its governed simulation kind.
+const char *BuildingModelName(Tempest::BuildingKind kind)
+{
+    switch (kind) {
+        case Tempest::BuildingKind::Dynamo:
+            return "relay";
+        case Tempest::BuildingKind::ArcSentry:
+            return "sentry";
+        case Tempest::BuildingKind::SignalPylon:
+            return "pylon";
+        default:
+            return nullptr;
+    }
+}
+
 bool SyncBuildingModelVisuals()
 {
     for (auto visual = g_buildingModelVisuals.begin(); visual != g_buildingModelVisuals.end();) {
         const Tempest::Building *building = FindBuilding(visual->id);
-        if (building && building->kind == Tempest::BuildingKind::Dynamo) {
+        if (building && BuildingModelName(building->kind)) {
             ++visual;
         } else {
             RemoveRenderObject(visual->object);
@@ -1099,7 +1114,8 @@ bool SyncBuildingModelVisuals()
     }
 
     for (const Tempest::Building &building : g_simulation.GetState().buildings) {
-        if (building.hitPoints <= 0 || building.kind != Tempest::BuildingKind::Dynamo) {
+        const char *modelName = BuildingModelName(building.kind);
+        if (building.hitPoints <= 0 || !modelName) {
             continue;
         }
         auto found = std::find_if(
@@ -1109,7 +1125,7 @@ bool SyncBuildingModelVisuals()
         if (found == g_buildingModelVisuals.end()) {
             BuildingModelVisual visual;
             visual.id = building.id;
-            visual.object = g_assetManager->Create_Render_Obj("relay");
+            visual.object = g_assetManager->Create_Render_Obj(modelName);
             if (!visual.object) {
                 return false;
             }
@@ -1124,7 +1140,8 @@ bool SyncBuildingModelVisuals()
             static_cast<float>(building.position.y) * kSimulationToWorld,
             0.0F));
         found->object->Set_Transform(transform);
-        found->object->Set_ObjectColor(0x16D9FF);
+        found->object->Set_ObjectColor(
+            building.faction == Tempest::Faction::Chorus ? 0xFF1F5A : 0x16D9FF);
     }
     return true;
 }
@@ -1245,7 +1262,9 @@ bool InitialiseRenderer()
     if (!g_assetManager || !g_assetManager->Load_3D_Assets("courier.w3d") ||
         !g_assetManager->Load_3D_Assets("courierd.w3d") ||
         !g_assetManager->Load_3D_Assets("drone.w3d") ||
-        !g_assetManager->Load_3D_Assets("relay.w3d")) {
+        !g_assetManager->Load_3D_Assets("relay.w3d") ||
+        !g_assetManager->Load_3D_Assets("sentry.w3d") ||
+        !g_assetManager->Load_3D_Assets("pylon.w3d")) {
         return false;
     }
 

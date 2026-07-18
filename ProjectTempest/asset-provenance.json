@@ -428,6 +428,176 @@
       "distribution": "internal_development_only"
     },
     {
+      "asset_id": "PT-MODEL-FG-SENTRY-001",
+      "path": "SourceAssets/Models/Freegrid/ArcSentry/sentry-master-v1.blend",
+      "role": "editable procedural Freegrid Arc Sentry master with authored three-level LOD and collision sources",
+      "faction": "Freegrid",
+      "subject": "Arc Sentry defensive structure",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-18",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "9e70e6ba6ed4020d21f44243b0f99d184193d5d1970d04ede3b72b79137b14c2",
+      "review": {
+        "creative": "approved_as_directional_freegrid_defence_blockout",
+        "top_down_readability": "pass_dual_rail_directional_silhouette",
+        "team_colour": "pass_native_housecolor_meshes_in_three_lods",
+        "lod_and_collision": "pass_scripted_three_lods_and_box_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-FG-SENTRY-001",
+      "path": "SourceAssets/Models/Freegrid/ArcSentry/sentry-top-v1.png",
+      "role": "orthographic RTS-view Freegrid Arc Sentry review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-FG-SENTRY-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-18",
+      "sha256": "b7d247bb36d4a5a363adafa62db626b12a22901e6244a21527d2102557049b3c",
+      "review": {
+        "frame": "nonblank_960x720",
+        "top_down_silhouette": "pass",
+        "faction_contrast": "pass_cyan_house_colour_and_white_armour_against_charcoal",
+        "normal_zoom_engine_readability": "pending_manual_only_non_rdp"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-FG-SENTRY-001",
+      "path": "Content/Art/W3D/sentry.w3d",
+      "role": "engine-format Freegrid Arc Sentry with three HLOD states, native house-colour meshes, textures, and collision",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-FG-SENTRY-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-18",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "1d91a766f10e78ea6462f6d8f8df9a4e60ece859902a0001e77985019445cfb9",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod_vertex_counts": [880, 470, 250],
+        "imported_render_mesh_count": 9,
+        "imported_box_count": 1,
+        "material_passes_per_render_mesh": 1,
+        "render_meshes": [
+          "HouseColor0",
+          "HouseColor1",
+          "HouseColor2",
+          "STARMOR0",
+          "STARMOR1",
+          "STARMOR2",
+          "STBODY0",
+          "STBODY1",
+          "STBODY2"
+        ],
+        "texture_files": ["ptcyan.tga", "ptsteel.tga", "ptwhite.tga"],
+        "house_color_meshes": ["HouseColor0", "HouseColor1", "HouseColor2"],
+        "collision_flags": ["PHYSICAL", "PROJECTILE", "VIS", "VEHICLE"],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "lod_roundtrip": "pass_three_levels",
+        "collision_roundtrip": "pass",
+        "texture_roundtrip": "pass",
+        "team_colour_roundtrip": "pass_native_housecolor_mesh_names",
+        "engine_render": "pending_manual_only_non_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-CH-PYLON-001",
+      "path": "SourceAssets/Models/Chorus/SignalPylon/pylon-master-v1.blend",
+      "role": "editable procedural Chorus Signal Pylon master with authored three-level LOD and collision sources",
+      "faction": "Chorus",
+      "subject": "Signal Pylon pressure structure",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-18",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "a18783629fc84422aa5c994caea9c13c39a5939283db7ecf937a711b9b61de62",
+      "review": {
+        "creative": "approved_as_radial_chorus_pressure_blockout",
+        "top_down_readability": "pass_three_leg_ring_and_spire_silhouette",
+        "faction_readability": "pass_magenta_machine_palette_with_cyan_signal_nodes",
+        "lod_and_collision": "pass_scripted_three_lods_and_box_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-CH-PYLON-001",
+      "path": "SourceAssets/Models/Chorus/SignalPylon/pylon-top-v1.png",
+      "role": "orthographic RTS-view Chorus Signal Pylon review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-CH-PYLON-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-18",
+      "sha256": "6d1c517b87325b767545d709b7a769ab842a321437c4bcabf2962f9f187a863e",
+      "review": {
+        "frame": "nonblank_960x720",
+        "top_down_silhouette": "pass",
+        "faction_contrast": "pass_magenta_rings_and_cyan_nodes_against_charcoal",
+        "normal_zoom_engine_readability": "pending_manual_only_non_rdp"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-CH-PYLON-001",
+      "path": "Content/Art/W3D/pylon.w3d",
+      "role": "engine-format Chorus Signal Pylon with three HLOD states, single-pass materials, textures, and collision",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-CH-PYLON-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-18",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "cfd2f0770587dfb52b258fc23860c11751c997b9ad36994e55abdafefe61cdd3",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod_vertex_counts": [820, 441, 238],
+        "imported_render_mesh_count": 9,
+        "imported_box_count": 1,
+        "material_passes_per_render_mesh": 1,
+        "render_meshes": [
+          "PYBODY0",
+          "PYBODY1",
+          "PYBODY2",
+          "PYGLOW0",
+          "PYGLOW1",
+          "PYGLOW2",
+          "PYMAG0",
+          "PYMAG1",
+          "PYMAG2"
+        ],
+        "texture_files": ["ptcyan.tga", "ptmagnta.tga", "ptsteel.tga"],
+        "collision_flags": ["PHYSICAL", "PROJECTILE", "VIS", "VEHICLE"],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "lod_roundtrip": "pass_three_levels",
+        "collision_roundtrip": "pass",
+        "texture_roundtrip": "pass",
+        "engine_render": "pending_manual_only_non_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
       "asset_id": "PT-TEXTURE-CH-DRONE-001",
       "path": "Content/Art/Textures/ptmagnta.tga",
       "role": "Chorus Drone magenta circuit and emissive material map",
