@@ -421,6 +421,24 @@ void TestFactionAbilities()
     Expect(scanSimulation.GetState().abilityCharge == initialCharge,
         "an out-of-bounds grid-link scan spends no ability charge");
 
+    for (const Tempest::Point extremePoint : {
+             Tempest::Point { std::numeric_limits<std::int32_t>::min(), 0 },
+             Tempest::Point { 0, std::numeric_limits<std::int32_t>::min() } }) {
+        scanSimulation.Submit(MakeCommand(
+            scanSimulation.GetState().tick,
+            Tempest::CommandKind::ActivateAbility,
+            0,
+            0,
+            extremePoint,
+            Tempest::UnitKind::CourierScout,
+            Tempest::BuildingKind::Dynamo,
+            Tempest::AbilityKind::GridLinkScan));
+    }
+    scanSimulation.Step();
+    Expect(scanSimulation.GetState().abilityCharge == initialCharge &&
+            scanSimulation.GetState().scanCenter.x == 0 && scanSimulation.GetState().scanCenter.y == 0,
+        "INT32_MIN grid-link scan coordinates are rejected without overflow or state mutation");
+
     const Tempest::Point scanCenter { 9000, 7000 };
     scanSimulation.Submit(MakeCommand(
         scanSimulation.GetState().tick,

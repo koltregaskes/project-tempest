@@ -171,7 +171,7 @@ Controls:
 - `G`, `U`, `I`, and `P` queue a Fabricator rig, Courier scout, Lancer crew, and Coil carrier respectively.
 - `Q` scans for contacts at the pointer; `E` activates emergency overcharge; `F` casts Arc Pulse at the pointer.
 - `Space` or `Esc` pauses; `O` opens settings.
-- `Enter` starts from the briefing; `R` restarts from pause/result; `Esc` exits from briefing/result.
+- `Enter` starts from the briefing; `R` restarts from pause/result; `Esc` exits briefing/result.
 
 The settings overlay supports camera speed, UI scale, master/music/effects levels, edge-scroll disable, reduced motion,
 reduced flashes, colour-independent ownership cues, and collision-safe keyboard-or-mouse remapping for all eighteen

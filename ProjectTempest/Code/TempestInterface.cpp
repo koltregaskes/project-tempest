@@ -116,12 +116,14 @@ InterfaceState::InterfaceState()
     m_bindings[ToIndex(Action::MoveLeft)] = Keyboard('A');
     m_bindings[ToIndex(Action::MoveRight)] = Keyboard('D');
     m_bindings[ToIndex(Action::BuildRelay)] = Keyboard('B');
+    // TheSuperHackers @feature koltregaskes 15/07/2026 Bind Arc Sentry construction to a collision-safe default key.
     m_bindings[ToIndex(Action::BuildArcSentry)] = Keyboard('T');
     m_bindings[ToIndex(Action::ProduceFabricator)] = Keyboard('G');
     m_bindings[ToIndex(Action::ProduceCourier)] = Keyboard('U');
     m_bindings[ToIndex(Action::ProduceLancer)] = Keyboard('I');
     m_bindings[ToIndex(Action::ProduceCoilCarrier)] = Keyboard('P');
     m_bindings[ToIndex(Action::ArcPulse)] = Keyboard('F');
+    // TheSuperHackers @feature koltregaskes 15/07/2026 Bind faction scan and overcharge abilities to remappable defaults.
     m_bindings[ToIndex(Action::GridLinkScan)] = Keyboard('Q');
     m_bindings[ToIndex(Action::EmergencyOvercharge)] = Keyboard('E');
     m_bindings[ToIndex(Action::Pause)] = Keyboard(KeySpace);

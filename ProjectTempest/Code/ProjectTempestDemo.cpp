@@ -409,6 +409,7 @@ bool IssueContextOrder(int mouseX, int mouseY)
     return true;
 }
 
+// TheSuperHackers @feature koltregaskes 15/07/2026 Route player structure requests to the nearest eligible owned node.
 bool BuildStructureAtNearestOwnedNode(Tempest::BuildingKind kind)
 {
     const Tempest::Unit *selected = FindUnit(g_selectedUnitId);
@@ -452,6 +453,7 @@ bool BuildStructureAtNearestOwnedNode(Tempest::BuildingKind kind)
     return false;
 }
 
+// TheSuperHackers @feature koltregaskes 15/07/2026 Surface governed faction abilities with charge and cooldown feedback.
 bool ActivateFactionAbility(Tempest::AbilityKind kind, Tempest::Point point = {})
 {
     if (!g_simulation.CanActivateAbility(kind)) {

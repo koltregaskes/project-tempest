@@ -32,12 +32,14 @@ enum class Action : std::uint8_t {
     MoveLeft,
     MoveRight,
     BuildRelay,
+    // TheSuperHackers @feature koltregaskes 15/07/2026 Add remappable Arc Sentry construction input.
     BuildArcSentry,
     ProduceFabricator,
     ProduceCourier,
     ProduceLancer,
     ProduceCoilCarrier,
     ArcPulse,
+    // TheSuperHackers @feature koltregaskes 15/07/2026 Add remappable Grid Link Scan and Emergency Overcharge input.
     GridLinkScan,
     EmergencyOvercharge,
     Pause,

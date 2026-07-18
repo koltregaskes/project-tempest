@@ -199,6 +199,7 @@ public:
     std::int32_t FreegridCapacity() const;
     std::int32_t UsedFreegridCapacity() const;
     bool CanProduceUnit(std::uint32_t producerId, UnitKind kind) const;
+    // TheSuperHackers @feature koltregaskes 15/07/2026 Expose validated structure and faction-ability availability to the HUD.
     bool CanBuildStructure(std::uint32_t actorId, std::uint32_t nodeId, BuildingKind kind) const;
     bool CanActivateAbility(AbilityKind kind) const;
 

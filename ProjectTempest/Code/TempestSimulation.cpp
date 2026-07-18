@@ -315,6 +315,7 @@ bool Simulation::CanProduceUnit(std::uint32_t producerId, UnitKind kind) const
         m_state.salvage >= unit.salvageCost && UsedFreegridCapacity() + unit.capacityCost <= FreegridCapacity();
 }
 
+// TheSuperHackers @feature koltregaskes 15/07/2026 Add deterministic player structures and governed faction abilities.
 bool Simulation::CanBuildStructure(std::uint32_t actorId, std::uint32_t nodeId, BuildingKind kind) const
 {
     if (kind != BuildingKind::Dynamo && kind != BuildingKind::ArcSentry) {
@@ -402,7 +403,8 @@ void Simulation::Execute(const Command &command)
             return;
         }
         if (command.abilityKind == AbilityKind::GridLinkScan &&
-            (std::abs(command.point.x) > ArenaExtent || std::abs(command.point.y) > ArenaExtent)) {
+            (std::abs(static_cast<std::int64_t>(command.point.x)) > ArenaExtent ||
+                std::abs(static_cast<std::int64_t>(command.point.y)) > ArenaExtent)) {
             return;
         }
         const std::size_t index = static_cast<std::size_t>(command.abilityKind);
