@@ -40,6 +40,8 @@ set(PROJECT_TEMPEST_RUNTIME_ASSETS
     "Content/Art/W3D/courierd.w3d"
     "Content/Art/W3D/drone.w3d"
     "Content/Art/W3D/relay.w3d"
+    "Content/Art/W3D/sentry.w3d"
+    "Content/Art/W3D/pylon.w3d"
     "Content/Art/Textures/ptburn.tga"
     "Content/Art/Textures/ptcable.tga"
     "Content/Art/Textures/ptcyan.tga"

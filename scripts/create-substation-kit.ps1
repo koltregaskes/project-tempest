@@ -32,8 +32,8 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $resultPath)) {
 }
 
 $result = Get-Content -Raw -LiteralPath $resultPath | ConvertFrom-Json
-if (@($result.assets).Count -ne 2) {
-    throw "Substation-kit generation must produce the Drone and Relay."
+if (@($result.assets).Count -ne 4) {
+    throw "Substation-kit generation must produce the Drone, Relay, Arc Sentry, and Signal Pylon."
 }
 $expectedContracts = @{
     drone = @{
@@ -45,6 +45,16 @@ $expectedContracts = @{
         Meshes = @("HouseColor0", "HouseColor1", "HouseColor2", "RLARMOR0", "RLARMOR1", "RLARMOR2", "RLBODY0", "RLBODY1", "RLBODY2")
         Textures = @("ptcyan.tga", "ptsteel.tga", "ptwhite.tga")
         HouseColor = @("HouseColor0", "HouseColor1", "HouseColor2")
+    }
+    sentry = @{
+        Meshes = @("HouseColor0", "HouseColor1", "HouseColor2", "STARMOR0", "STARMOR1", "STARMOR2", "STBODY0", "STBODY1", "STBODY2")
+        Textures = @("ptcyan.tga", "ptsteel.tga", "ptwhite.tga")
+        HouseColor = @("HouseColor0", "HouseColor1", "HouseColor2")
+    }
+    pylon = @{
+        Meshes = @("PYBODY0", "PYBODY1", "PYBODY2", "PYGLOW0", "PYGLOW1", "PYGLOW2", "PYMAG0", "PYMAG1", "PYMAG2")
+        Textures = @("ptcyan.tga", "ptmagnta.tga", "ptsteel.tga")
+        HouseColor = @()
     }
 }
 foreach ($asset in $result.assets) {

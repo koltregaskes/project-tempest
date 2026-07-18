@@ -1,4 +1,4 @@
-"""Create original Chorus Drone and Freegrid Relay W3D assets in headless Blender."""
+"""Create original Substation 9 unit and structure W3D assets in headless Blender."""
 
 import hashlib
 import json
@@ -209,6 +209,67 @@ def build_relay():
         )
         cylinder(f"RLLAMP{index}", (panel[0], panel[1], panel[2] + 0.48), 0.11, 0.20, cyan, vertices=14)
     pipe("RLSPIRE", (0.0, 0.0, 3.18), (0.0, 0.0, 4.32), 0.045, cyan, vertices=10)
+    return objects, groups
+
+
+def build_sentry():
+    objects, groups, box, cylinder, pipe = make_builder()
+    cylinder("STBASE", (0.0, 0.0, 0.22), 1.30, 0.44, steel, vertices=24)
+    cylinder("STPLINTH", (0.0, 0.0, 0.56), 0.82, 0.34, white, vertices=20)
+    box("STSTEM", (0.0, 0.0, 1.12), (0.66, 0.66, 0.96), steel,
+        rotation=(0.0, 0.0, math.radians(45)), bevel=0.10)
+    cylinder("STYAW", (0.0, 0.0, 1.58), 0.74, 0.32, steel, vertices=24)
+    box("STSHIELD", (0.0, -0.12, 1.78), (1.48, 1.00, 0.50), white, bevel=0.12)
+    for side in (-1.0, 1.0):
+        x = side * 0.42
+        box(f"STRAIL{int(side)}", (x, -1.10, 1.92), (0.24, 2.25, 0.24), steel, bevel=0.055)
+        box(f"STCAP{int(side)}", (x, -2.20, 1.92), (0.36, 0.34, 0.36), white, bevel=0.065)
+        cylinder(
+            f"STARC{int(side)}", (x, -2.39, 1.92), 0.11, 0.20, cyan,
+            rotation=(math.radians(90), 0.0, 0.0), vertices=16
+        )
+    cylinder("STSENSOR", (0.0, -0.48, 2.18), 0.24, 0.18, cyan,
+        rotation=(math.radians(90), 0.0, 0.0), vertices=20)
+    for index, angle in enumerate((45.0, 135.0, 225.0, 315.0)):
+        radians = math.radians(angle)
+        start = (math.cos(radians) * 0.62, math.sin(radians) * 0.62, 0.38)
+        end = (math.cos(radians) * 1.28, math.sin(radians) * 1.28, 0.10)
+        pipe(f"STBRACE{index}", start, end, 0.075, steel, vertices=10)
+        box(
+            f"STFOOT{index}", end, (0.48, 0.30, 0.18), white,
+            rotation=(0.0, 0.0, radians), bevel=0.035
+        )
+    return objects, groups
+
+
+def build_pylon():
+    objects, groups, box, cylinder, pipe = make_builder()
+    cylinder("PYBASE", (0.0, 0.0, 0.20), 1.42, 0.40, steel, vertices=24)
+    cylinder("PYCORE", (0.0, 0.0, 0.66), 0.78, 0.64, magenta, vertices=20)
+    box("PYHEART", (0.0, 0.0, 1.52), (0.74, 0.74, 1.35), steel,
+        rotation=(0.0, 0.0, math.radians(45)), bevel=0.10)
+    for level, z in enumerate((1.08, 1.52, 1.96, 2.40)):
+        cylinder(f"PYRING{level}", (0.0, 0.0, z), 0.56 - (level * 0.055), 0.12, magenta, vertices=20)
+    for index, angle in enumerate((0.0, 120.0, 240.0)):
+        radians = math.radians(angle)
+        foot = (math.cos(radians) * 1.52, math.sin(radians) * 1.52, 0.10)
+        shoulder = (math.cos(radians) * 0.32, math.sin(radians) * 0.32, 2.28)
+        pipe(f"PYLEG{index}", foot, shoulder, 0.115, steel, vertices=12)
+        box(
+            f"PYFIN{index}",
+            (math.cos(radians) * 1.18, math.sin(radians) * 1.18, 1.02),
+            (0.24, 0.78, 1.18),
+            magenta,
+            rotation=(math.radians(-10), 0.0, radians),
+            bevel=0.055,
+        )
+        emitter = (math.cos(radians) * 0.92, math.sin(radians) * 0.92, 2.72)
+        pipe(f"PYARM{index}", shoulder, emitter, 0.075, steel, vertices=10)
+        cylinder(f"PYGLOW{index}", emitter, 0.18, 0.22, cyan, vertices=16)
+    cylinder("PYCROWN", (0.0, 0.0, 2.78), 0.48, 0.24, magenta, vertices=20)
+    pipe("PYSPIRE", (0.0, 0.0, 2.80), (0.0, 0.0, 4.30), 0.065, cyan, vertices=12)
+    box("PYBEACON", (0.0, 0.0, 4.38), (0.32, 0.32, 0.32), magenta,
+        rotation=(math.radians(35), 0.0, math.radians(45)), bevel=0.045)
     return objects, groups
 
 
@@ -434,6 +495,34 @@ results.append(export_asset(
     (2.5, 2.5, 4.4),
     5.7,
     2.1,
+))
+
+clear_scene()
+sentry_parts, sentry_groups = build_sentry()
+results.append(export_asset(
+    {"slug": "sentry", "runtime": "sentry", "source_parts": ("Freegrid", "ArcSentry")},
+    sentry_parts,
+    sentry_groups,
+    ((steel, "STBODY", 0.52, 0.26), (white, "STARMOR", 0.50, 0.24),
+     (cyan, "HouseColor", 0.55, 0.28)),
+    (0.0, -0.45, 1.12),
+    (3.2, 4.6, 2.4),
+    6.0,
+    1.2,
+))
+
+clear_scene()
+pylon_parts, pylon_groups = build_pylon()
+results.append(export_asset(
+    {"slug": "pylon", "runtime": "pylon", "source_parts": ("Chorus", "SignalPylon")},
+    pylon_parts,
+    pylon_groups,
+    ((steel, "PYBODY", 0.52, 0.26), (magenta, "PYMAG", 0.50, 0.24),
+     (cyan, "PYGLOW", 0.55, 0.28)),
+    (0.0, 0.0, 2.20),
+    (3.2, 3.2, 4.5),
+    5.8,
+    2.2,
 ))
 
 result = {
