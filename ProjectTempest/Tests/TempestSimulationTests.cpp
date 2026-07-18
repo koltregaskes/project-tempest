@@ -65,7 +65,9 @@ Tempest::Command MakeCommand(
     std::uint32_t actorId = 0,
     std::uint32_t targetId = 0,
     Tempest::Point point = {},
-    Tempest::UnitKind unitKind = Tempest::UnitKind::CourierScout)
+    Tempest::UnitKind unitKind = Tempest::UnitKind::CourierScout,
+    Tempest::BuildingKind buildingKind = Tempest::BuildingKind::Dynamo,
+    Tempest::AbilityKind abilityKind = Tempest::AbilityKind::GridLinkScan)
 {
     Tempest::Command command {};
     command.executeTick = executeTick;
@@ -74,6 +76,8 @@ Tempest::Command MakeCommand(
     command.targetId = targetId;
     command.point = point;
     command.unitKind = unitKind;
+    command.buildingKind = buildingKind;
+    command.abilityKind = abilityKind;
     return command;
 }
 
@@ -136,6 +140,16 @@ const Tempest::Unit *FindUnitById(const Tempest::MatchState &state, std::uint32_
     return nullptr;
 }
 
+const Tempest::Building *FindBuildingById(const Tempest::MatchState &state, std::uint32_t id)
+{
+    for (const Tempest::Building &building : state.buildings) {
+        if (building.id == id) {
+            return &building;
+        }
+    }
+    return nullptr;
+}
+
 std::uint32_t FindDrone(const Tempest::MatchState &state)
 {
     for (const Tempest::Unit &unit : state.units) {
@@ -180,11 +194,25 @@ void TestContentDefinitions()
         Expect(definition.faction == (index < 4 ? Tempest::Faction::Freegrid : Tempest::Faction::Chorus),
             "structure definitions preserve the governed four-to-three faction split");
     }
+    for (const Tempest::BuildingKind kind : {
+             Tempest::BuildingKind::ArcSentry,
+             Tempest::BuildingKind::SignalPylon }) {
+        const Tempest::BuildingDefinition &definition = Tempest::GetBuildingDefinition(kind);
+        Expect(definition.attackDamage > 0 && definition.attackCooldownTicks > 0 && definition.attackRange > 0,
+            "Arc Sentry and Signal Pylon define deterministic defensive pressure");
+    }
     Expect(std::string(Tempest::GetAbilityDefinition(Tempest::AbilityKind::GridLinkScan).displayName) ==
             "Grid-link scan" &&
             std::string(Tempest::GetAbilityDefinition(Tempest::AbilityKind::EmergencyOvercharge).displayName) ==
                 "Emergency overcharge",
         "ability definitions use the governed Substation 9 vocabulary");
+    for (std::size_t index = 0; index < static_cast<std::size_t>(Tempest::AbilityKind::Count); ++index) {
+        const Tempest::AbilityDefinition &definition =
+            Tempest::GetAbilityDefinition(static_cast<Tempest::AbilityKind>(index));
+        Expect(definition.abilityChargeCost > 0 && definition.cooldownTicks > definition.durationTicks &&
+                definition.durationTicks > 0,
+            "every faction ability defines a positive cost, active duration, and longer cooldown");
+    }
 }
 
 void TestCompleteRosterProduction()
@@ -263,7 +291,7 @@ void TestCompleteRosterProduction()
     heavySimulation.Step(Tempest::TicksPerSecond * 20);
     heavySimulation.Submit(MakeCommand(
         heavySimulation.GetState().tick,
-        Tempest::CommandKind::BuildRelay,
+        Tempest::CommandKind::BuildStructure,
         rigId,
         nodeId));
     heavySimulation.Step(Tempest::TicksPerSecond * 4 + 1);
@@ -285,6 +313,195 @@ void TestCompleteRosterProduction()
     Expect(heavySimulation.GetState().salvage >= heavySalvageBefore -
             Tempest::GetUnitDefinition(Tempest::UnitKind::CoilCarrier).salvageCost,
         "Coil carrier production spends one cost while relay income continues");
+}
+
+void TestStructuresAndDefensivePressure()
+{
+    Tempest::Simulation simulation;
+    const std::uint32_t courierId = FindCourier(simulation.GetState());
+    const std::uint32_t rigId = FindUnit(simulation.GetState(), Tempest::UnitKind::FabricatorRig);
+    const std::uint32_t nodeId = simulation.GetState().nodes.front().id;
+    Expect(FindBuilding(simulation.GetState(), Tempest::BuildingKind::SignalPylon) != 0,
+        "Substation 9 starts with the governed Chorus Signal Pylon pressure structure");
+
+    simulation.Submit(MakeCommand(0, Tempest::CommandKind::Capture, courierId, nodeId));
+    simulation.Step(260);
+    Expect(simulation.GetState().nodes.front().owner == Tempest::Faction::Freegrid,
+        "structure fixture captures owned territory before construction");
+    Expect(simulation.CanBuildStructure(rigId, nodeId, Tempest::BuildingKind::ArcSentry),
+        "a live Fabricator can construct an Arc Sentry at eligible owned territory");
+    Expect(!simulation.CanBuildStructure(rigId, nodeId, static_cast<Tempest::BuildingKind>(255)),
+        "out-of-range structure kinds are rejected without definition lookup aborts");
+    const std::int32_t salvageBefore = simulation.GetState().salvage;
+    simulation.Submit(MakeCommand(
+        simulation.GetState().tick,
+        Tempest::CommandKind::BuildStructure,
+        rigId,
+        nodeId,
+        {},
+        Tempest::UnitKind::CourierScout,
+        Tempest::BuildingKind::ArcSentry));
+    simulation.Step();
+    const std::uint32_t sentryId = FindBuilding(simulation.GetState(), Tempest::BuildingKind::ArcSentry);
+    const Tempest::Building *sentry = FindBuildingById(simulation.GetState(), sentryId);
+    Expect(sentry && !sentry->complete && simulation.GetState().salvage ==
+            salvageBefore - Tempest::GetBuildingDefinition(Tempest::BuildingKind::ArcSentry).salvageCost,
+        "Arc Sentry construction reserves salvage exactly once and starts incomplete");
+    const std::int32_t salvageAfterBuild = simulation.GetState().salvage;
+    simulation.Submit(MakeCommand(
+        simulation.GetState().tick,
+        Tempest::CommandKind::BuildStructure,
+        rigId,
+        nodeId,
+        {},
+        Tempest::UnitKind::CourierScout,
+        Tempest::BuildingKind::ArcSentry));
+    simulation.Step();
+    Expect(simulation.GetState().salvage == salvageAfterBuild,
+        "duplicate Arc Sentry construction is rejected without spending salvage");
+    simulation.Step(Tempest::TicksPerSecond * 5);
+    sentry = FindBuildingById(simulation.GetState(), sentryId);
+    Expect(sentry && sentry->complete, "Arc Sentry construction completes on its deterministic build timer");
+
+    bool sentryFired = false;
+    for (int tick = 0; tick < Tempest::TicksPerSecond * 75 && !sentryFired; ++tick) {
+        simulation.Step();
+        sentry = FindBuildingById(simulation.GetState(), sentryId);
+        sentryFired = sentry && sentry->attackCooldownTicks > 0;
+    }
+    Expect(sentryFired, "completed Arc Sentry acquires and attacks deterministic Chorus pressure");
+
+    Tempest::Simulation pylonSimulation;
+    const std::uint32_t pylonCourierId = FindCourier(pylonSimulation.GetState());
+    const std::uint32_t pylonId = FindBuilding(pylonSimulation.GetState(), Tempest::BuildingKind::SignalPylon);
+    const Tempest::Unit *pylonCourier = FindUnitById(pylonSimulation.GetState(), pylonCourierId);
+    const std::int32_t courierMaximum = pylonCourier ? pylonCourier->maximumHitPoints : 0;
+    pylonSimulation.Submit(MakeCommand(
+        0,
+        Tempest::CommandKind::Move,
+        pylonCourierId,
+        0,
+        { 7200, 6100 }));
+    pylonSimulation.Step(Tempest::TicksPerSecond * 18);
+    const Tempest::Building *pylon = FindBuildingById(pylonSimulation.GetState(), pylonId);
+    pylonCourier = FindUnitById(pylonSimulation.GetState(), pylonCourierId);
+    Expect(pylon && pylon->attackCooldownTicks > 0 && pylonCourier &&
+            pylonCourier->hitPoints < courierMaximum,
+        "Signal Pylon applies deterministic hostile map pressure inside its range");
+}
+
+void TestFactionAbilities()
+{
+    Tempest::Simulation scanSimulation;
+    const std::int32_t initialCharge = scanSimulation.GetState().abilityCharge;
+    Expect(!scanSimulation.CanActivateAbility(static_cast<Tempest::AbilityKind>(255)),
+        "out-of-range faction abilities are rejected without definition lookup aborts");
+    scanSimulation.Submit(MakeCommand(
+        0,
+        Tempest::CommandKind::ActivateAbility,
+        0,
+        0,
+        {},
+        Tempest::UnitKind::CourierScout,
+        Tempest::BuildingKind::Dynamo,
+        static_cast<Tempest::AbilityKind>(255)));
+    scanSimulation.Step();
+    Expect(scanSimulation.GetState().abilityCharge == initialCharge,
+        "out-of-range ability commands are ignored without spending charge");
+    scanSimulation.Submit(MakeCommand(
+        scanSimulation.GetState().tick,
+        Tempest::CommandKind::ActivateAbility,
+        0,
+        0,
+        { 19000, 0 },
+        Tempest::UnitKind::CourierScout,
+        Tempest::BuildingKind::Dynamo,
+        Tempest::AbilityKind::GridLinkScan));
+    scanSimulation.Step();
+    Expect(scanSimulation.GetState().abilityCharge == initialCharge,
+        "an out-of-bounds grid-link scan spends no ability charge");
+
+    for (const Tempest::Point extremePoint : {
+             Tempest::Point { std::numeric_limits<std::int32_t>::min(), 0 },
+             Tempest::Point { 0, std::numeric_limits<std::int32_t>::min() } }) {
+        scanSimulation.Submit(MakeCommand(
+            scanSimulation.GetState().tick,
+            Tempest::CommandKind::ActivateAbility,
+            0,
+            0,
+            extremePoint,
+            Tempest::UnitKind::CourierScout,
+            Tempest::BuildingKind::Dynamo,
+            Tempest::AbilityKind::GridLinkScan));
+    }
+    scanSimulation.Step();
+    Expect(scanSimulation.GetState().abilityCharge == initialCharge &&
+            scanSimulation.GetState().scanCenter.x == 0 && scanSimulation.GetState().scanCenter.y == 0,
+        "INT32_MIN grid-link scan coordinates are rejected without overflow or state mutation");
+
+    const Tempest::Point scanCenter { 9000, 7000 };
+    scanSimulation.Submit(MakeCommand(
+        scanSimulation.GetState().tick,
+        Tempest::CommandKind::ActivateAbility,
+        0,
+        0,
+        scanCenter,
+        Tempest::UnitKind::CourierScout,
+        Tempest::BuildingKind::Dynamo,
+        Tempest::AbilityKind::GridLinkScan));
+    scanSimulation.Step();
+    const Tempest::AbilityDefinition &scan =
+        Tempest::GetAbilityDefinition(Tempest::AbilityKind::GridLinkScan);
+    const std::size_t scanIndex = static_cast<std::size_t>(Tempest::AbilityKind::GridLinkScan);
+    Expect(scanSimulation.GetState().abilityCharge == initialCharge - scan.abilityChargeCost &&
+            scanSimulation.GetState().abilityDurationTicks[scanIndex] == scan.durationTicks - 1 &&
+            scanSimulation.GetState().abilityCooldownTicks[scanIndex] == scan.cooldownTicks - 1 &&
+            scanSimulation.GetState().scanCenter.x == scanCenter.x &&
+            scanSimulation.GetState().scanCenter.y == scanCenter.y,
+        "grid-link scan charges once and records deterministic target, duration, and cooldown state");
+    const std::int32_t chargeAfterScan = scanSimulation.GetState().abilityCharge;
+    scanSimulation.Submit(MakeCommand(
+        scanSimulation.GetState().tick,
+        Tempest::CommandKind::ActivateAbility,
+        0,
+        0,
+        scanCenter,
+        Tempest::UnitKind::CourierScout,
+        Tempest::BuildingKind::Dynamo,
+        Tempest::AbilityKind::GridLinkScan));
+    scanSimulation.Step();
+    Expect(scanSimulation.GetState().abilityCharge == chargeAfterScan,
+        "grid-link scan cannot double-spend while its cooldown is active");
+
+    Tempest::Simulation baseline;
+    Tempest::Simulation overcharged;
+    const std::uint32_t baselineRig = FindUnit(baseline.GetState(), Tempest::UnitKind::FabricatorRig);
+    const std::uint32_t overchargedRig = FindUnit(overcharged.GetState(), Tempest::UnitKind::FabricatorRig);
+    const Tempest::Point destination { 0, 0 };
+    baseline.Submit(MakeCommand(0, Tempest::CommandKind::Move, baselineRig, 0, destination));
+    overcharged.Submit(MakeCommand(0, Tempest::CommandKind::Move, overchargedRig, 0, destination));
+    overcharged.Submit(MakeCommand(
+        0,
+        Tempest::CommandKind::ActivateAbility,
+        0,
+        0,
+        {},
+        Tempest::UnitKind::CourierScout,
+        Tempest::BuildingKind::Dynamo,
+        Tempest::AbilityKind::EmergencyOvercharge));
+    baseline.Step();
+    overcharged.Step();
+    const Tempest::Unit *baselineUnit = FindUnitById(baseline.GetState(), baselineRig);
+    const Tempest::Unit *overchargedUnit = FindUnitById(overcharged.GetState(), overchargedRig);
+    const Tempest::AbilityDefinition &overcharge =
+        Tempest::GetAbilityDefinition(Tempest::AbilityKind::EmergencyOvercharge);
+    const std::size_t overchargeIndex = static_cast<std::size_t>(Tempest::AbilityKind::EmergencyOvercharge);
+    Expect(baselineUnit && overchargedUnit && overchargedUnit->position.x > baselineUnit->position.x,
+        "emergency overcharge provides a deterministic Freegrid movement spike");
+    Expect(overcharged.GetState().abilityCharge == 50 - overcharge.abilityChargeCost &&
+            overcharged.GetState().abilityDurationTicks[overchargeIndex] == overcharge.durationTicks - 1 &&
+            overcharged.GetState().abilityCooldownTicks[overchargeIndex] == overcharge.cooldownTicks - 1,
+        "emergency overcharge enforces its charge, duration, and cooldown contract");
 }
 
 void TestFabricatorRepair()
@@ -386,7 +603,7 @@ void TestEconomyConstructionAndProduction()
     const std::int32_t salvageBeforeRelay = simulation.GetState().salvage;
     simulation.Submit(MakeCommand(
         simulation.GetState().tick,
-        Tempest::CommandKind::BuildRelay,
+        Tempest::CommandKind::BuildStructure,
         courierId,
         nodeId));
     simulation.Step();
@@ -394,7 +611,7 @@ void TestEconomyConstructionAndProduction()
         "a non-Fabricator cannot restore a relay or spend salvage");
     simulation.Submit(MakeCommand(
         simulation.GetState().tick,
-        Tempest::CommandKind::BuildRelay,
+        Tempest::CommandKind::BuildStructure,
         rigId,
         nodeId));
     simulation.Step();
@@ -633,7 +850,7 @@ std::vector<std::uint64_t> RunDeterministicScript()
 
 void TestDeterministicReplay()
 {
-    constexpr std::uint64_t ExpectedFinalChecksum = 12250181510327280162ULL;
+    constexpr std::uint64_t ExpectedFinalChecksum = 12677904989527814140ULL;
     const std::vector<std::uint64_t> first = RunDeterministicScript();
     const std::vector<std::uint64_t> second = RunDeterministicScript();
     Expect(first == second, "identical command streams produce identical per-tick checksums");
@@ -658,14 +875,17 @@ void TestInterfaceFlow()
             select.action == Tempest::Ui::Action::PrimarySelect,
         "the default primary mouse binding enters the gameplay action stream");
     for (const Tempest::Ui::Action action : {
+             Tempest::Ui::Action::BuildArcSentry,
              Tempest::Ui::Action::ProduceFabricator,
              Tempest::Ui::Action::ProduceCourier,
              Tempest::Ui::Action::ProduceLancer,
-             Tempest::Ui::Action::ProduceCoilCarrier }) {
-        const Tempest::Ui::InputEvent production =
+             Tempest::Ui::Action::ProduceCoilCarrier,
+             Tempest::Ui::Action::GridLinkScan,
+             Tempest::Ui::Action::EmergencyOvercharge }) {
+        const Tempest::Ui::InputEvent gameplay =
             interfaceState.HandleKey(interfaceState.BindingFor(action).code);
-        Expect(production.intent == Tempest::Ui::Intent::GameplayAction && production.action == action,
-            "each roster production binding enters the gameplay action stream");
+        Expect(gameplay.intent == Tempest::Ui::Intent::GameplayAction && gameplay.action == action,
+            "each structure, roster, and ability binding enters the gameplay action stream");
     }
 
     interfaceState.HandleKey(interfaceState.BindingFor(Tempest::Ui::Action::Pause).code);
@@ -789,23 +1009,40 @@ void TestConfigurationPersistence()
     Expect(restored.SerializeConfiguration() == saved,
         "configuration serialization is deterministic");
 
-    std::string legacy = saved;
-    legacy.replace(legacy.find("project_tempest_settings=2"),
+    const auto eraseBinding = [](std::string &content, const std::string &action) {
+        const std::string prefix = "binding." + action + '=';
+        const std::size_t start = content.find(prefix);
+        Expect(start != std::string::npos, "migration fixture contains the binding being removed");
+        content.erase(start, content.find('\n', start) - start + 1);
+    };
+    std::string versionTwo = saved;
+    versionTwo.replace(versionTwo.find("project_tempest_settings=3"),
+        std::string("project_tempest_settings=3").size(), "project_tempest_settings=2");
+    for (const std::string action : { "BuildArcSentry", "GridLinkScan", "EmergencyOvercharge" }) {
+        eraseBinding(versionTwo, action);
+    }
+    Tempest::Ui::InterfaceState versionTwoMigrated;
+    Expect(versionTwoMigrated.LoadConfiguration(versionTwo),
+        "a version-two settings file migrates with new structure and ability bindings");
+    Expect(versionTwoMigrated.BindingFor(Tempest::Ui::Action::BuildArcSentry).code == 'T' &&
+            versionTwoMigrated.BindingFor(Tempest::Ui::Action::GridLinkScan).code == 'Q' &&
+            versionTwoMigrated.BindingFor(Tempest::Ui::Action::EmergencyOvercharge).code == 'E',
+        "version-two migration supplies deterministic defaults for the new actions");
+
+    std::string versionOne = versionTwo;
+    versionOne.replace(versionOne.find("project_tempest_settings=2"),
         std::string("project_tempest_settings=2").size(), "project_tempest_settings=1");
     for (const std::string action : { "ProduceFabricator", "ProduceLancer", "ProduceCoilCarrier" }) {
-        const std::string prefix = "binding." + action + '=';
-        const std::size_t start = legacy.find(prefix);
-        Expect(start != std::string::npos, "version-two fixture contains each new roster binding");
-        legacy.erase(start, legacy.find('\n', start) - start + 1);
+        eraseBinding(versionOne, action);
     }
     Tempest::Ui::InterfaceState migrated;
-    Expect(migrated.LoadConfiguration(legacy), "a version-one settings file migrates with new roster defaults");
+    Expect(migrated.LoadConfiguration(versionOne), "a version-one settings file migrates with all new action defaults");
     Expect(migrated.BindingFor(Tempest::Ui::Action::ProduceFabricator).code == 'G' &&
             migrated.BindingFor(Tempest::Ui::Action::ProduceLancer).code == 'I' &&
             migrated.BindingFor(Tempest::Ui::Action::ProduceCoilCarrier).code == 'P',
         "settings migration preserves deterministic defaults for newly introduced roster actions");
 
-    std::string collidingLegacy = legacy;
+    std::string collidingLegacy = versionOne;
     const std::size_t oldMoveDown = collidingLegacy.find("binding.MoveDown=keyboard:83");
     Expect(oldMoveDown != std::string::npos, "legacy fixture contains the default move-down binding");
     collidingLegacy.replace(
@@ -883,6 +1120,8 @@ int main()
     TestEconomyConstructionAndProduction();
     TestCapacityReservations();
     TestCompleteRosterProduction();
+    TestStructuresAndDefensivePressure();
+    TestFactionAbilities();
     TestFabricatorRepair();
     TestEscalatingChorusReinforcements();
     TestArcPulseRange();

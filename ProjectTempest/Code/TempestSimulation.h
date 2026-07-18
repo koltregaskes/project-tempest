@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <vector>
@@ -67,6 +69,9 @@ struct BuildingDefinition {
     std::int32_t salvageCost = 0;
     std::int32_t buildTicks = 0;
     std::int32_t capacityProvided = 0;
+    std::int32_t attackDamage = 0;
+    std::int32_t attackCooldownTicks = 0;
+    std::int32_t attackRange = 0;
 };
 
 struct AbilityDefinition {
@@ -119,6 +124,7 @@ struct Building {
     std::int32_t maximumHitPoints = 0;
     bool complete = true;
     std::int32_t remainingBuildTicks = 0;
+    std::int32_t attackCooldownTicks = 0;
 };
 
 struct ControlNode {
@@ -133,9 +139,10 @@ enum class CommandKind : std::uint8_t {
     Move,
     Capture,
     Attack,
-    BuildRelay,
+    BuildStructure,
     ProduceUnit,
     Repair,
+    ActivateAbility,
     ArcPulse,
     TogglePause,
     Restart,
@@ -148,6 +155,8 @@ struct Command {
     std::uint32_t targetId = 0;
     Point point;
     UnitKind unitKind = UnitKind::CourierScout;
+    BuildingKind buildingKind = BuildingKind::Dynamo;
+    AbilityKind abilityKind = AbilityKind::GridLinkScan;
     std::uint64_t sequence = 0;
 };
 
@@ -166,6 +175,9 @@ struct MatchState {
     std::int32_t incomeRemainderTicks = 0;
     std::int32_t chorusSpawnTicks = 0;
     std::uint32_t chorusWave = 0;
+    std::array<std::int32_t, static_cast<std::size_t>(AbilityKind::Count)> abilityCooldownTicks {};
+    std::array<std::int32_t, static_cast<std::size_t>(AbilityKind::Count)> abilityDurationTicks {};
+    Point scanCenter;
     std::uint32_t nextEntityId = 1;
     std::vector<Unit> units;
     std::vector<Building> buildings;
@@ -187,6 +199,9 @@ public:
     std::int32_t FreegridCapacity() const;
     std::int32_t UsedFreegridCapacity() const;
     bool CanProduceUnit(std::uint32_t producerId, UnitKind kind) const;
+    // TheSuperHackers @feature koltregaskes 15/07/2026 Expose validated structure and faction-ability availability to the HUD.
+    bool CanBuildStructure(std::uint32_t actorId, std::uint32_t nodeId, BuildingKind kind) const;
+    bool CanActivateAbility(AbilityKind kind) const;
 
 private:
     MatchState m_state;
@@ -199,6 +214,7 @@ private:
     ControlNode *FindNode(std::uint32_t id);
     const Unit *FindUnit(std::uint32_t id) const;
     const Building *FindBuilding(std::uint32_t id) const;
+    const ControlNode *FindNode(std::uint32_t id) const;
 
     std::uint32_t AddUnit(Faction faction, UnitKind kind, Point position);
     std::uint32_t AddBuilding(Faction faction, BuildingKind kind, Point position, bool complete = true);
@@ -207,7 +223,9 @@ private:
     void UpdateConstructionAndProduction();
     void UpdateMovementAndCapture();
     void UpdateRepairs();
+    void UpdateAbilities();
     void UpdateCombat();
+    void UpdateBuildingCombat();
     void UpdateEconomyAndAi();
     void UpdateOutcome();
 };

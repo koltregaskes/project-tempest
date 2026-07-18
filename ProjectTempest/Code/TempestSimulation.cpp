@@ -18,6 +18,11 @@ constexpr std::int32_t RepairHitPointsPerSalvage = 4;
 constexpr std::int32_t ArcPulseRange = 3200;
 constexpr std::int32_t ArcPulseAbilityChargeCost = 25;
 constexpr std::int32_t ArcPulseCooldownTicks = TicksPerSecond * 12;
+constexpr std::int32_t ArenaExtent = 18000;
+constexpr std::int32_t OverchargeDamageNumerator = 3;
+constexpr std::int32_t OverchargeDamageDenominator = 2;
+constexpr std::int32_t OverchargeMoveNumerator = 5;
+constexpr std::int32_t OverchargeMoveDenominator = 4;
 
 constexpr std::array<UnitDefinition, static_cast<std::size_t>(UnitKind::Count)> UnitDefinitions {{
     { "Fabricator rig", Faction::Freegrid, 240, 250, TicksPerSecond * 5, 2, 80, 8, 12, 1200 },
@@ -30,13 +35,13 @@ constexpr std::array<UnitDefinition, static_cast<std::size_t>(UnitKind::Count)> 
 }};
 
 constexpr std::array<BuildingDefinition, static_cast<std::size_t>(BuildingKind::Count)> BuildingDefinitions {{
-    { "Relay Core", Faction::Freegrid, 900, 0, 0, 4 },
-    { "Fabricator Bay", Faction::Freegrid, 650, 300, TicksPerSecond * 6, 2 },
-    { "Dynamo", Faction::Freegrid, 260, 200, TicksPerSecond * 4, 4 },
-    { "Arc Sentry", Faction::Freegrid, 400, 250, TicksPerSecond * 5, 0 },
-    { "Machine Nest", Faction::Chorus, 500, 0, 0, 0 },
-    { "Signal Pylon", Faction::Chorus, 340, 0, 0, 0 },
-    { "Chorus Spire", Faction::Chorus, 800, 0, 0, 0 },
+    { "Relay Core", Faction::Freegrid, 900, 0, 0, 4, 0, 0, 0 },
+    { "Fabricator Bay", Faction::Freegrid, 650, 300, TicksPerSecond * 6, 2, 0, 0, 0 },
+    { "Dynamo", Faction::Freegrid, 260, 200, TicksPerSecond * 4, 4, 0, 0, 0 },
+    { "Arc Sentry", Faction::Freegrid, 400, 250, TicksPerSecond * 5, 0, 30, TicksPerSecond, 2800 },
+    { "Machine Nest", Faction::Chorus, 500, 0, 0, 0, 0, 0, 0 },
+    { "Signal Pylon", Faction::Chorus, 340, 0, 0, 0, 22, TicksPerSecond * 3 / 2, 3200 },
+    { "Chorus Spire", Faction::Chorus, 800, 0, 0, 0, 0, 0, 0 },
 }};
 
 constexpr std::array<AbilityDefinition, static_cast<std::size_t>(AbilityKind::Count)> AbilityDefinitions {{
@@ -64,6 +69,14 @@ std::int64_t DistanceSquared(Point left, Point right)
 bool IsWithin(Point left, Point right, std::int32_t range)
 {
     return DistanceSquared(left, right) <= static_cast<std::int64_t>(range) * range;
+}
+
+Point StructurePosition(BuildingKind kind, Point nodePosition)
+{
+    if (kind == BuildingKind::ArcSentry) {
+        return { nodePosition.x + 900, nodePosition.y - 650 };
+    }
+    return nodePosition;
 }
 
 void MoveTowards(Point &position, Point destination, std::int32_t moveDistancePerTick)
@@ -127,6 +140,7 @@ void Simulation::Reset()
     AddBuilding(Faction::Freegrid, BuildingKind::RelayCore, { -14500, -10500 });
     AddBuilding(Faction::Freegrid, BuildingKind::FabricatorBay, { -12800, -10800 });
     AddBuilding(Faction::Chorus, BuildingKind::MachineNest, { 12600, 9400 });
+    AddBuilding(Faction::Chorus, BuildingKind::SignalPylon, { 7200, 6100 });
     AddBuilding(Faction::Chorus, BuildingKind::ChorusSpire, { 14500, 10500 });
 
     for (Point position : { Point { -4500, -2500 }, Point { 1000, 2500 }, Point { 6500, 6500 } }) {
@@ -167,6 +181,8 @@ void Simulation::Step()
     UpdateMovementAndCapture();
     UpdateRepairs();
     UpdateCombat();
+    UpdateBuildingCombat();
+    UpdateAbilities();
     UpdateEconomyAndAi();
     UpdateOutcome();
     ++m_state.tick;
@@ -217,6 +233,14 @@ const Building *Simulation::FindBuilding(std::uint32_t id) const
         return building.id == id;
     });
     return found == m_state.buildings.end() ? nullptr : &*found;
+}
+
+const ControlNode *Simulation::FindNode(std::uint32_t id) const
+{
+    const auto found = std::find_if(m_state.nodes.begin(), m_state.nodes.end(), [id](const ControlNode &node) {
+        return node.id == id;
+    });
+    return found == m_state.nodes.end() ? nullptr : &*found;
 }
 
 std::uint32_t Simulation::AddUnit(Faction faction, UnitKind kind, Point position)
@@ -291,6 +315,37 @@ bool Simulation::CanProduceUnit(std::uint32_t producerId, UnitKind kind) const
         m_state.salvage >= unit.salvageCost && UsedFreegridCapacity() + unit.capacityCost <= FreegridCapacity();
 }
 
+// TheSuperHackers @feature koltregaskes 15/07/2026 Add deterministic player structures and governed faction abilities.
+bool Simulation::CanBuildStructure(std::uint32_t actorId, std::uint32_t nodeId, BuildingKind kind) const
+{
+    if (kind != BuildingKind::Dynamo && kind != BuildingKind::ArcSentry) {
+        return false;
+    }
+    const Unit *actor = FindUnit(actorId);
+    const ControlNode *node = FindNode(nodeId);
+    const BuildingDefinition &definition = GetBuildingDefinition(kind);
+    if (!actor || !actor->alive || actor->faction != Faction::Freegrid ||
+        actor->kind != UnitKind::FabricatorRig || !node || node->owner != Faction::Freegrid ||
+        m_state.salvage < definition.salvageCost) {
+        return false;
+    }
+    const Point position = StructurePosition(kind, node->position);
+    return std::none_of(m_state.buildings.begin(), m_state.buildings.end(), [kind, position](const Building &building) {
+        return building.kind == kind && building.hitPoints > 0 && IsWithin(building.position, position, 100);
+    });
+}
+
+bool Simulation::CanActivateAbility(AbilityKind kind) const
+{
+    const std::size_t index = static_cast<std::size_t>(kind);
+    if (index >= static_cast<std::size_t>(AbilityKind::Count)) {
+        return false;
+    }
+    const AbilityDefinition &definition = GetAbilityDefinition(kind);
+    return m_state.outcome == MatchOutcome::InProgress && !m_state.paused &&
+        m_state.abilityCharge >= definition.abilityChargeCost && m_state.abilityCooldownTicks[index] == 0;
+}
+
 void Simulation::ExecuteDueCommands()
 {
     while (!m_commands.empty() && m_commands.front().executeTick <= m_state.tick) {
@@ -316,22 +371,19 @@ void Simulation::Execute(const Command &command)
     }
 
     Unit *actor = FindUnit(command.actorId);
-    if (command.kind == CommandKind::BuildRelay) {
-        const BuildingDefinition &dynamo = GetBuildingDefinition(BuildingKind::Dynamo);
-        ControlNode *node = FindNode(command.targetId);
-        if (!actor || !actor->alive || actor->faction != Faction::Freegrid ||
-            actor->kind != UnitKind::FabricatorRig || !node || node->owner != Faction::Freegrid ||
-            m_state.salvage < dynamo.salvageCost) {
+    if (command.kind == CommandKind::BuildStructure) {
+        if (!CanBuildStructure(command.actorId, command.targetId, command.buildingKind)) {
             return;
         }
-        const bool alreadyBuilt = std::any_of(
-            m_state.buildings.begin(), m_state.buildings.end(), [node](const Building &building) {
-                return building.kind == BuildingKind::Dynamo && building.hitPoints > 0 &&
-                    IsWithin(building.position, node->position, 100);
-            });
-        if (!alreadyBuilt) {
-            m_state.salvage -= dynamo.salvageCost;
-            AddBuilding(Faction::Freegrid, BuildingKind::Dynamo, node->position, false);
+        const ControlNode *node = FindNode(command.targetId);
+        const BuildingDefinition &definition = GetBuildingDefinition(command.buildingKind);
+        if (node) {
+            m_state.salvage -= definition.salvageCost;
+            AddBuilding(
+                Faction::Freegrid,
+                command.buildingKind,
+                StructurePosition(command.buildingKind, node->position),
+                false);
         }
         return;
     }
@@ -343,6 +395,26 @@ void Simulation::Execute(const Command &command)
         const UnitDefinition &unit = GetUnitDefinition(command.unitKind);
         m_state.salvage -= unit.salvageCost;
         m_state.production.push_back({ command.actorId, command.unitKind, unit.buildTicks });
+        return;
+    }
+
+    if (command.kind == CommandKind::ActivateAbility) {
+        if (!CanActivateAbility(command.abilityKind)) {
+            return;
+        }
+        if (command.abilityKind == AbilityKind::GridLinkScan &&
+            (std::abs(static_cast<std::int64_t>(command.point.x)) > ArenaExtent ||
+                std::abs(static_cast<std::int64_t>(command.point.y)) > ArenaExtent)) {
+            return;
+        }
+        const std::size_t index = static_cast<std::size_t>(command.abilityKind);
+        const AbilityDefinition &definition = GetAbilityDefinition(command.abilityKind);
+        m_state.abilityCharge -= definition.abilityChargeCost;
+        m_state.abilityCooldownTicks[index] = definition.cooldownTicks;
+        m_state.abilityDurationTicks[index] = definition.durationTicks;
+        if (command.abilityKind == AbilityKind::GridLinkScan) {
+            m_state.scanCenter = command.point;
+        }
         return;
     }
 
@@ -475,7 +547,12 @@ void Simulation::UpdateMovementAndCapture()
             ((unit.order == OrderKind::Attack || unit.order == OrderKind::Repair) &&
                 !IsWithin(unit.position, destination, interactionRange));
         if (shouldMove) {
-            MoveTowards(unit.position, destination, GetUnitDefinition(unit.kind).moveDistancePerTick);
+            std::int32_t moveDistance = GetUnitDefinition(unit.kind).moveDistancePerTick;
+            const std::size_t overchargeIndex = static_cast<std::size_t>(AbilityKind::EmergencyOvercharge);
+            if (unit.faction == Faction::Freegrid && m_state.abilityDurationTicks[overchargeIndex] > 0) {
+                moveDistance = moveDistance * OverchargeMoveNumerator / OverchargeMoveDenominator;
+            }
+            MoveTowards(unit.position, destination, moveDistance);
             if (unit.order == OrderKind::Move && unit.position.x == destination.x && unit.position.y == destination.y) {
                 unit.order = OrderKind::Idle;
             }
@@ -561,6 +638,18 @@ void Simulation::UpdateRepairs()
     }
 }
 
+void Simulation::UpdateAbilities()
+{
+    for (std::size_t index = 0; index < m_state.abilityCooldownTicks.size(); ++index) {
+        if (m_state.abilityCooldownTicks[index] > 0) {
+            --m_state.abilityCooldownTicks[index];
+        }
+        if (m_state.abilityDurationTicks[index] > 0) {
+            --m_state.abilityDurationTicks[index];
+        }
+    }
+}
+
 void Simulation::UpdateCombat()
 {
     for (Unit &attacker : m_state.units) {
@@ -584,7 +673,12 @@ void Simulation::UpdateCombat()
             continue;
         }
 
-        *targetHitPoints -= definition.attackDamage;
+        std::int32_t attackDamage = definition.attackDamage;
+        const std::size_t overchargeIndex = static_cast<std::size_t>(AbilityKind::EmergencyOvercharge);
+        if (attacker.faction == Faction::Freegrid && m_state.abilityDurationTicks[overchargeIndex] > 0) {
+            attackDamage = attackDamage * OverchargeDamageNumerator / OverchargeDamageDenominator;
+        }
+        *targetHitPoints -= attackDamage;
         attacker.attackCooldownTicks = definition.attackCooldownTicks;
     }
 
@@ -597,6 +691,51 @@ void Simulation::UpdateCombat()
     }
     for (Building &building : m_state.buildings) {
         building.hitPoints = std::max(0, building.hitPoints);
+    }
+}
+
+void Simulation::UpdateBuildingCombat()
+{
+    for (Building &attacker : m_state.buildings) {
+        const BuildingDefinition &definition = GetBuildingDefinition(attacker.kind);
+        if (attacker.hitPoints <= 0 || !attacker.complete || definition.attackDamage <= 0) {
+            continue;
+        }
+        if (attacker.attackCooldownTicks > 0) {
+            --attacker.attackCooldownTicks;
+            continue;
+        }
+
+        Unit *target = nullptr;
+        std::int64_t nearestDistance = std::numeric_limits<std::int64_t>::max();
+        for (Unit &candidate : m_state.units) {
+            if (!candidate.alive || candidate.faction == attacker.faction || candidate.faction == Faction::Neutral) {
+                continue;
+            }
+            const std::int64_t distance = DistanceSquared(attacker.position, candidate.position);
+            if (distance <= static_cast<std::int64_t>(definition.attackRange) * definition.attackRange &&
+                (distance < nearestDistance ||
+                    (distance == nearestDistance && (!target || candidate.id < target->id)))) {
+                nearestDistance = distance;
+                target = &candidate;
+            }
+        }
+        if (!target) {
+            continue;
+        }
+
+        std::int32_t attackDamage = definition.attackDamage;
+        const std::size_t overchargeIndex = static_cast<std::size_t>(AbilityKind::EmergencyOvercharge);
+        if (attacker.faction == Faction::Freegrid && m_state.abilityDurationTicks[overchargeIndex] > 0) {
+            attackDamage = attackDamage * OverchargeDamageNumerator / OverchargeDamageDenominator;
+        }
+        target->hitPoints = std::max(0, target->hitPoints - attackDamage);
+        if (target->hitPoints == 0) {
+            target->alive = false;
+            target->order = OrderKind::Idle;
+            target->targetId = 0;
+        }
+        attacker.attackCooldownTicks = definition.attackCooldownTicks;
     }
 }
 
@@ -632,7 +771,7 @@ void Simulation::UpdateEconomyAndAi()
         if (!drone.alive || drone.faction != Faction::Chorus) {
             continue;
         }
-        if ((drone.id % 3U) == 1U) {
+        if (drone.kind == UnitKind::Skitter) {
             if (drone.order == OrderKind::Capture) {
                 if (const ControlNode *target = FindNode(drone.targetId);
                     target && target->owner != Faction::Chorus) {
@@ -735,6 +874,14 @@ std::uint64_t Simulation::Checksum() const
     HashValue(hash, m_state.incomeRemainderTicks);
     HashValue(hash, m_state.chorusSpawnTicks);
     HashValue(hash, m_state.chorusWave);
+    for (const std::int32_t cooldown : m_state.abilityCooldownTicks) {
+        HashValue(hash, cooldown);
+    }
+    for (const std::int32_t duration : m_state.abilityDurationTicks) {
+        HashValue(hash, duration);
+    }
+    HashValue(hash, m_state.scanCenter.x);
+    HashValue(hash, m_state.scanCenter.y);
     HashValue(hash, m_state.nextEntityId);
     HashValue(hash, static_cast<std::uint64_t>(m_state.units.size()));
     for (const Unit &unit : m_state.units) {
@@ -765,6 +912,7 @@ std::uint64_t Simulation::Checksum() const
         HashValue(hash, building.maximumHitPoints);
         HashValue(hash, static_cast<std::uint8_t>(building.complete));
         HashValue(hash, building.remainingBuildTicks);
+        HashValue(hash, building.attackCooldownTicks);
     }
     HashValue(hash, static_cast<std::uint64_t>(m_state.nodes.size()));
     for (const ControlNode &node : m_state.nodes) {
@@ -790,6 +938,8 @@ std::uint64_t Simulation::Checksum() const
         HashValue(hash, command.point.x);
         HashValue(hash, command.point.y);
         HashValue(hash, static_cast<std::uint8_t>(command.unitKind));
+        HashValue(hash, static_cast<std::uint8_t>(command.buildingKind));
+        HashValue(hash, static_cast<std::uint8_t>(command.abilityKind));
         HashValue(hash, command.sequence);
     }
     HashValue(hash, m_nextCommandSequence);

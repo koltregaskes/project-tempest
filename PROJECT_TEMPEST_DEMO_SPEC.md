@@ -167,8 +167,10 @@ and completed Relay Core/Fabricator Bay/Dynamo structures provide capacity that 
 Fabricator Bay can produce Fabricator rigs, Courier scouts, Lancer crews, and Coil carriers; each role has distinct
 movement, range, damage, build-time, salvage, and capacity data. Fabricator rigs repair damaged friendly units and
 structures for salvage, while deterministic Machine Nest waves escalate through Skitters, Wardens, and Harrowers.
-Arc Sentry, Signal Pylon, grid-link scan, emergency overcharge, dedicated runtime art for the expanded roster, and
-manual balance/legibility proof remain M4/M5 work rather than claimed release-ready content.
+Arc Sentries and Signal Pylons now provide deterministic defensive pressure, while targeted grid-link scans report
+contacts and emergency overcharge temporarily boosts Freegrid movement and damage. Dedicated runtime art for the
+expanded roster/structures, manual balance/legibility proof, and the governed manual playtest gates remain M4/M5 work
+rather than claimed release-ready content.
 
 ### Golden asset and format decision
 
