@@ -34,6 +34,21 @@ struct Settings {
     std::int32_t contrastPercent = 0;
 };
 
+// GPU-neutral constants for the exact presentation transform. The Direct3D 8
+// renderer and the portable test path both consume this contract so the
+// shader cannot silently drift from the reference implementation.
+struct PresentationParameters {
+    float preparationScale = 1.0F;
+    float preparationOffset = 0.0F;
+    Colour greenTransform { 0.0F, 1.0F, 0.0F, 0.0F };
+    Colour blueTransform { 0.0F, 0.0F, 1.0F, 0.0F };
+    float strength = 0.0F;
+    float outputScale = 1.0F;
+    float outputOffset = 0.0F;
+};
+
+PresentationParameters BuildPresentationParameters(const Settings &settings);
+Colour ApplyPresentationParameters(Colour input, const PresentationParameters &parameters);
 Colour Apply(Colour input, const Settings &settings);
 const char *ModeName(ColourVisionMode mode);
 

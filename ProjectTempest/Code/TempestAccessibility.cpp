@@ -42,7 +42,7 @@ Vector3 LmsToRgb(Vector3 colour)
     };
 }
 
-Vector3 Daltonize(Vector3 input, ColourVisionMode mode)
+Vector3 DaltonizeUnclamped(Vector3 input, ColourVisionMode mode)
 {
     const Vector3 lms = RgbToLms(input);
     Vector3 weak = lms;
@@ -67,13 +67,68 @@ Vector3 Daltonize(Vector3 input, ColourVisionMode mode)
         input.blue - simulated.blue,
     };
     return {
-        Clamp(input.red),
-        Clamp(input.green + error.green + (0.7F * error.red)),
-        Clamp(input.blue + error.blue + (0.7F * error.red)),
+        input.red,
+        input.green + error.green + (0.7F * error.red),
+        input.blue + error.blue + (0.7F * error.red),
     };
 }
 
+float Dot(Vector3 left, const Colour &right)
+{
+    return (left.red * right.red) + (left.green * right.green) + (left.blue * right.blue);
+}
+
 } // namespace
+
+// TheSuperHackers @feature koltregaskes 19/07/2026 Share one exact CPU/GPU presentation contract.
+PresentationParameters BuildPresentationParameters(const Settings &settings)
+{
+    const float strength = settings.mode == ColourVisionMode::Off
+        ? 0.0F
+        : static_cast<float>(std::clamp(settings.strengthPercent, 0, 100)) / 100.0F;
+    const float brightness = static_cast<float>(std::clamp(settings.brightnessPercent, -10, 10)) / 100.0F;
+    const float contrast = static_cast<float>(std::clamp(settings.contrastPercent, -25, 40)) / 100.0F;
+
+    const Vector3 redBasis = DaltonizeUnclamped({ 1.0F, 0.0F, 0.0F }, settings.mode);
+    const Vector3 greenBasis = DaltonizeUnclamped({ 0.0F, 1.0F, 0.0F }, settings.mode);
+    const Vector3 blueBasis = DaltonizeUnclamped({ 0.0F, 0.0F, 1.0F }, settings.mode);
+
+    PresentationParameters parameters;
+    parameters.preparationScale = 1.0F + (strength * 0.112F);
+    parameters.preparationOffset = (0.5F * (1.0F - parameters.preparationScale)) - (0.075F * strength);
+    parameters.greenTransform = { redBasis.green, greenBasis.green, blueBasis.green, 0.0F };
+    parameters.blueTransform = { redBasis.blue, greenBasis.blue, blueBasis.blue, 0.0F };
+    parameters.strength = strength;
+    parameters.outputScale = 1.0F + contrast;
+    parameters.outputOffset = (0.5F * (1.0F - parameters.outputScale)) + brightness + (0.08F * strength);
+    return parameters;
+}
+
+Colour ApplyPresentationParameters(Colour input, const PresentationParameters &parameters)
+{
+    const Vector3 original { Clamp(input.red), Clamp(input.green), Clamp(input.blue) };
+    const Vector3 prepared {
+        (original.red * parameters.preparationScale) + parameters.preparationOffset,
+        (original.green * parameters.preparationScale) + parameters.preparationOffset,
+        (original.blue * parameters.preparationScale) + parameters.preparationOffset,
+    };
+    const Vector3 shifted {
+        Clamp(prepared.red),
+        Clamp(Dot(prepared, parameters.greenTransform)),
+        Clamp(Dot(prepared, parameters.blueTransform)),
+    };
+    const Vector3 mixed {
+        (shifted.red * parameters.strength) + (prepared.red * (1.0F - parameters.strength)),
+        (shifted.green * parameters.strength) + (prepared.green * (1.0F - parameters.strength)),
+        (shifted.blue * parameters.strength) + (prepared.blue * (1.0F - parameters.strength)),
+    };
+    return {
+        Clamp((mixed.red * parameters.outputScale) + parameters.outputOffset),
+        Clamp((mixed.green * parameters.outputScale) + parameters.outputOffset),
+        Clamp((mixed.blue * parameters.outputScale) + parameters.outputOffset),
+        Clamp(input.alpha),
+    };
+}
 
 // TheSuperHackers @feature koltregaskes 18/07/2026 Add a deterministic tunable colour-vision transform.
 Colour Apply(Colour input, const Settings &settings)
@@ -84,13 +139,18 @@ Colour Apply(Colour input, const Settings &settings)
     const float brightness = static_cast<float>(std::clamp(settings.brightnessPercent, -10, 10)) / 100.0F;
     const float contrast = static_cast<float>(std::clamp(settings.contrastPercent, -25, 40)) / 100.0F;
 
-    Vector3 original { Clamp(input.red), Clamp(input.green), Clamp(input.blue) };
-    Vector3 prepared {
+    const Vector3 original { Clamp(input.red), Clamp(input.green), Clamp(input.blue) };
+    const Vector3 prepared {
         ((original.red - 0.5F) * (1.0F + (strength * 0.112F))) + 0.5F - (0.075F * strength),
         ((original.green - 0.5F) * (1.0F + (strength * 0.112F))) + 0.5F - (0.075F * strength),
         ((original.blue - 0.5F) * (1.0F + (strength * 0.112F))) + 0.5F - (0.075F * strength),
     };
-    const Vector3 shifted = Daltonize(prepared, settings.mode);
+    const Vector3 transformed = DaltonizeUnclamped(prepared, settings.mode);
+    const Vector3 shifted {
+        Clamp(transformed.red),
+        Clamp(transformed.green),
+        Clamp(transformed.blue),
+    };
     Vector3 output {
         (shifted.red * strength) + (prepared.red * (1.0F - strength)),
         (shifted.green * strength) + (prepared.green * (1.0F - strength)),

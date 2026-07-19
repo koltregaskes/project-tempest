@@ -1140,6 +1140,46 @@ void TestAccessibilityColourContract()
             bounded.green >= 0.0F && bounded.green <= 1.0F &&
             bounded.blue >= 0.0F && bounded.blue <= 1.0F && bounded.alpha == 1.0F,
         "accessibility processing clamps hostile colour and setting inputs to display-safe output");
+
+    constexpr Tempest::Accessibility::ColourVisionMode modes[] = {
+        Tempest::Accessibility::ColourVisionMode::Off,
+        Tempest::Accessibility::ColourVisionMode::Protanopia,
+        Tempest::Accessibility::ColourVisionMode::Deuteranopia,
+        Tempest::Accessibility::ColourVisionMode::Tritanopia,
+    };
+    constexpr int strengths[] = { 0, 30, 90, 100 };
+    constexpr int brightness[] = { -10, 0, 10 };
+    constexpr int contrast[] = { -25, 0, 40 };
+    for (const auto mode : modes) {
+        for (const int strength : strengths) {
+            for (const int brightnessValue : brightness) {
+                for (const int contrastValue : contrast) {
+                    settings = { mode, strength, brightnessValue, contrastValue };
+                    const auto parameters = Tempest::Accessibility::BuildPresentationParameters(settings);
+                    for (int red = 0; red <= 4; ++red) {
+                        for (int green = 0; green <= 4; ++green) {
+                            for (int blue = 0; blue <= 4; ++blue) {
+                                const Tempest::Accessibility::Colour sample {
+                                    static_cast<float>(red) / 4.0F,
+                                    static_cast<float>(green) / 4.0F,
+                                    static_cast<float>(blue) / 4.0F,
+                                    0.65F,
+                                };
+                                const auto reference = Tempest::Accessibility::Apply(sample, settings);
+                                const auto presentation =
+                                    Tempest::Accessibility::ApplyPresentationParameters(sample, parameters);
+                                Expect(std::abs(reference.red - presentation.red) < 0.00001F &&
+                                        std::abs(reference.green - presentation.green) < 0.00001F &&
+                                        std::abs(reference.blue - presentation.blue) < 0.00001F &&
+                                        std::abs(reference.alpha - presentation.alpha) < 0.00001F,
+                                    "GPU presentation parameters remain identical to the portable reference grid");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 void TestAudioContract()

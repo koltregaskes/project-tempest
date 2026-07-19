@@ -33,6 +33,7 @@
 #include "scene.h"
 #include "TempestAudio.h"
 #include "TempestInterface.h"
+#include "TempestPresentationD3D8.h"
 #include "TempestSimulation.h"
 #include "vector3.h"
 #include "ww3d.h"
@@ -74,13 +75,13 @@ LightClass *g_keyLight = nullptr;
 Tempest::Simulation g_simulation;
 Tempest::Ui::InterfaceState g_interface;
 Tempest::Audio::AudioSystem g_audio;
+Tempest::Presentation::Renderer g_presentation;
 Tempest::MatchOutcome g_previousOutcome = Tempest::MatchOutcome::InProgress;
 std::filesystem::path g_settingsPath;
 
-HFONT g_hudFont = nullptr;
-HFONT g_hudSmallFont = nullptr;
-HFONT g_hudTitleFont = nullptr;
-int g_hudFontScale = 0;
+constexpr Tempest::Presentation::FontStyle g_hudFont = Tempest::Presentation::FontStyle::Body;
+constexpr Tempest::Presentation::FontStyle g_hudSmallFont = Tempest::Presentation::FontStyle::Small;
+constexpr Tempest::Presentation::FontStyle g_hudTitleFont = Tempest::Presentation::FontStyle::Title;
 
 struct UnitVisual {
     std::uint32_t id = 0;
@@ -109,7 +110,7 @@ Line3DClass *g_selectionVertical = nullptr;
 
 void UpdateCameraTransform();
 void UpdateCameraProjection(int width, int height);
-void DrawInterface();
+bool DrawInterface();
 
 std::int64_t DistanceSquared(Tempest::Point left, Tempest::Point right)
 {
@@ -829,6 +830,7 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
                 const int width = std::max(1, static_cast<int>(LOWORD(lParam)));
                 const int height = std::max(1, static_cast<int>(HIWORD(lParam)));
                 WW3D::Set_Device_Resolution(width, height, 24, true);
+                g_presentation.Resize(width, height);
                 UpdateCameraProjection(width, height);
             }
             return 0;
@@ -1257,6 +1259,11 @@ bool InitialiseRenderer()
         return false;
     }
     g_rendererReady = true;
+    const int renderWidth = std::max(1L, client.right - client.left);
+    const int renderHeight = std::max(1L, client.bottom - client.top);
+    if (!g_presentation.Initialise(renderWidth, renderHeight)) {
+        return false;
+    }
 
     g_assetManager = new WW3DAssetManager;
     if (!g_assetManager || !g_assetManager->Load_3D_Assets("courier.w3d") ||
@@ -1311,61 +1318,27 @@ float GetInterfaceScale(const RECT &client)
     return std::clamp(std::min(widthScale, heightScale) * userScale, 0.72F, 3.25F);
 }
 
-void EnsureHudFonts(float scale)
+bool EnsureHudFonts(float scale)
 {
-    const int scaleKey = static_cast<int>(std::lround(scale * 100.0F));
-    if (scaleKey == g_hudFontScale && g_hudFont && g_hudSmallFont && g_hudTitleFont) {
-        return;
-    }
-    if (g_hudFont) {
-        DeleteObject(g_hudFont);
-    }
-    if (g_hudSmallFont) {
-        DeleteObject(g_hudSmallFont);
-    }
-    if (g_hudTitleFont) {
-        DeleteObject(g_hudTitleFont);
-    }
-    g_hudSmallFont = CreateFontA(
-        -ScalePixels(13.0F, scale), 0, 0, 0, FW_MEDIUM, FALSE, FALSE, FALSE,
-        ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
-        DEFAULT_PITCH | FF_SWISS, "Segoe UI");
-    g_hudFont = CreateFontA(
-        -ScalePixels(17.0F, scale), 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
-        ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
-        DEFAULT_PITCH | FF_SWISS, "Segoe UI");
-    g_hudTitleFont = CreateFontA(
-        -ScalePixels(28.0F, scale), 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
-        ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
-        DEFAULT_PITCH | FF_SWISS, "Segoe UI");
-    g_hudFontScale = scaleKey;
+    return g_presentation.EnsureFonts(scale);
 }
 
-void DrawPanel(HDC device, const RECT &rect, COLORREF fill, COLORREF border)
+using UiDevice = Tempest::Presentation::Renderer;
+
+void DrawPanel(UiDevice &device, const RECT &rect, D3DCOLOR fill, D3DCOLOR border)
 {
-    HBRUSH fillBrush = CreateSolidBrush(fill);
-    HBRUSH borderBrush = CreateSolidBrush(border);
-    FillRect(device, &rect, fillBrush);
-    FrameRect(device, &rect, borderBrush);
-    DeleteObject(borderBrush);
-    DeleteObject(fillBrush);
+    device.DrawPanel(rect, fill, border);
 }
 
 void DrawLabel(
-    HDC device,
-    HFONT font,
-    COLORREF color,
+    UiDevice &device,
+    Tempest::Presentation::FontStyle font,
+    D3DCOLOR color,
     const RECT &rect,
     const char *text,
     UINT flags = DT_LEFT | DT_TOP | DT_SINGLELINE)
 {
-    const HGDIOBJ previousFont = SelectObject(device, font);
-    SetTextColor(device, color);
-    RECT drawRect = rect;
-    DrawTextA(device, text, -1, &drawRect, flags | DT_NOPREFIX);
-    if (previousFont && previousFont != HGDI_ERROR) {
-        SelectObject(device, previousFont);
-    }
+    device.DrawLabel(font, color, rect, text, flags);
 }
 
 void FormatBindingName(Tempest::Ui::InputBinding binding, char *buffer, std::size_t bufferSize)
@@ -1402,18 +1375,18 @@ void FormatBindingName(Tempest::Ui::InputBinding binding, char *buffer, std::siz
     }
 }
 
-void DrawHud(HDC device, const RECT &client, float scale)
+void DrawHud(UiDevice &device, const RECT &client, float scale)
 {
     const Tempest::MatchState &match = g_simulation.GetState();
     const Tempest::Unit *selected = FindUnit(g_selectedUnitId);
     const int margin = ScalePixels(14.0F, scale);
     const int topHeight = ScalePixels(86.0F, scale);
     const int bottomHeight = ScalePixels(108.0F, scale);
-    const COLORREF panel = RGB(7, 17, 26);
-    const COLORREF border = RGB(28, 187, 217);
-    const COLORREF primary = RGB(225, 244, 247);
-    const COLORREF secondary = RGB(141, 181, 190);
-    const COLORREF accent = RGB(31, 218, 242);
+    const D3DCOLOR panel = D3DCOLOR_XRGB(7, 17, 26);
+    const D3DCOLOR border = D3DCOLOR_XRGB(28, 187, 217);
+    const D3DCOLOR primary = D3DCOLOR_XRGB(225, 244, 247);
+    const D3DCOLOR secondary = D3DCOLOR_XRGB(141, 181, 190);
+    const D3DCOLOR accent = D3DCOLOR_XRGB(31, 218, 242);
 
     RECT top = { margin, margin, client.right - margin, margin + topHeight };
     DrawPanel(device, top, panel, border);
@@ -1584,7 +1557,7 @@ void DrawHud(HDC device, const RECT &client, float scale)
     }
 }
 
-void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
+void DrawSettingsOverlay(UiDevice &device, const RECT &client, float scale)
 {
     const int width = std::min(
         static_cast<int>(client.right) - ScalePixels(24.0F, scale),
@@ -1598,16 +1571,16 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
         (client.right + width) / 2,
         (client.bottom + height) / 2,
     };
-    DrawPanel(device, panel, RGB(6, 13, 21), RGB(41, 209, 231));
+    DrawPanel(device, panel, D3DCOLOR_XRGB(6, 13, 21), D3DCOLOR_XRGB(41, 209, 231));
     const int padding = ScalePixels(24.0F, scale);
     RECT title = { panel.left + padding, panel.top + padding, panel.right - padding, panel.top + ScalePixels(66.0F, scale) };
-    DrawLabel(device, g_hudTitleFont, RGB(222, 248, 250), title, "SETTINGS / ACCESSIBILITY");
+    DrawLabel(device, g_hudTitleFont, D3DCOLOR_XRGB(222, 248, 250), title, "SETTINGS / ACCESSIBILITY");
     RECT hint = title;
     hint.top += ScalePixels(38.0F, scale);
     DrawLabel(
         device,
         g_hudSmallFont,
-        RGB(135, 180, 188),
+        D3DCOLOR_XRGB(135, 180, 188),
         hint,
         "UP/DOWN select   LEFT/RIGHT adjust   ENTER rebind   ESC return to pause");
 
@@ -1641,9 +1614,7 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
             contentTop + ((row + 1) * rowHeight) - ScalePixels(3.0F, scale),
         };
         if (row == selectedRow) {
-            HBRUSH selected = CreateSolidBrush(RGB(20, 77, 91));
-            FillRect(device, &rowRect, selected);
-            DeleteObject(selected);
+            device.DrawSolidRect(rowRect, D3DCOLOR_XRGB(20, 77, 91));
         }
         char value[96];
         switch (row) {
@@ -1675,7 +1646,7 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
         char line[180];
         std::snprintf(line, sizeof(line), "%s    %s", settingNames[row], value);
         rowRect.left += ScalePixels(8.0F, scale);
-        DrawLabel(device, g_hudSmallFont, RGB(223, 242, 244), rowRect, line, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        DrawLabel(device, g_hudSmallFont, D3DCOLOR_XRGB(223, 242, 244), rowRect, line, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     }
 
     for (int actionRow = 0; actionRow < Tempest::Ui::InterfaceState::RemappableActionCount; ++actionRow) {
@@ -1688,33 +1659,31 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
             contentTop + ((actionRow + 1) * rowHeight) - ScalePixels(3.0F, scale),
         };
         if (absoluteRow == selectedRow) {
-            HBRUSH selected = CreateSolidBrush(RGB(20, 77, 91));
-            FillRect(device, &rowRect, selected);
-            DeleteObject(selected);
+            device.DrawSolidRect(rowRect, D3DCOLOR_XRGB(20, 77, 91));
         }
         char keyName[24];
         FormatBindingName(g_interface.BindingFor(action), keyName, sizeof(keyName));
         char line[180];
         std::snprintf(line, sizeof(line), "%s    [%s]", Tempest::Ui::InterfaceState::ActionName(action), keyName);
         rowRect.left += ScalePixels(8.0F, scale);
-        DrawLabel(device, g_hudSmallFont, RGB(223, 242, 244), rowRect, line, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        DrawLabel(device, g_hudSmallFont, D3DCOLOR_XRGB(223, 242, 244), rowRect, line, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     }
     if (g_interface.IsCapturingBinding()) {
         RECT capture = { panel.left + padding, panel.bottom - ScalePixels(55.0F, scale), panel.right - padding, panel.bottom };
-        DrawLabel(device, g_hudFont, RGB(255, 184, 67), capture, "PRESS A NEW KEY OR MOUSE BUTTON - ESC CANCELS", DT_CENTER | DT_TOP | DT_SINGLELINE);
+        DrawLabel(device, g_hudFont, D3DCOLOR_XRGB(255, 184, 67), capture, "PRESS A NEW KEY OR MOUSE BUTTON - ESC CANCELS", DT_CENTER | DT_TOP | DT_SINGLELINE);
     } else {
         RECT note = { panel.left + padding, panel.bottom - ScalePixels(45.0F, scale), panel.right - padding, panel.bottom };
         DrawLabel(
             device,
             g_hudSmallFont,
-            RGB(128, 164, 173),
+            D3DCOLOR_XRGB(128, 164, 173),
             note,
             "Changes save atomically to the local profile; audio and accessibility updates apply immediately.",
             DT_CENTER | DT_TOP | DT_SINGLELINE);
     }
 }
 
-void DrawModalOverlay(HDC device, const RECT &client, float scale)
+void DrawModalOverlay(UiDevice &device, const RECT &client, float scale)
 {
     const Tempest::Ui::Screen screen = g_interface.GetScreen();
     if (screen == Tempest::Ui::Screen::Playing) {
@@ -1736,12 +1705,12 @@ void DrawModalOverlay(HDC device, const RECT &client, float scale)
         (client.right + width) / 2,
         (client.bottom + height) / 2,
     };
-    DrawPanel(device, panel, RGB(5, 12, 20), RGB(40, 210, 232));
+    DrawPanel(device, panel, D3DCOLOR_XRGB(5, 12, 20), D3DCOLOR_XRGB(40, 210, 232));
     const int padding = ScalePixels(30.0F, scale);
     RECT title = { panel.left + padding, panel.top + padding, panel.right - padding, panel.top + ScalePixels(85.0F, scale) };
     RECT body = { panel.left + padding, panel.top + ScalePixels(98.0F, scale), panel.right - padding, panel.bottom - padding };
     if (screen == Tempest::Ui::Screen::Briefing) {
-        DrawLabel(device, g_hudTitleFont, RGB(226, 249, 250), title, "BLACK CURRENT / SUBSTATION 9");
+        DrawLabel(device, g_hudTitleFont, D3DCOLOR_XRGB(226, 249, 250), title, "BLACK CURRENT / SUBSTATION 9");
         char settingsKey[24];
         FormatBindingName(g_interface.BindingFor(Tempest::Ui::Action::OpenSettings), settingsKey, sizeof(settingsKey));
         char briefing[640];
@@ -1757,12 +1726,12 @@ void DrawModalOverlay(HDC device, const RECT &client, float scale)
         DrawLabel(
             device,
             g_hudFont,
-            RGB(195, 224, 228),
+            D3DCOLOR_XRGB(195, 224, 228),
             body,
             briefing,
             DT_LEFT | DT_TOP | DT_WORDBREAK);
     } else if (screen == Tempest::Ui::Screen::Pause) {
-        DrawLabel(device, g_hudTitleFont, RGB(226, 249, 250), title, "NETWORK PAUSED");
+        DrawLabel(device, g_hudTitleFont, D3DCOLOR_XRGB(226, 249, 250), title, "NETWORK PAUSED");
         char pauseKey[24];
         char settingsKey[24];
         char restartKey[24];
@@ -1777,14 +1746,14 @@ void DrawModalOverlay(HDC device, const RECT &client, float scale)
             pauseKey,
             settingsKey,
             restartKey);
-        DrawLabel(device, g_hudFont, RGB(195, 224, 228), body, copy, DT_LEFT | DT_TOP | DT_WORDBREAK);
+        DrawLabel(device, g_hudFont, D3DCOLOR_XRGB(195, 224, 228), body, copy, DT_LEFT | DT_TOP | DT_WORDBREAK);
     } else if (screen == Tempest::Ui::Screen::Result) {
         const Tempest::MatchState &match = g_simulation.GetState();
         const bool victory = match.outcome == Tempest::MatchOutcome::Victory;
         DrawLabel(
             device,
             g_hudTitleFont,
-            victory ? RGB(51, 231, 209) : RGB(255, 79, 106),
+            victory ? D3DCOLOR_XRGB(51, 231, 209) : D3DCOLOR_XRGB(255, 79, 106),
             title,
             victory ? "GRID RESTORED" : "DISTRICT LOST");
         const int freegridNodes = static_cast<int>(std::count_if(
@@ -1808,51 +1777,28 @@ void DrawModalOverlay(HDC device, const RECT &client, float scale)
             match.abilityCharge,
             restartKey,
             settingsKey);
-        DrawLabel(device, g_hudFont, RGB(195, 224, 228), body, copy, DT_LEFT | DT_TOP | DT_WORDBREAK);
+        DrawLabel(device, g_hudFont, D3DCOLOR_XRGB(195, 224, 228), body, copy, DT_LEFT | DT_TOP | DT_WORDBREAK);
     }
 }
 
-void DrawInterface()
+bool DrawInterface()
 {
     if (!ApplicationHWnd) {
-        return;
+        return false;
     }
     RECT client = {};
     GetClientRect(ApplicationHWnd, &client);
     if (client.right <= 0 || client.bottom <= 0) {
-        return;
+        return false;
     }
     const float scale = GetInterfaceScale(client);
-    EnsureHudFonts(scale);
-    HDC device = GetDC(ApplicationHWnd);
-    if (!device) {
-        return;
+    if (!EnsureHudFonts(scale)) {
+        return false;
     }
-    SetBkMode(device, TRANSPARENT);
+    UiDevice &device = g_presentation;
     DrawHud(device, client, scale);
     DrawModalOverlay(device, client, scale);
-    ReleaseDC(ApplicationHWnd, device);
-}
-
-void DrawLoadingScreen()
-{
-    RECT client = {};
-    GetClientRect(ApplicationHWnd, &client);
-    HDC device = GetDC(ApplicationHWnd);
-    if (!device) {
-        return;
-    }
-    HBRUSH background = CreateSolidBrush(RGB(4, 11, 18));
-    FillRect(device, &client, background);
-    DeleteObject(background);
-    const float scale = GetInterfaceScale(client);
-    EnsureHudFonts(scale);
-    SetBkMode(device, TRANSPARENT);
-    RECT title = { 0, client.bottom / 2 - ScalePixels(60.0F, scale), client.right, client.bottom };
-    DrawLabel(device, g_hudTitleFont, RGB(38, 216, 237), title, "PROJECT TEMPEST", DT_CENTER | DT_TOP | DT_SINGLELINE);
-    title.top += ScalePixels(48.0F, scale);
-    DrawLabel(device, g_hudFont, RGB(164, 201, 208), title, "Linking original Substation 9 content...", DT_CENTER | DT_TOP | DT_SINGLELINE);
-    ReleaseDC(ApplicationHWnd, device);
+    return true;
 }
 
 void UpdatePrototype(float deltaSeconds)
@@ -1893,11 +1839,38 @@ void RenderPrototype(float deltaSeconds)
 {
     WW3D::Update_Logic_Frame_Time(static_cast<int>(deltaSeconds * 1000.0F));
     WW3D::Sync(true);
-    if (WW3D::Begin_Render(true, true, Vector3(0.015F, 0.025F, 0.040F)) == WW3D_ERROR_OK) {
-        WW3D::Render(g_scene, g_camera, false, false);
-        WW3D::End_Render();
+    RECT client = {};
+    GetClientRect(ApplicationHWnd, &client);
+    const int width = std::max(1L, client.right - client.left);
+    const int height = std::max(1L, client.bottom - client.top);
+    if (!g_presentation.BindCombinedTarget(width, height)) {
+        PostQuitMessage(4);
+        return;
     }
-    DrawInterface();
+    if (WW3D::Begin_Render(true, true, Vector3(0.015F, 0.025F, 0.040F)) != WW3D_ERROR_OK) {
+        g_presentation.RestoreBackBuffer();
+        PostQuitMessage(4);
+        return;
+    }
+    WW3D::Render(g_scene, g_camera, false, false);
+    if (!DrawInterface()) {
+        WW3D::End_Render(false);
+        g_presentation.RestoreBackBuffer();
+        PostQuitMessage(4);
+        return;
+    }
+    WW3D::End_Render(false);
+
+    const Tempest::Ui::Settings &uiSettings = g_interface.GetSettings();
+    const Tempest::Accessibility::Settings accessibilitySettings {
+        uiSettings.colourVisionMode,
+        uiSettings.colourVisionStrengthPercent,
+        uiSettings.accessibilityBrightnessPercent,
+        uiSettings.accessibilityContrastPercent,
+    };
+    if (!g_presentation.CompositeAndPresent(accessibilitySettings)) {
+        PostQuitMessage(4);
+    }
 }
 
 void ShutdownRenderer()
@@ -1927,20 +1900,6 @@ void ShutdownRenderer()
     RemoveLine(g_selectionHorizontal);
     RemoveLine(g_selectionVertical);
 
-    if (g_hudFont) {
-        DeleteObject(g_hudFont);
-        g_hudFont = nullptr;
-    }
-    if (g_hudSmallFont) {
-        DeleteObject(g_hudSmallFont);
-        g_hudSmallFont = nullptr;
-    }
-    if (g_hudTitleFont) {
-        DeleteObject(g_hudTitleFont);
-        g_hudTitleFont = nullptr;
-    }
-    g_hudFontScale = 0;
-
     if (g_keyLight) {
         g_keyLight->Remove();
     }
@@ -1954,6 +1913,7 @@ void ShutdownRenderer()
         g_assetManager = nullptr;
     }
 
+    g_presentation.Shutdown();
     if (g_rendererReady) {
         WW3D::Shutdown();
         g_rendererReady = false;
@@ -1985,7 +1945,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
     RECT client = {};
     GetClientRect(ApplicationHWnd, &client);
     g_pointerClient = { client.right / 2, client.bottom / 2 };
-    DrawLoadingScreen();
 
     if (!InitialiseRenderer()) {
         MessageBoxA(
