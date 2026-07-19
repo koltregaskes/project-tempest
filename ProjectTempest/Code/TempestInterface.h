@@ -1,5 +1,6 @@
 #pragma once
 
+#include "TempestAccessibility.h"
 #include "TempestSimulation.h"
 
 #include <array>
@@ -96,11 +97,16 @@ struct Settings {
     bool reducedMotion = false;
     bool reducedFlashes = true;
     bool colourIndependentCues = true;
+    Accessibility::ColourVisionMode colourVisionMode = Accessibility::ColourVisionMode::Off;
+    std::int32_t colourVisionStrengthPercent = 90;
+    std::int32_t accessibilityBrightnessPercent = 0;
+    std::int32_t accessibilityContrastPercent = 0;
 };
 
 class InterfaceState {
 public:
-    static constexpr std::int32_t AdjustableSettingCount = 9;
+    // TheSuperHackers @feature koltregaskes 18/07/2026 Expose colour-vision, strength, brightness, and contrast settings.
+    static constexpr std::int32_t AdjustableSettingCount = 13;
     static constexpr std::int32_t RemappableActionCount = static_cast<std::int32_t>(Action::Count);
 
     InterfaceState();

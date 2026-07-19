@@ -313,11 +313,43 @@ foreach ($audioAsset in $audioAssets) {
 $cmakeContent = Get-Content -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/CMakeLists.txt") -Raw
 $ciContent = Get-Content -LiteralPath (Join-Path $repositoryRoot ".github/workflows/ci.yml") -Raw
 $buildToolchainContent = Get-Content -LiteralPath (Join-Path $repositoryRoot ".github/workflows/build-toolchain.yml") -Raw
+$accessibilitySource = Get-Content -LiteralPath (
+    Join-Path $repositoryRoot "ProjectTempest/Code/TempestAccessibility.cpp") -Raw
+$accessibilityNoticeRoot = Join-Path $repositoryRoot "ProjectTempest/ThirdParty/ElectronicArtsTunableColorblindness"
+foreach ($noticeFile in @("LICENSE.txt", "NOTICE.txt", "SOURCE.txt")) {
+    if (-not (Test-Path -LiteralPath (Join-Path $accessibilityNoticeRoot $noticeFile) -PathType Leaf)) {
+        throw "EA Tunable Colorblindness attribution file is missing: $noticeFile"
+    }
+}
+$accessibilityLicenseHash = (Get-FileHash -LiteralPath (
+    Join-Path $accessibilityNoticeRoot "LICENSE.txt") -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($accessibilityLicenseHash -ne "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4") {
+    throw "The canonical Apache-2.0 licence copy for EA's accessibility component changed unexpectedly."
+}
+if (
+    $accessibilitySource -notmatch [regex]::Escape("Copyright (c) 2015-2021 Electronic Arts Inc.") -or
+    $accessibilitySource -notmatch [regex]::Escape("Modified for Project Tempest on 18 July 2026") -or
+    $accessibilitySource -notmatch [regex]::Escape("Colour Apply(Colour input, const Settings &settings)")
+) {
+    throw "The isolated EA-derived accessibility transform is missing attribution or its deterministic API."
+}
+foreach ($packagedNotice in @(
+    "EA-Tunable-Colorblindness-LICENSE.txt",
+    "EA-Tunable-Colorblindness-NOTICE.txt",
+    "EA-Tunable-Colorblindness-SOURCE.txt"
+)) {
+    if ($cmakeContent -notmatch [regex]::Escape($packagedNotice)) {
+        throw "Project Tempest package contract is missing third-party notice '$packagedNotice'."
+    }
+}
 if ($ciContent -notmatch [regex]::Escape("scripts/create-tempest-audio.py")) {
     throw "Project Tempest CI path filtering must include the deterministic audio generator."
 }
 if ($buildToolchainContent -notmatch '(?s)ProjectTempest.*?Where-Object\s*\{[^}]*?"\.wav"') {
     throw "Win32 Project Tempest artifacts must include WAV runtime audio assets."
+}
+if ($buildToolchainContent -notmatch '(?s)ProjectTempest.*?Where-Object\s*\{[^}]*?"\.txt"') {
+    throw "Win32 Project Tempest artifacts must include packaged third-party licence and notice files."
 }
 foreach ($packagedAsset in @(
     "drone.w3d",

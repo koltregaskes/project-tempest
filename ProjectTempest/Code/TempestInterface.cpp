@@ -297,6 +297,23 @@ InputEvent InterfaceState::AdjustSelectedSetting(std::int32_t direction)
         case 8:
             m_settings.colourIndependentCues = !m_settings.colourIndependentCues;
             break;
+        // TheSuperHackers @feature koltregaskes 18/07/2026 Persist and bound the colour accessibility controls.
+        case 9: {
+            constexpr std::int32_t modeCount = static_cast<std::int32_t>(Accessibility::ColourVisionMode::Count);
+            const std::int32_t current = static_cast<std::int32_t>(m_settings.colourVisionMode);
+            m_settings.colourVisionMode = static_cast<Accessibility::ColourVisionMode>(
+                (current + modeCount + direction) % modeCount);
+            break;
+        }
+        case 10:
+            AdjustBounded(m_settings.colourVisionStrengthPercent, direction, 10, 0, 100);
+            break;
+        case 11:
+            AdjustBounded(m_settings.accessibilityBrightnessPercent, direction, 5, -10, 10);
+            break;
+        case 12:
+            AdjustBounded(m_settings.accessibilityContrastPercent, direction, 5, -25, 40);
+            break;
         default:
             return {};
     }
@@ -368,7 +385,7 @@ bool InterfaceState::HasAction(InputBinding input) const
 std::string InterfaceState::SerializeConfiguration() const
 {
     std::ostringstream output;
-    output << "project_tempest_settings=3\n"
+    output << "project_tempest_settings=4\n"
            << "camera_speed_percent=" << m_settings.cameraSpeedPercent << '\n'
            << "ui_scale_percent=" << m_settings.uiScalePercent << '\n'
            << "master_volume=" << m_settings.masterVolume << '\n'
@@ -377,7 +394,11 @@ std::string InterfaceState::SerializeConfiguration() const
            << "edge_scroll=" << (m_settings.edgeScroll ? 1 : 0) << '\n'
            << "reduced_motion=" << (m_settings.reducedMotion ? 1 : 0) << '\n'
            << "reduced_flashes=" << (m_settings.reducedFlashes ? 1 : 0) << '\n'
-           << "colour_independent_cues=" << (m_settings.colourIndependentCues ? 1 : 0) << '\n';
+           << "colour_independent_cues=" << (m_settings.colourIndependentCues ? 1 : 0) << '\n'
+           << "colour_vision_mode=" << static_cast<std::int32_t>(m_settings.colourVisionMode) << '\n'
+           << "colour_vision_strength_percent=" << m_settings.colourVisionStrengthPercent << '\n'
+           << "accessibility_brightness_percent=" << m_settings.accessibilityBrightnessPercent << '\n'
+           << "accessibility_contrast_percent=" << m_settings.accessibilityContrastPercent << '\n';
     for (std::size_t index = 0; index < m_bindings.size(); ++index) {
         const InputBinding binding = m_bindings[index];
         output << "binding." << ActionConfigNames[index] << '='
@@ -418,7 +439,7 @@ bool InterfaceState::LoadConfiguration(std::string_view content)
         const std::string_view value = line.substr(separator + 1);
         if (key == "project_tempest_settings") {
             if (versionSeen || !ParseInteger(value, configurationVersion) ||
-                configurationVersion < 1 || configurationVersion > 3) {
+                configurationVersion < 1 || configurationVersion > 4) {
                 return false;
             }
             versionSeen = true;
@@ -464,6 +485,23 @@ bool InterfaceState::LoadConfiguration(std::string_view content)
             settingIndex = 8;
             if (!ParseBoolean(value, boolean)) return false;
             settings.colourIndependentCues = boolean;
+        } else if (key == "colour_vision_mode") {
+            settingIndex = 9;
+            if (!ParseInteger(value, number) || number < 0 ||
+                number >= static_cast<std::int32_t>(Accessibility::ColourVisionMode::Count)) return false;
+            settings.colourVisionMode = static_cast<Accessibility::ColourVisionMode>(number);
+        } else if (key == "colour_vision_strength_percent") {
+            settingIndex = 10;
+            if (!ParseInteger(value, number) || number < 0 || number > 100) return false;
+            settings.colourVisionStrengthPercent = number;
+        } else if (key == "accessibility_brightness_percent") {
+            settingIndex = 11;
+            if (!ParseInteger(value, number) || number < -10 || number > 10) return false;
+            settings.accessibilityBrightnessPercent = number;
+        } else if (key == "accessibility_contrast_percent") {
+            settingIndex = 12;
+            if (!ParseInteger(value, number) || number < -25 || number > 40) return false;
+            settings.accessibilityContrastPercent = number;
         }
         if (settingIndex < settingSeen.size()) {
             if (settingSeen[settingIndex]) {
@@ -552,6 +590,11 @@ bool InterfaceState::LoadConfiguration(std::string_view content)
             !migrateBinding(Action::GridLinkScan) ||
             !migrateBinding(Action::EmergencyOvercharge)) {
             return false;
+        }
+    }
+    if (configurationVersion < 4) {
+        for (std::size_t settingIndex = 9; settingIndex < settingSeen.size(); ++settingIndex) {
+            settingSeen[settingIndex] = true;
         }
     }
     if (!versionSeen || std::find(settingSeen.begin(), settingSeen.end(), false) != settingSeen.end() ||

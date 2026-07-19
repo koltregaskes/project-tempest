@@ -1,5 +1,7 @@
 add_executable(project_tempest_demo WIN32
     Code/ProjectTempestDemo.cpp
+    Code/TempestAccessibility.cpp
+    Code/TempestAccessibility.h
     Code/TempestAudio.cpp
     Code/TempestAudio.h
     Code/TempestAudioWin32.cpp
@@ -73,6 +75,26 @@ foreach(asset IN LISTS PROJECT_TEMPEST_RUNTIME_ASSETS)
     )
 endforeach()
 
+set(PROJECT_TEMPEST_ACCESSIBILITY_NOTICE_ROOT
+    "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/ElectronicArtsTunableColorblindness"
+)
+list(APPEND PROJECT_TEMPEST_RUNTIME_ASSET_SOURCES
+    "${PROJECT_TEMPEST_ACCESSIBILITY_NOTICE_ROOT}/LICENSE.txt"
+    "${PROJECT_TEMPEST_ACCESSIBILITY_NOTICE_ROOT}/NOTICE.txt"
+    "${PROJECT_TEMPEST_ACCESSIBILITY_NOTICE_ROOT}/SOURCE.txt"
+)
+list(APPEND PROJECT_TEMPEST_RUNTIME_ASSET_COMMANDS
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${PROJECT_TEMPEST_ACCESSIBILITY_NOTICE_ROOT}/LICENSE.txt"
+        "$<TARGET_FILE_DIR:project_tempest_demo>/EA-Tunable-Colorblindness-LICENSE.txt"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${PROJECT_TEMPEST_ACCESSIBILITY_NOTICE_ROOT}/NOTICE.txt"
+        "$<TARGET_FILE_DIR:project_tempest_demo>/EA-Tunable-Colorblindness-NOTICE.txt"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${PROJECT_TEMPEST_ACCESSIBILITY_NOTICE_ROOT}/SOURCE.txt"
+        "$<TARGET_FILE_DIR:project_tempest_demo>/EA-Tunable-Colorblindness-SOURCE.txt"
+)
+
 add_custom_target(project_tempest_runtime_assets
     ${PROJECT_TEMPEST_RUNTIME_ASSET_COMMANDS}
     DEPENDS ${PROJECT_TEMPEST_RUNTIME_ASSET_SOURCES}
@@ -82,6 +104,8 @@ add_custom_target(project_tempest_runtime_assets
 add_dependencies(project_tempest_demo project_tempest_runtime_assets)
 
 add_executable(project_tempest_sim_tests
+    Code/TempestAccessibility.cpp
+    Code/TempestAccessibility.h
     Code/TempestAudio.cpp
     Code/TempestAudio.h
     Code/TempestInterface.cpp

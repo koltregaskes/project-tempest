@@ -938,6 +938,20 @@ void TestSettingsBoundsAndRemapping()
         "UI scale remains within the non-clipping two-column layout range");
     interfaceState.HandleKey(Tempest::Ui::KeyUp);
 
+    for (int row = 0; row < 9; ++row) {
+        interfaceState.HandleKey(Tempest::Ui::KeyDown);
+    }
+    interfaceState.HandleKey(Tempest::Ui::KeyRight);
+    Expect(interfaceState.GetSettings().colourVisionMode ==
+            Tempest::Accessibility::ColourVisionMode::Protanopia,
+        "colour-vision mode can be enabled from the accessibility settings");
+    interfaceState.HandleKey(Tempest::Ui::KeyLeft);
+    Expect(interfaceState.GetSettings().colourVisionMode == Tempest::Accessibility::ColourVisionMode::Off,
+        "colour-vision mode remains disabled by default and can be turned off explicitly");
+    for (int row = 0; row < 9; ++row) {
+        interfaceState.HandleKey(Tempest::Ui::KeyUp);
+    }
+
     for (int row = 0; row < Tempest::Ui::InterfaceState::AdjustableSettingCount; ++row) {
         interfaceState.HandleKey(Tempest::Ui::KeyDown);
     }
@@ -1015,7 +1029,31 @@ void TestConfigurationPersistence()
         Expect(start != std::string::npos, "migration fixture contains the binding being removed");
         content.erase(start, content.find('\n', start) - start + 1);
     };
-    std::string versionTwo = saved;
+    const auto eraseSetting = [](std::string &content, const std::string &setting) {
+        const std::string prefix = setting + '=';
+        const std::size_t start = content.find(prefix);
+        Expect(start != std::string::npos, "migration fixture contains the setting being removed");
+        content.erase(start, content.find('\n', start) - start + 1);
+    };
+    std::string versionThree = saved;
+    versionThree.replace(versionThree.find("project_tempest_settings=4"),
+        std::string("project_tempest_settings=4").size(), "project_tempest_settings=3");
+    for (const std::string setting : {
+            "colour_vision_mode",
+            "colour_vision_strength_percent",
+            "accessibility_brightness_percent",
+            "accessibility_contrast_percent" }) {
+        eraseSetting(versionThree, setting);
+    }
+    Tempest::Ui::InterfaceState versionThreeMigrated;
+    Expect(versionThreeMigrated.LoadConfiguration(versionThree),
+        "a version-three settings file migrates with disabled colour-vision defaults");
+    Expect(versionThreeMigrated.GetSettings().colourVisionMode ==
+            Tempest::Accessibility::ColourVisionMode::Off &&
+            versionThreeMigrated.GetSettings().colourVisionStrengthPercent == 90,
+        "version-three migration preserves safe accessibility defaults");
+
+    std::string versionTwo = versionThree;
     versionTwo.replace(versionTwo.find("project_tempest_settings=3"),
         std::string("project_tempest_settings=3").size(), "project_tempest_settings=2");
     for (const std::string action : { "BuildArcSentry", "GridLinkScan", "EmergencyOvercharge" }) {
@@ -1064,6 +1102,44 @@ void TestConfigurationPersistence()
     Expect(!restored.LoadConfiguration(corrupt), "out-of-range persisted settings are rejected");
     Expect(restored.SerializeConfiguration() == pristine,
         "a rejected settings file cannot partially mutate live settings");
+}
+
+void TestAccessibilityColourContract()
+{
+    const Tempest::Accessibility::Colour cyan { 0.08F, 0.86F, 1.0F, 1.0F };
+    Tempest::Accessibility::Settings settings;
+    const Tempest::Accessibility::Colour off = Tempest::Accessibility::Apply(cyan, settings);
+    Expect(std::abs(off.red - cyan.red) < 0.00001F &&
+            std::abs(off.green - cyan.green) < 0.00001F &&
+            std::abs(off.blue - cyan.blue) < 0.00001F,
+        "disabled colour-vision processing is an exact presentation no-op");
+
+    settings.mode = Tempest::Accessibility::ColourVisionMode::Protanopia;
+    const Tempest::Accessibility::Colour protanopia = Tempest::Accessibility::Apply(cyan, settings);
+    Expect(std::abs(protanopia.red - 0.0690164F) < 0.0001F &&
+            std::abs(protanopia.green - 0.5076470F) < 0.0001F &&
+            std::abs(protanopia.blue - 0.5780423F) < 0.0001F,
+        "protanopia processing matches the pinned EA reference vector");
+
+    settings.mode = Tempest::Accessibility::ColourVisionMode::Deuteranopia;
+    const Tempest::Accessibility::Colour deuteranopia = Tempest::Accessibility::Apply(cyan, settings);
+    settings.mode = Tempest::Accessibility::ColourVisionMode::Tritanopia;
+    const Tempest::Accessibility::Colour tritanopia = Tempest::Accessibility::Apply(cyan, settings);
+    Expect(std::abs(deuteranopia.green - 0.7444385F) < 0.0001F &&
+            std::abs(deuteranopia.blue - 0.6550629F) < 0.0001F &&
+            std::abs(tritanopia.green - 1.0F) < 0.0001F &&
+            std::abs(tritanopia.blue - 0.1702900F) < 0.0001F,
+        "deuteranopia and tritanopia produce distinct pinned reference vectors");
+
+    settings.strengthPercent = 50;
+    settings.brightnessPercent = 10;
+    settings.contrastPercent = 40;
+    const Tempest::Accessibility::Colour bounded = Tempest::Accessibility::Apply(
+        { -2.0F, 4.0F, 0.5F, 3.0F }, settings);
+    Expect(bounded.red >= 0.0F && bounded.red <= 1.0F &&
+            bounded.green >= 0.0F && bounded.green <= 1.0F &&
+            bounded.blue >= 0.0F && bounded.blue <= 1.0F && bounded.alpha == 1.0F,
+        "accessibility processing clamps hostile colour and setting inputs to display-safe output");
 }
 
 void TestAudioContract()
@@ -1132,6 +1208,7 @@ int main()
     TestInterfaceFlow();
     TestSettingsBoundsAndRemapping();
     TestConfigurationPersistence();
+    TestAccessibilityColourContract();
     TestAudioContract();
     std::cout << "PASS: Project Tempest deterministic simulation tests\n";
     return 0;

@@ -1,0 +1,11 @@
+Component: Electronic Arts Tunable Colorblindness Solution
+Author: Karen Stevens, Electronic Arts Inc.
+Source: https://github.com/electronicarts/Tunable-Colorblindness-Solution
+Source file: Tunable Colorblindness Solution.fxh
+Source revision reviewed: dccfe0b3a740bc64fdb267f4ab674d03f9755078 on 18 July 2026
+Upstream copyright: Copyright (c) 2015-2021 Electronic Arts Inc.
+Licence: Apache License 2.0
+Local implementation: ../../Code/TempestAccessibility.cpp and .h
+Local changes: portable C++ types, bounded integer settings, mode enum,
+disabled-by-default integration, final output clamp, and deterministic tests.
+Distribution: included with Project Tempest source and binary notices.

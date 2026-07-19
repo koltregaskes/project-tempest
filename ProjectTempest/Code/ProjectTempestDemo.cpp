@@ -1611,6 +1611,7 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
         hint,
         "UP/DOWN select   LEFT/RIGHT adjust   ENTER rebind   ESC return to pause");
 
+    // TheSuperHackers @feature koltregaskes 18/07/2026 Present the tunable colour accessibility controls in-window.
     const char *settingNames[Tempest::Ui::InterfaceState::AdjustableSettingCount] = {
         "Camera speed",
         "UI scale",
@@ -1621,6 +1622,10 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
         "Reduced motion",
         "Reduced flashes",
         "Colour-independent cues",
+        "Colour-vision mode",
+        "Colour-vision strength",
+        "Accessibility brightness",
+        "Accessibility contrast",
     };
     const Tempest::Ui::Settings &settings = g_interface.GetSettings();
     const int selectedRow = g_interface.GetSelectedSettingsRow();
@@ -1651,6 +1656,20 @@ void DrawSettingsOverlay(HDC device, const RECT &client, float scale)
             case 6: std::snprintf(value, sizeof(value), "%s", settings.reducedMotion ? "ON" : "OFF"); break;
             case 7: std::snprintf(value, sizeof(value), "%s", settings.reducedFlashes ? "ON" : "OFF"); break;
             case 8: std::snprintf(value, sizeof(value), "%s", settings.colourIndependentCues ? "ON" : "OFF"); break;
+            case 9:
+                std::snprintf(
+                    value,
+                    sizeof(value),
+                    "%s",
+                    Tempest::Accessibility::ModeName(settings.colourVisionMode));
+                break;
+            case 10: std::snprintf(value, sizeof(value), "%d%%", settings.colourVisionStrengthPercent); break;
+            case 11:
+                std::snprintf(value, sizeof(value), "%+d%%", settings.accessibilityBrightnessPercent);
+                break;
+            case 12:
+                std::snprintf(value, sizeof(value), "%+d%%", settings.accessibilityContrastPercent);
+                break;
             default: value[0] = '\0'; break;
         }
         char line[180];
