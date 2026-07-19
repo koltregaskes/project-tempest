@@ -321,8 +321,18 @@ foreach ($noticeFile in @("LICENSE.txt", "NOTICE.txt", "SOURCE.txt")) {
         throw "EA Tunable Colorblindness attribution file is missing: $noticeFile"
     }
 }
-$accessibilityLicenseHash = (Get-FileHash -LiteralPath (
-    Join-Path $accessibilityNoticeRoot "LICENSE.txt") -Algorithm SHA256).Hash.ToLowerInvariant()
+$accessibilityLicenseText = [IO.File]::ReadAllText((Join-Path $accessibilityNoticeRoot "LICENSE.txt"))
+$accessibilityLicenseBytes = [Text.UTF8Encoding]::new($false).GetBytes(
+    ($accessibilityLicenseText -replace "`r`n", "`n" -replace "`r", "`n"))
+$accessibilityLicenseSha256 = [Security.Cryptography.SHA256]::Create()
+try {
+    $accessibilityLicenseHash = (
+        [BitConverter]::ToString($accessibilityLicenseSha256.ComputeHash($accessibilityLicenseBytes)) -replace '-', ''
+    ).ToLowerInvariant()
+}
+finally {
+    $accessibilityLicenseSha256.Dispose()
+}
 if ($accessibilityLicenseHash -ne "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4") {
     throw "The canonical Apache-2.0 licence copy for EA's accessibility component changed unexpectedly."
 }
@@ -391,11 +401,35 @@ if (
 ) {
     throw "Project Tempest renderer does not map Dynamo/Arc Sentry/Signal Pylon/Chorus simulation entities to dedicated runtime models."
 }
-if (
-    $demoSource -notmatch [regex]::Escape('const HGDIOBJ previousFont = SelectObject(device, font);') -or
-    $demoSource -notmatch [regex]::Escape('SelectObject(device, previousFont);')
-) {
-    throw "Project Tempest HUD drawing must restore the prior GDI font before scalable fonts can be deleted."
+$presentationSource = Get-Content -LiteralPath (
+    Join-Path $repositoryRoot "ProjectTempest/Code/TempestPresentationD3D8.cpp") -Raw
+$presentationShaderSource = Get-Content -LiteralPath (
+    Join-Path $repositoryRoot "ProjectTempest/Code/TempestPresentationShader.h") -Raw
+$presentationContractSource = $presentationSource + $presentationShaderSource
+foreach ($presentationContract in @(
+    'D3DXCreateFont',
+    'DrawTextA',
+    'DrawPrimitiveUP',
+    'ps.1.4',
+    'BuildPresentationParameters(settings)',
+    'Set_Render_Target(surface, m_depthTarget)',
+    'WW3D::End_Render(true)'
+)) {
+    if ($presentationContractSource -notmatch [regex]::Escape($presentationContract)) {
+        throw "Project Tempest GPU presentation contract is missing '$presentationContract'."
+    }
+}
+foreach ($combinedFrameContract in @(
+    'g_presentation.BindCombinedTarget(width, height)',
+    'WW3D::End_Render(false)',
+    'g_presentation.CompositeAndPresent(accessibilitySettings)'
+)) {
+    if ($demoSource -notmatch [regex]::Escape($combinedFrameContract)) {
+        throw "Project Tempest combined world/UI frame contract is missing '$combinedFrameContract'."
+    }
+}
+if ($demoSource -match '\bGetDC\s*\(' -or $demoSource -match '\bCreateSolidBrush\s*\(') {
+    throw "Project Tempest runtime HUD must remain on the GPU so world and interface receive one presentation transform."
 }
 foreach ($mouseCaptureContract in @(
     "SetCapture(window)",

@@ -7,6 +7,9 @@ add_executable(project_tempest_demo WIN32
     Code/TempestAudioWin32.cpp
     Code/TempestInterface.cpp
     Code/TempestInterface.h
+    Code/TempestPresentationD3D8.cpp
+    Code/TempestPresentationD3D8.h
+    Code/TempestPresentationShader.h
     Code/TempestSimulation.cpp
 )
 
@@ -117,3 +120,30 @@ target_compile_features(project_tempest_sim_tests PRIVATE cxx_std_20)
 target_include_directories(project_tempest_sim_tests PRIVATE Code)
 
 add_test(NAME project_tempest_sim_tests COMMAND project_tempest_sim_tests)
+
+add_executable(project_tempest_presentation_shader_tests
+    Code/TempestPresentationShader.h
+    Tests/TempestPresentationShaderTests.cpp
+)
+target_compile_features(project_tempest_presentation_shader_tests PRIVATE cxx_std_20)
+target_compile_definitions(project_tempest_presentation_shader_tests PRIVATE
+    NOMINMAX
+    WIN32_LEAN_AND_MEAN
+)
+target_include_directories(project_tempest_presentation_shader_tests PRIVATE Code)
+target_link_libraries(project_tempest_presentation_shader_tests PRIVATE
+    advapi32
+    d3d8lib
+    gdi32
+    user32
+)
+add_test(
+    NAME project_tempest_presentation_shader_tests
+    COMMAND project_tempest_presentation_shader_tests
+)
+add_custom_command(TARGET project_tempest_presentation_shader_tests POST_BUILD
+    COMMAND $<TARGET_FILE:project_tempest_presentation_shader_tests>
+    COMMENT "Assembling the Project Tempest accessibility shader headlessly"
+    VERBATIM
+)
+add_dependencies(project_tempest_demo project_tempest_presentation_shader_tests)
