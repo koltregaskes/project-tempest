@@ -82,6 +82,15 @@ resumes without discarding voice positions. Missing or invalid audio is nonfatal
 Audible balance, loop perception, device switching, and long-session stability remain explicit user-run manual evidence;
 agents must not launch the demo to obtain it.
 
+The colour-vision accessibility foundation is derived from Electronic Arts' Apache-2.0
+[Tunable Colorblindness Solution](https://github.com/electronicarts/Tunable-Colorblindness-Solution). The isolated
+`Code/TempestAccessibility.*` module provides disabled-by-default protanopia, deuteranopia, and tritanopia modes with
+0-100% strength, -10% to +10% brightness, and -25% to +40% contrast. Version-four settings persist these controls and
+migrate older profiles to safe defaults. Pinned vector tests protect the EA-derived math, and the executable package
+includes the upstream licence, NOTICE, source record, and Project Tempest modification notice. This is the portable
+math/settings foundation only: the final single-pass world-and-UI renderer connection, reference screenshots, and
+frame-time evidence remain open and must not be claimed from headless tests.
+
 The runtime W3D has a captured frame from the repository's native `W3DViewV.exe`. The viewer is blocked under Microsoft
 Remote Display. On 15 July 2026, unattended launches from `build/ci-w3dview-fixed/W3DViewV.exe` caused repeated
 focus-stealing render-device dialogs and six Application Error event 1000 records at 10:49:40, 10:50:40, 10:52:08,

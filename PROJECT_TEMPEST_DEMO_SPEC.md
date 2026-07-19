@@ -147,7 +147,7 @@ complete internal-development provenance, and a package/load contract. The Relay
 `HouseColor0`/`HouseColor1`/`HouseColor2` mesh names. Their W3Ds and shared textures are byte-stable across clean
 background regenerations; normal-zoom in-engine readability remains a manual-only non-RDP gate.
 
-Current interface boundary (2026-07-15): camera speed, UI scale, master/music/effects values, edge scroll, reduced
+Current interface boundary (2026-07-18): camera speed, UI scale, master/music/effects values, edge scroll, reduced
 motion, reduced flashes, colour-independent cues, and twelve keyboard-or-mouse bindings can be changed in-window.
 Primary selection and context command are remappable alongside keyboard actions, with Left/Right/Middle/Mouse 4/Mouse
 5 support. Settings use a strict versioned format, reject corrupt/partial/duplicate data atomically, and save through a
@@ -157,7 +157,11 @@ mouse inputs and pauses the interface. Three synchronised deterministic PCM scor
 presentation-only match pressure, while five original cue types provide action feedback; all now pass provenance,
 repeat-generation, strict WAV parsing, package, and XAudio2 compile gates. Master/music/effects settings drive separate
 runtime submixes. Audible balance/device behavior, normal-zoom readability, target-resolution clipping, and manual runtime
-proof of audio, persistence, and remapping remain open user-only gates.
+proof of audio, persistence, and remapping remain open user-only gates. Version-four settings now also persist
+disabled-by-default protanopia, deuteranopia, and tritanopia modes plus bounded strength, brightness, and contrast.
+The isolated Apache-2.0 EA-derived colour transform has pinned deterministic vectors and packaged attribution; connecting
+it exactly once to the final world-and-UI presentation surface, then capturing target-resolution/performance evidence,
+remains open rather than being inferred from the portable tests.
 
 Current content-model boundary (2026-07-15): the deterministic rules layer names all four Freegrid units, four Freegrid
 structures, both governed abilities, three Chorus units, and three Chorus structures through data-backed definitions.
