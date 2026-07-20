@@ -7,7 +7,7 @@
     {
       "name": "mss32.dll",
       "kind": "runtime_dependency",
-      "sha256": "5c09cec5f15de4b0ee4f40ca65fd39bb15a1a41159bcade80b8a7e1855b904d5"
+      "sha256": "af74496052f07027368cc28a24ad775c0deeb1814760b432f82dc98778c5be5f"
     },
     {
       "name": "headless-acceptance.json",
