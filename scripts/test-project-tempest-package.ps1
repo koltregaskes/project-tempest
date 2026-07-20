@@ -61,6 +61,21 @@ try {
             Copy-Item -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/ThirdParty/ElectronicArtsTunableColorblindness/$noticeName") `
                 -Destination $destination
         }
+        elseif ($entry.kind -eq "headless_evidence") {
+            $fixtureAcceptance = [ordered]@{
+                schema_version = 1
+                mode = "headless_deterministic_acceptance"
+                manual_playthrough_claimed = $false
+                fresh_launches = 3
+                scenarios = @(
+                    [ordered]@{ outcome = "victory"; ticks = $entry.victory_ticks; final_checksum = $entry.victory_final_checksum; trace_checksum = $entry.victory_trace_checksum; territory_capture = $true; construction = $true; production = $true; faction_abilities = $true; result_flow = $true; restart_flow = $true },
+                    [ordered]@{ outcome = "defeat"; ticks = $entry.defeat_ticks; final_checksum = $entry.defeat_final_checksum; trace_checksum = $entry.defeat_trace_checksum; result_flow = $true; restart_flow = $true },
+                    [ordered]@{ outcome = "victory"; ticks = $entry.victory_ticks; final_checksum = $entry.victory_final_checksum; trace_checksum = $entry.victory_trace_checksum; territory_capture = $true; construction = $true; production = $true; faction_abilities = $true; result_flow = $true; restart_flow = $true }
+                )
+            }
+            $fixtureJson = ($fixtureAcceptance | ConvertTo-Json -Depth 6) -replace "`r`n", "`n"
+            [IO.File]::WriteAllText($destination, $fixtureJson + "`n", [Text.UTF8Encoding]::new($false))
+        }
         else {
             $bytes = if ($entry.kind -eq "executable") {
                 [byte[]](0x4D, 0x5A, 0x50, 0x54, 0x44, 0x45, 0x4D, 0x4F)
@@ -124,7 +139,10 @@ try {
         $manifest = $manifestText | ConvertFrom-Json
         if ($manifest.source_revision -ne $revision -or
             $manifest.source_date_epoch -ne $epoch -or
+            $manifest.distribution -ne "test_fixture" -or
             $manifest.source_tree -ne "fixture" -or
+            $manifest.package_contract_sha256 -ne (Get-FileHash -LiteralPath $contractPath -Algorithm SHA256).Hash.ToLowerInvariant() -or
+            $manifest.asset_provenance_sha256 -ne (Get-FileHash -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json") -Algorithm SHA256).Hash.ToLowerInvariant() -or
             $manifest.renderer_execution -ne "not_performed" -or
             $manifest.manual_playthrough_claimed -ne $false) {
             throw "Private package manifest does not preserve the governed source/evidence state."
@@ -185,6 +203,53 @@ try {
     }
     if (-not $caught -or (Test-Path -LiteralPath $dependencyMismatchOutput)) {
         throw "The package gate did not reject a runtime dependency hash mismatch before staging output."
+    }
+
+    $executablePath = Join-Path $runtimeDirectory "ProjectTempestDemo.exe"
+    [IO.File]::WriteAllBytes($executablePath, [byte[]](0x4E, 0x4F, 0x54, 0x50, 0x45))
+    $invalidExecutableOutput = Join-Path $sessionRoot "invalid-executable"
+    $caught = $false
+    try {
+        & $packageScript `
+            -RuntimeDirectory $runtimeDirectory `
+            -OutputDirectory $invalidExecutableOutput `
+            -SourceRevision $revision `
+            -SourceDateEpoch $epoch `
+            -TestFixture `
+            -TestFixtureRuntimeDependencySha256 $fixtureDependencyHash
+    }
+    catch {
+        $caught = $_.Exception.Message -match "not a PE image"
+    }
+    if (-not $caught -or (Test-Path -LiteralPath $invalidExecutableOutput)) {
+        throw "The package gate did not reject a non-PE release executable before staging output."
+    }
+
+    [IO.File]::WriteAllText($executablePath, "MZPTDEMO", [Text.UTF8Encoding]::new($false))
+    $acceptancePath = Join-Path $runtimeDirectory "headless-acceptance.json"
+    $invalidAcceptance = Get-Content -LiteralPath $acceptancePath -Raw | ConvertFrom-Json
+    $invalidAcceptance.manual_playthrough_claimed = $true
+    [IO.File]::WriteAllText(
+        $acceptancePath,
+        (($invalidAcceptance | ConvertTo-Json -Depth 6) -replace "`r`n", "`n") + "`n",
+        [Text.UTF8Encoding]::new($false)
+    )
+    $invalidAcceptanceOutput = Join-Path $sessionRoot "invalid-acceptance"
+    $caught = $false
+    try {
+        & $packageScript `
+            -RuntimeDirectory $runtimeDirectory `
+            -OutputDirectory $invalidAcceptanceOutput `
+            -SourceRevision $revision `
+            -SourceDateEpoch $epoch `
+            -TestFixture `
+            -TestFixtureRuntimeDependencySha256 $fixtureDependencyHash
+    }
+    catch {
+        $caught = $_.Exception.Message -match "does not prove three deterministic"
+    }
+    if (-not $caught -or (Test-Path -LiteralPath $invalidAcceptanceOutput)) {
+        throw "The package gate did not reject invalid headless acceptance evidence before staging output."
     }
 
     Write-Host "PASS: Project Tempest package contract and reproducibility"

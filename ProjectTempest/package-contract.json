@@ -9,6 +9,16 @@
       "kind": "runtime_dependency",
       "sha256": "5c09cec5f15de4b0ee4f40ca65fd39bb15a1a41159bcade80b8a7e1855b904d5"
     },
+    {
+      "name": "headless-acceptance.json",
+      "kind": "headless_evidence",
+      "victory_ticks": 692,
+      "victory_final_checksum": "12952808647802402891",
+      "victory_trace_checksum": "5821017828228671614",
+      "defeat_ticks": 1314,
+      "defeat_final_checksum": "16762171224111744054",
+      "defeat_trace_checksum": "12235278080197510931"
+    },
     { "name": "courier.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/courier.w3d" },
     { "name": "courierd.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/courierd.w3d" },
     { "name": "drone.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/drone.w3d" },
@@ -37,6 +47,7 @@
   ],
   "repository_files": [
     { "path": "LICENSE.md", "name": "GPL-3.0-LICENSE.md", "kind": "licence" },
+    { "path": "ProjectTempest/package-contract.json", "name": "package-contract.json", "kind": "package_contract" },
     { "path": "ProjectTempest/asset-provenance.json", "name": "asset-provenance.json", "kind": "provenance" },
     { "path": "ProjectTempest/PRIVATE-DEMO-README.txt", "name": "README.txt", "kind": "documentation" },
     { "path": "ProjectTempest/ThirdParty/MilesStub/SOURCE.txt", "name": "MILES-STUB-SOURCE.txt", "kind": "third_party_notice" }

@@ -228,7 +228,8 @@ After a Release build, create the governed private package without launching the
 ```
 
 The packager stages only the executable, GPL Miles stub, governed original runtime assets, provenance, licences,
-notices, and the private-demo readme listed in `package-contract.json`. It rejects retail BIG/GIB archives, replays,
+notices, the deterministic headless-acceptance report, and the private-demo readme listed in `package-contract.json`.
+It rejects retail BIG/GIB archives, replays,
 EA game executables, WorldBuilder, and W3DView before staging; validates every asset hash against provenance; writes a
 machine-readable manifest and `SHA256SUMS.txt`; fixes all ZIP timestamps to the source commit; and produces a stable
 `ProjectTempestDemo-private.zip`. It also rejects a dirty source tree or a Miles stub whose hash does not match the

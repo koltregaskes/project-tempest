@@ -13,6 +13,10 @@ namespace {
 
 constexpr std::uint64_t FnvOffsetBasis = 1469598103934665603ULL;
 constexpr std::uint64_t FnvPrime = 1099511628211ULL;
+constexpr std::uint64_t ExpectedVictoryFinalChecksum = 12952808647802402891ULL;
+constexpr std::uint64_t ExpectedVictoryTraceChecksum = 5821017828228671614ULL;
+constexpr std::uint64_t ExpectedDefeatFinalChecksum = 16762171224111744054ULL;
+constexpr std::uint64_t ExpectedDefeatTraceChecksum = 12235278080197510931ULL;
 
 struct ScenarioResult {
     std::string name;
@@ -25,6 +29,10 @@ struct ScenarioResult {
     std::int32_t abilityCharge = 0;
     std::size_t livingFreegridUnits = 0;
     std::size_t livingChorusUnits = 0;
+    bool territoryCapture = false;
+    bool construction = false;
+    bool production = false;
+    bool factionAbilities = false;
     bool resultFlow = false;
     bool restartFlow = false;
 };
@@ -48,7 +56,9 @@ Tempest::Command MakeCommand(
     std::uint32_t actorId = 0,
     std::uint32_t targetId = 0,
     Tempest::Point point = {},
-    Tempest::UnitKind unitKind = Tempest::UnitKind::CourierScout)
+    Tempest::UnitKind unitKind = Tempest::UnitKind::CourierScout,
+    Tempest::BuildingKind buildingKind = Tempest::BuildingKind::Dynamo,
+    Tempest::AbilityKind abilityKind = Tempest::AbilityKind::GridLinkScan)
 {
     Tempest::Command command {};
     command.executeTick = executeTick;
@@ -57,7 +67,19 @@ Tempest::Command MakeCommand(
     command.targetId = targetId;
     command.point = point;
     command.unitKind = unitKind;
+    command.buildingKind = buildingKind;
+    command.abilityKind = abilityKind;
     return command;
+}
+
+std::uint32_t FindUnit(const Tempest::MatchState &state, Tempest::UnitKind kind)
+{
+    for (const Tempest::Unit &unit : state.units) {
+        if (unit.kind == kind && unit.alive) {
+            return unit.id;
+        }
+    }
+    return 0;
 }
 
 std::uint32_t FindBuilding(const Tempest::MatchState &state, Tempest::BuildingKind kind)
@@ -92,6 +114,60 @@ std::size_t CountLivingUnits(const Tempest::MatchState &state, Tempest::Faction 
     return count;
 }
 
+std::size_t OrderFreegridAssault(Tempest::Simulation &simulation, std::uint32_t targetId)
+{
+    const std::vector<std::uint32_t> units = FindLivingFreegridUnits(simulation.GetState());
+    for (const std::uint32_t unitId : units) {
+        simulation.Submit(MakeCommand(
+            simulation.GetState().tick,
+            Tempest::CommandKind::Attack,
+            unitId,
+            targetId));
+    }
+    return units.size();
+}
+
+std::size_t CountLivingUnits(const Tempest::MatchState &state, Tempest::UnitKind kind)
+{
+    std::size_t count = 0;
+    for (const Tempest::Unit &unit : state.units) {
+        if (unit.kind == kind && unit.alive) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+bool NodeIsOwnedBy(const Tempest::MatchState &state, std::uint32_t nodeId, Tempest::Faction faction)
+{
+    for (const Tempest::ControlNode &node : state.nodes) {
+        if (node.id == nodeId) {
+            return node.owner == faction;
+        }
+    }
+    return false;
+}
+
+bool HasCompleteBuilding(const Tempest::MatchState &state, Tempest::BuildingKind kind)
+{
+    for (const Tempest::Building &building : state.buildings) {
+        if (building.kind == kind && building.hitPoints > 0 && building.complete) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::int32_t BuildingHitPoints(const Tempest::MatchState &state, Tempest::BuildingKind kind)
+{
+    for (const Tempest::Building &building : state.buildings) {
+        if (building.kind == kind) {
+            return building.hitPoints;
+        }
+    }
+    return -1;
+}
+
 void HashChecksum(std::uint64_t &trace, std::uint64_t checksum)
 {
     for (unsigned shift = 0; shift < 64; shift += 8) {
@@ -104,6 +180,22 @@ void StepAndTrace(Tempest::Simulation &simulation, ScenarioResult &result)
 {
     simulation.Step();
     HashChecksum(result.traceChecksum, simulation.Checksum());
+}
+
+template <typename Predicate>
+void StepUntil(
+    Tempest::Simulation &simulation,
+    ScenarioResult &result,
+    int maximumTicks,
+    Predicate predicate,
+    const std::string &failureMessage)
+{
+    for (int tick = 0; tick < maximumTicks && !predicate(); ++tick) {
+        Expect(simulation.GetState().outcome == Tempest::MatchOutcome::InProgress,
+            failureMessage + " before the match reached a terminal state");
+        StepAndTrace(simulation, result);
+    }
+    Expect(predicate(), failureMessage);
 }
 
 void BeginFreshLaunch(Tempest::Simulation &simulation, Tempest::Ui::InterfaceState &interfaceState)
@@ -151,33 +243,121 @@ ScenarioResult RunFreegridVictory(const std::string &name)
         FindBuilding(simulation.GetState(), Tempest::BuildingKind::FabricatorBay);
     const std::uint32_t chorusSpire =
         FindBuilding(simulation.GetState(), Tempest::BuildingKind::ChorusSpire);
-    Expect(fabricatorBay != 0 && chorusSpire != 0,
-        "the victory scenario locates both faction anchors");
+    const std::uint32_t fabricatorRig = FindUnit(simulation.GetState(), Tempest::UnitKind::FabricatorRig);
+    const std::uint32_t courier = FindUnit(simulation.GetState(), Tempest::UnitKind::CourierScout);
+    const std::uint32_t firstNode = simulation.GetState().nodes.front().id;
+    Expect(fabricatorBay != 0 && chorusSpire != 0 && fabricatorRig != 0 && courier != 0,
+        "the victory scenario locates both faction anchors and starting Freegrid units");
 
-    for (int index = 0; index < 3; ++index) {
-        simulation.Submit(MakeCommand(
-            simulation.GetState().tick,
-            Tempest::CommandKind::ProduceUnit,
-            fabricatorBay,
-            0,
-            {},
-            Tempest::UnitKind::CourierScout));
-    }
+    simulation.Submit(MakeCommand(
+        simulation.GetState().tick,
+        Tempest::CommandKind::Capture,
+        courier,
+        firstNode));
+    StepUntil(
+        simulation,
+        result,
+        Tempest::TicksPerSecond * 20,
+        [&simulation, firstNode]() {
+            return NodeIsOwnedBy(simulation.GetState(), firstNode, Tempest::Faction::Freegrid);
+        },
+        "the scripted player captures its first salvage substation");
+    result.territoryCapture = true;
 
-    for (int tick = 0; tick < Tempest::TicksPerSecond * 10; ++tick) {
-        StepAndTrace(simulation, result);
-    }
+    Expect(simulation.CanBuildStructure(fabricatorRig, firstNode, Tempest::BuildingKind::ArcSentry) &&
+            simulation.CanProduceUnit(fabricatorBay, Tempest::UnitKind::LancerCrew),
+        "captured territory enables the planned defensive construction and production orders");
+    simulation.Submit(MakeCommand(
+        simulation.GetState().tick,
+        Tempest::CommandKind::BuildStructure,
+        fabricatorRig,
+        firstNode,
+        {},
+        Tempest::UnitKind::CourierScout,
+        Tempest::BuildingKind::ArcSentry));
+    simulation.Submit(MakeCommand(
+        simulation.GetState().tick,
+        Tempest::CommandKind::ProduceUnit,
+        fabricatorBay,
+        0,
+        {},
+        Tempest::UnitKind::LancerCrew));
 
-    const std::vector<std::uint32_t> strikeForce = FindLivingFreegridUnits(simulation.GetState());
-    Expect(strikeForce.size() >= 4,
-        "the victory scenario completes enough production for a combined strike force");
-    for (const std::uint32_t unitId : strikeForce) {
-        simulation.Submit(MakeCommand(
-            simulation.GetState().tick,
-            Tempest::CommandKind::Attack,
-            unitId,
-            chorusSpire));
-    }
+    StepUntil(
+        simulation,
+        result,
+        Tempest::TicksPerSecond * 10,
+        [&simulation]() {
+            return simulation.GetState().abilityCharge >=
+                Tempest::GetAbilityDefinition(Tempest::AbilityKind::GridLinkScan).abilityChargeCost +
+                Tempest::GetAbilityDefinition(Tempest::AbilityKind::EmergencyOvercharge).abilityChargeCost;
+        },
+        "territory income charges both governed faction abilities");
+    simulation.Submit(MakeCommand(
+        simulation.GetState().tick,
+        Tempest::CommandKind::ActivateAbility,
+        0,
+        0,
+        { 14500, 10500 },
+        Tempest::UnitKind::CourierScout,
+        Tempest::BuildingKind::Dynamo,
+        Tempest::AbilityKind::GridLinkScan));
+    simulation.Submit(MakeCommand(
+        simulation.GetState().tick,
+        Tempest::CommandKind::ActivateAbility,
+        0,
+        0,
+        {},
+        Tempest::UnitKind::CourierScout,
+        Tempest::BuildingKind::Dynamo,
+        Tempest::AbilityKind::EmergencyOvercharge));
+    StepAndTrace(simulation, result);
+    Expect(simulation.GetState().abilityDurationTicks[static_cast<std::size_t>(Tempest::AbilityKind::GridLinkScan)] > 0 &&
+            simulation.GetState().abilityDurationTicks[static_cast<std::size_t>(Tempest::AbilityKind::EmergencyOvercharge)] > 0,
+        "the scripted player activates scan and emergency overcharge before the assault");
+    result.factionAbilities = true;
+    Expect(OrderFreegridAssault(simulation, chorusSpire) >= 2,
+        "the scripted player launches the opening assault while reinforcements are produced");
+
+    StepUntil(
+        simulation,
+        result,
+        Tempest::TicksPerSecond * 12,
+        [&simulation]() {
+            return HasCompleteBuilding(simulation.GetState(), Tempest::BuildingKind::ArcSentry) &&
+                CountLivingUnits(simulation.GetState(), Tempest::UnitKind::LancerCrew) == 1;
+        },
+        "the scripted player completes an Arc Sentry and Lancer production cycle");
+    result.construction = true;
+    result.production = true;
+    Expect(OrderFreegridAssault(simulation, chorusSpire) >= 3,
+        "the completed Lancer joins the active assault");
+
+    StepUntil(
+        simulation,
+        result,
+        Tempest::TicksPerSecond * 20,
+        [&simulation, fabricatorBay]() {
+            return simulation.CanProduceUnit(fabricatorBay, Tempest::UnitKind::CourierScout);
+        },
+        "the captured node generates enough salvage for a second Courier");
+    simulation.Submit(MakeCommand(
+        simulation.GetState().tick,
+        Tempest::CommandKind::ProduceUnit,
+        fabricatorBay,
+        0,
+        {},
+        Tempest::UnitKind::CourierScout));
+    StepUntil(
+        simulation,
+        result,
+        Tempest::TicksPerSecond * 6,
+        [&simulation]() {
+            return CountLivingUnits(simulation.GetState(), Tempest::UnitKind::CourierScout) >= 2;
+        },
+        "the scripted player completes its second Courier production cycle");
+    Expect(OrderFreegridAssault(simulation, chorusSpire) >= 4,
+        "the second Courier joins the combined original-role strike force");
 
     constexpr int MaximumMatchTicks = Tempest::TicksPerSecond * 180;
     for (int tick = 0;
@@ -186,6 +366,15 @@ ScenarioResult RunFreegridVictory(const std::string &name)
         StepAndTrace(simulation, result);
     }
 
+    if (simulation.GetState().outcome != Tempest::MatchOutcome::Victory) {
+        std::cerr << "Victory diagnostic: tick=" << simulation.GetState().tick
+                  << " outcome=" << static_cast<int>(simulation.GetState().outcome)
+                  << " relay_hp=" << BuildingHitPoints(simulation.GetState(), Tempest::BuildingKind::RelayCore)
+                  << " spire_hp=" << BuildingHitPoints(simulation.GetState(), Tempest::BuildingKind::ChorusSpire)
+                  << " freegrid_units=" << CountLivingUnits(simulation.GetState(), Tempest::Faction::Freegrid)
+                  << " chorus_units=" << CountLivingUnits(simulation.GetState(), Tempest::Faction::Chorus)
+                  << " chorus_wave=" << simulation.GetState().chorusWave << '\n';
+    }
     Expect(simulation.GetState().outcome == Tempest::MatchOutcome::Victory,
         "the scripted Freegrid full-match path reaches victory before its safety bound");
     result.outcome = simulation.GetState().outcome;
@@ -264,6 +453,10 @@ std::string JsonFor(const std::vector<ScenarioResult> &results)
              << "      \"ability_charge\": " << result.abilityCharge << ",\n"
              << "      \"living_freegrid_units\": " << result.livingFreegridUnits << ",\n"
              << "      \"living_chorus_units\": " << result.livingChorusUnits << ",\n"
+             << "      \"territory_capture\": " << (result.territoryCapture ? "true" : "false") << ",\n"
+             << "      \"construction\": " << (result.construction ? "true" : "false") << ",\n"
+             << "      \"production\": " << (result.production ? "true" : "false") << ",\n"
+             << "      \"faction_abilities\": " << (result.factionAbilities ? "true" : "false") << ",\n"
              << "      \"result_flow\": " << (result.resultFlow ? "true" : "false") << ",\n"
              << "      \"restart_flow\": " << (result.restartFlow ? "true" : "false") << "\n"
              << "    }" << (index + 1 == results.size() ? "\n" : ",\n");
@@ -291,6 +484,18 @@ int main(int argc, char **argv)
             firstVictory.traceChecksum == secondVictory.traceChecksum &&
             firstVictory.ticks == secondVictory.ticks,
         "repeated fresh-launch victory scenarios are deterministic");
+    std::cout << "TRACE: victory_ticks=" << firstVictory.ticks
+              << " victory_final_checksum=" << firstVictory.finalChecksum
+              << " victory_trace_checksum=" << firstVictory.traceChecksum
+              << " defeat_ticks=" << chorusDefeat.ticks
+              << " defeat_final_checksum=" << chorusDefeat.finalChecksum
+              << " defeat_trace_checksum=" << chorusDefeat.traceChecksum << '\n';
+    Expect(firstVictory.finalChecksum == ExpectedVictoryFinalChecksum &&
+            firstVictory.traceChecksum == ExpectedVictoryTraceChecksum,
+        "the Freegrid full-match path matches its reviewed golden checksums");
+    Expect(chorusDefeat.finalChecksum == ExpectedDefeatFinalChecksum &&
+            chorusDefeat.traceChecksum == ExpectedDefeatTraceChecksum,
+        "the Chorus full-match path matches its reviewed golden checksums");
 
     const std::string json = JsonFor({ firstVictory, chorusDefeat, secondVictory });
     if (!outputPath.empty()) {

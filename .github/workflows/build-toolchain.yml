@@ -181,7 +181,7 @@ jobs:
         run: |
           $runtimeDirectory = "build\win32\ProjectTempest\Release"
           & "$runtimeDirectory\project_tempest_headless_acceptance.exe" `
-            --output "build\win32\ProjectTempest\headless-acceptance.json"
+            --output "$runtimeDirectory\headless-acceptance.json"
           if ($LASTEXITCODE -ne 0) {
             throw "Project Tempest headless acceptance failed with exit code $LASTEXITCODE."
           }
@@ -217,12 +217,12 @@ jobs:
           }
 
           $repeatRuntimeDirectory = Join-Path $repeatBuild "ProjectTempest\Release"
-          $repeatAcceptance = Join-Path $repeatBuild "ProjectTempest\headless-acceptance.json"
+          $repeatAcceptance = Join-Path $repeatRuntimeDirectory "headless-acceptance.json"
           & "$repeatRuntimeDirectory\project_tempest_headless_acceptance.exe" --output $repeatAcceptance
           if ($LASTEXITCODE -ne 0) {
             throw "The isolated Project Tempest headless acceptance failed with exit code $LASTEXITCODE."
           }
-          if ((Get-FileHash -LiteralPath "build\win32\ProjectTempest\headless-acceptance.json" -Algorithm SHA256).Hash -ne
+          if ((Get-FileHash -LiteralPath "$runtimeDirectory\headless-acceptance.json" -Algorithm SHA256).Hash -ne
               (Get-FileHash -LiteralPath $repeatAcceptance -Algorithm SHA256).Hash) {
             throw "The two isolated Project Tempest acceptance reports are not byte-identical."
           }

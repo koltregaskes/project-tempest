@@ -101,6 +101,31 @@ $contract = Get-Content -LiteralPath $contractPath -Raw | ConvertFrom-Json
 if ($contract.schema_version -ne 1) {
     throw "Unsupported Project Tempest package contract schema '$($contract.schema_version)'."
 }
+$contractHash = (Get-FileHash -LiteralPath $contractPath -Algorithm SHA256).Hash.ToLowerInvariant()
+
+$provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json"
+$provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
+$provenanceHash = (Get-FileHash -LiteralPath $provenancePath -Algorithm SHA256).Hash.ToLowerInvariant()
+$milesEntries = @($contract.runtime_files | Where-Object { $_.name -eq "mss32.dll" })
+$milesSourcePath = Join-Path $repositoryRoot "ProjectTempest/ThirdParty/MilesStub/SOURCE.txt"
+$milesSourceText = Get-Content -LiteralPath $milesSourcePath -Raw
+if ($milesEntries.Count -ne 1 -or
+    ([string]$milesEntries[0].sha256).ToLowerInvariant() -notmatch '^[0-9a-f]{64}$' -or
+    $milesSourceText -notmatch "(?im)^Expected mss32\.dll SHA-256:\s+$([regex]::Escape([string]$milesEntries[0].sha256))\s*$") {
+    throw "The package contract and Miles stub source record do not agree on one governed SHA-256."
+}
+$provenanceMilesHashes = @(
+    $provenance.assets |
+        Where-Object {
+            $_.PSObject.Properties.Name -contains "validation" -and
+            $null -ne $_.validation -and
+            $_.validation.PSObject.Properties.Name -contains "miles_stub_sha256"
+        } |
+        ForEach-Object { ([string]$_.validation.miles_stub_sha256).ToLowerInvariant() }
+)
+if (([string]$milesEntries[0].sha256).ToLowerInvariant() -notin $provenanceMilesHashes) {
+    throw "The governed Miles stub SHA-256 is not anchored in asset provenance."
+}
 
 foreach ($pattern in $contract.forbidden_patterns) {
     $forbidden = @(Get-ChildItem -LiteralPath $resolvedRuntimeDirectory -File -Recurse -Filter $pattern)
@@ -115,6 +140,17 @@ foreach ($entry in $contract.runtime_files) {
     $runtimePath = Join-Path $resolvedRuntimeDirectory $runtimeName
     if (-not (Test-Path -LiteralPath $runtimePath -PathType Leaf)) {
         throw "Required runtime input is missing: '$runtimePath'."
+    }
+    if ($entry.kind -eq "executable") {
+        $stream = [IO.File]::OpenRead($runtimePath)
+        try {
+            if ($stream.Length -lt 2 -or $stream.ReadByte() -ne 0x4D -or $stream.ReadByte() -ne 0x5A) {
+                throw "Release executable '$runtimeName' is not a PE image."
+            }
+        }
+        finally {
+            $stream.Dispose()
+        }
     }
     if ($entry.kind -eq "runtime_dependency") {
         $expectedHash = if ($TestFixture) {
@@ -131,6 +167,35 @@ foreach ($entry in $contract.runtime_files) {
             throw "Runtime dependency '$runtimeName' does not match the governed source build: actual=$runtimeHash expected=$expectedHash."
         }
     }
+    if ($entry.kind -eq "headless_evidence") {
+        $acceptance = Get-Content -LiteralPath $runtimePath -Raw | ConvertFrom-Json
+        $outcomes = @($acceptance.scenarios | ForEach-Object { $_.outcome })
+        $allFlowsPass = @($acceptance.scenarios | Where-Object { $_.result_flow -ne $true -or $_.restart_flow -ne $true }).Count -eq 0
+        $victoryCoveragePass = @($acceptance.scenarios | Where-Object {
+            $_.outcome -eq "victory" -and
+            ($_.territory_capture -ne $true -or $_.construction -ne $true -or
+                $_.production -ne $true -or $_.faction_abilities -ne $true)
+        }).Count -eq 0
+        if ($acceptance.schema_version -ne 1 -or
+            $acceptance.mode -ne "headless_deterministic_acceptance" -or
+            $acceptance.manual_playthrough_claimed -ne $false -or
+            $acceptance.fresh_launches -ne 3 -or
+            $outcomes.Count -ne 3 -or
+            ($outcomes -join ",") -ne "victory,defeat,victory" -or
+            -not $allFlowsPass -or
+            -not $victoryCoveragePass -or
+            $acceptance.scenarios[0].ticks -ne $entry.victory_ticks -or
+            $acceptance.scenarios[0].final_checksum -ne $entry.victory_final_checksum -or
+            $acceptance.scenarios[0].trace_checksum -ne $entry.victory_trace_checksum -or
+            $acceptance.scenarios[1].ticks -ne $entry.defeat_ticks -or
+            $acceptance.scenarios[1].final_checksum -ne $entry.defeat_final_checksum -or
+            $acceptance.scenarios[1].trace_checksum -ne $entry.defeat_trace_checksum -or
+            $acceptance.scenarios[2].ticks -ne $entry.victory_ticks -or
+            $acceptance.scenarios[0].final_checksum -ne $acceptance.scenarios[2].final_checksum -or
+            $acceptance.scenarios[0].trace_checksum -ne $acceptance.scenarios[2].trace_checksum) {
+            throw "Headless acceptance evidence '$runtimeName' does not prove three deterministic terminal result/restart flows."
+        }
+    }
 }
 
 if (Test-Path -LiteralPath $resolvedOutputDirectory) {
@@ -145,8 +210,6 @@ New-Item -ItemType Directory -Path $resolvedOutputDirectory -Force | Out-Null
 $stageDirectory = Join-Path $resolvedOutputDirectory $contract.package_directory
 New-Item -ItemType Directory -Path $stageDirectory -Force | Out-Null
 
-$provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json"
-$provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
 $provenanceByLeaf = @{}
 foreach ($asset in $provenance.assets) {
     if (-not $asset.path -or -not $asset.sha256) {
@@ -229,11 +292,13 @@ $orderedManifestFiles = @($manifestFiles | Sort-Object { $_.name.ToLowerInvarian
 $manifest = [ordered]@{
     schema_version = 1
     package = [string]$contract.package_directory
-    distribution = "private_internal_demo"
+    distribution = if ($TestFixture) { "test_fixture" } else { "private_internal_demo" }
     source_repository = "https://github.com/koltregaskes/project-tempest"
     source_revision = $SourceRevision
     source_date_epoch = $SourceDateEpoch
     source_tree = $sourceTreeState
+    package_contract_sha256 = $contractHash
+    asset_provenance_sha256 = $provenanceHash
     renderer_execution = "not_performed"
     manual_playthrough_claimed = $false
     files = $orderedManifestFiles

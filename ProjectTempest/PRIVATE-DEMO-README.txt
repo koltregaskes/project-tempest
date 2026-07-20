@@ -1,7 +1,9 @@
 PROJECT TEMPEST — PRIVATE DEMO PACKAGE
 
-This is a private development build of an original cyberpunk RTS demo. Public
-release, redistribution, or publication is not authorised by this package.
+This is a private development build of an original cyberpunk RTS demo. It is
+not a public release decision. GPL-covered engine code and binaries retain all
+GPL-3.0 rights; Project Tempest's original assets remain internal-development
+material until their separate public-distribution review is approved.
 
 The package contains no EA retail asset archives. Engine source is licensed
 under GPL-3.0; the exact source repository and revision are recorded in
