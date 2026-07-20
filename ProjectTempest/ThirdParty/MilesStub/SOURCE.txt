@@ -1,0 +1,6 @@
+Project Tempest uses the GPL Miles SDK compatibility stub from:
+https://github.com/TheSuperHackers/miles-sdk-stub
+
+Pinned commit: 6e32700d7ba4b4713a03bf1f5ffc3b0ac8d17264
+Licence: GPL-3.0 (see GPL-3.0-LICENSE.md in the private demo package)
+Expected mss32.dll SHA-256: 5c09cec5f15de4b0ee4f40ca65fd39bb15a1a41159bcade80b8a7e1855b904d5

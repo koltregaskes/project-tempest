@@ -121,6 +121,22 @@ target_include_directories(project_tempest_sim_tests PRIVATE Code)
 
 add_test(NAME project_tempest_sim_tests COMMAND project_tempest_sim_tests)
 
+add_executable(project_tempest_headless_acceptance
+    Code/TempestAccessibility.cpp
+    Code/TempestAccessibility.h
+    Code/TempestInterface.cpp
+    Code/TempestInterface.h
+    Code/TempestSimulation.cpp
+    Tests/TempestHeadlessAcceptance.cpp
+)
+target_compile_features(project_tempest_headless_acceptance PRIVATE cxx_std_20)
+target_include_directories(project_tempest_headless_acceptance PRIVATE Code)
+
+add_test(
+    NAME project_tempest_headless_acceptance
+    COMMAND project_tempest_headless_acceptance
+)
+
 add_executable(project_tempest_presentation_shader_tests
     Code/TempestPresentationShader.h
     Tests/TempestPresentationShaderTests.cpp

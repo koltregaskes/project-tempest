@@ -155,6 +155,20 @@ cmake --build --preset win32 --target project_tempest_sim_tests
 ctest --test-dir .\build\win32 -C Release --output-on-failure
 ```
 
+The separate headless acceptance target runs three consecutive fresh Substation 9 launches: a scripted Freegrid
+victory, an unassisted Chorus-AI defeat path, and a repeated victory. It drives the real simulation and interface state
+machines through terminal result and in-process restart, emits stable full-trace/final checksums, and explicitly records
+that it is not a manual playthrough:
+
+```powershell
+cmake --build --preset win32 --target project_tempest_headless_acceptance
+.\build\win32\ProjectTempest\Release\project_tempest_headless_acceptance.exe `
+  --output .\build\win32\ProjectTempest\headless-acceptance.json
+```
+
+This console executable does not initialise Direct3D, create a window, or play audio. It is permitted in unattended
+validation; it is not evidence of rendered gameplay, human usability, audible quality, or measured frame pacing.
+
 The rendered prototype now drives that simulation at the same fixed 20 Hz, converts player input into sequenced
 commands, and presents the current match through a neon procedural grid, faction-coloured and shape-distinct
 substation/building markers, selection brackets, dedicated Courier scout/Skitter visuals, pristine/damaged Courier
@@ -202,6 +216,26 @@ structure, and ability bindings while preserving existing user remaps.
 Saving writes a same-directory temporary file before replacing the prior profile. The three volume controls now drive
 the XAudio2 master/music/effects routing used by the original score and cues. Player-visible multi-resolution verification,
 manual audible-quality proof, and manual runtime proof of persistence/remapping remain open M5 work.
+
+## Private reproducible package
+
+After a Release build, create the governed private package without launching the demo:
+
+```powershell
+.\scripts\package-project-tempest-demo.ps1 `
+  -RuntimeDirectory .\build\win32\ProjectTempest\Release `
+  -OutputDirectory .\build\win32\ProjectTempest\private-package
+```
+
+The packager stages only the executable, GPL Miles stub, governed original runtime assets, provenance, licences,
+notices, and the private-demo readme listed in `package-contract.json`. It rejects retail BIG/GIB archives, replays,
+EA game executables, WorldBuilder, and W3DView before staging; validates every asset hash against provenance; writes a
+machine-readable manifest and `SHA256SUMS.txt`; fixes all ZIP timestamps to the source commit; and produces a stable
+`ProjectTempestDemo-private.zip`. It also rejects a dirty source tree or a Miles stub whose hash does not match the
+pinned GPL source build. `test-project-tempest-package.ps1` proves byte-identical repeated packaging and manifest
+verification with an inert fixture; the Windows Release CI builds in two isolated build trees, compares the headless
+acceptance reports, and requires identical real-build ZIP hashes. Public distribution remains a separate approval and
+rights-review gate.
 
 Build with a modern Generals preset, for example:
 

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "package_directory": "ProjectTempestDemo-private",
+  "archive_name": "ProjectTempestDemo-private.zip",
+  "runtime_files": [
+    { "name": "ProjectTempestDemo.exe", "kind": "executable" },
+    {
+      "name": "mss32.dll",
+      "kind": "runtime_dependency",
+      "sha256": "5c09cec5f15de4b0ee4f40ca65fd39bb15a1a41159bcade80b8a7e1855b904d5"
+    },
+    { "name": "courier.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/courier.w3d" },
+    { "name": "courierd.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/courierd.w3d" },
+    { "name": "drone.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/drone.w3d" },
+    { "name": "relay.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/relay.w3d" },
+    { "name": "sentry.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/sentry.w3d" },
+    { "name": "pylon.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/pylon.w3d" },
+    { "name": "ptburn.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptburn.tga" },
+    { "name": "ptcable.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptcable.tga" },
+    { "name": "ptcyan.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptcyan.tga" },
+    { "name": "ptoff.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptoff.tga" },
+    { "name": "ptrubber.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptrubber.tga" },
+    { "name": "ptsteel.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptsteel.tga" },
+    { "name": "ptwhite.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptwhite.tga" },
+    { "name": "ptmagnta.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptmagnta.tga" },
+    { "name": "pt_music_substation.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_music_substation.wav" },
+    { "name": "pt_music_pressure.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_music_pressure.wav" },
+    { "name": "pt_music_crisis.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_music_crisis.wav" },
+    { "name": "pt_ui_confirm.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_ui_confirm.wav" },
+    { "name": "pt_select.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_select.wav" },
+    { "name": "pt_command.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_command.wav" },
+    { "name": "pt_arc_pulse.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_arc_pulse.wav" },
+    { "name": "pt_alert.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_alert.wav" },
+    { "name": "EA-Tunable-Colorblindness-LICENSE.txt", "kind": "third_party_notice" },
+    { "name": "EA-Tunable-Colorblindness-NOTICE.txt", "kind": "third_party_notice" },
+    { "name": "EA-Tunable-Colorblindness-SOURCE.txt", "kind": "third_party_notice" }
+  ],
+  "repository_files": [
+    { "path": "LICENSE.md", "name": "GPL-3.0-LICENSE.md", "kind": "licence" },
+    { "path": "ProjectTempest/asset-provenance.json", "name": "asset-provenance.json", "kind": "provenance" },
+    { "path": "ProjectTempest/PRIVATE-DEMO-README.txt", "name": "README.txt", "kind": "documentation" },
+    { "path": "ProjectTempest/ThirdParty/MilesStub/SOURCE.txt", "name": "MILES-STUB-SOURCE.txt", "kind": "third_party_notice" }
+  ],
+  "forbidden_patterns": [
+    "*.big",
+    "*.gib",
+    "*.rep",
+    "game.dat",
+    "generals*.exe",
+    "WorldBuilder*.exe",
+    "W3DView*.exe"
+  ]
+}

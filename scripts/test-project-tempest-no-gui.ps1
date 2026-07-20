@@ -8,6 +8,7 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $fixedUnattendedSurfaces = @(
     ".github/workflows/build-toolchain.yml",
     "scripts/build-windows.ps1",
+    "scripts/package-project-tempest-demo.ps1",
     "scripts/test-w3d-pipeline.ps1",
     "scripts/prepare-w3dview-compat.ps1"
 )
@@ -122,7 +123,11 @@ function Get-UnattendedScriptPolicyViolation {
             $RelativePath -ieq 'scripts/build-windows.ps1' -and
             $firstElement -in @('$cmake', '$vswhere')
         )
-        if (-not $isSafeBlender -and -not $isSafeBuildTool) {
+        $isSafePackageTool = (
+            $RelativePath -ieq 'scripts/test-project-tempest-package.ps1' -and
+            $firstElement -ieq '$packageScript'
+        )
+        if (-not $isSafeBlender -and -not $isSafeBuildTool -and -not $isSafePackageTool) {
             $violations.Add("unapproved dynamic invocation '$firstElement'")
         }
     }
@@ -168,7 +173,8 @@ foreach ($fixture in $adversarialFixtures) {
 
 $safeFixtures = @(
     @{ Content = '& $BlenderPath --background --factory-startup --python $pythonScript'; Path = 'scripts/create-fixture.ps1' },
-    @{ Content = '& $cmake --preset $Preset'; Path = 'scripts/build-windows.ps1' }
+    @{ Content = '& $cmake --preset $Preset'; Path = 'scripts/build-windows.ps1' },
+    @{ Content = '& $packageScript -RuntimeDirectory $runtime'; Path = 'scripts/test-project-tempest-package.ps1' }
 )
 foreach ($fixture in $safeFixtures) {
     $fixtureViolations = @(Get-UnattendedScriptPolicyViolation -Content $fixture.Content -RelativePath $fixture.Path)

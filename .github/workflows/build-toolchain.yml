@@ -175,6 +175,79 @@ jobs:
         run: |
           cmake --build --preset ${{ inputs.preset }}
 
+      - name: Verify Project Tempest headless acceptance and private package
+        if: ${{ inputs.game == 'Generals' && inputs.preset == 'win32' }}
+        shell: pwsh
+        run: |
+          $runtimeDirectory = "build\win32\ProjectTempest\Release"
+          & "$runtimeDirectory\project_tempest_headless_acceptance.exe" `
+            --output "build\win32\ProjectTempest\headless-acceptance.json"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Project Tempest headless acceptance failed with exit code $LASTEXITCODE."
+          }
+
+          $milesStub = Get-ChildItem -Path "build\win32\_deps\miles-build" -Recurse -Filter "mss32.dll" -File |
+            Select-Object -First 1
+          if ($null -eq $milesStub) {
+            throw "The GPL Miles stub was not produced by the win32 Release build."
+          }
+          Copy-Item -LiteralPath $milesStub.FullName -Destination $runtimeDirectory -Force
+
+          $primaryPackage = "build\win32\ProjectTempest\private-package"
+          ./scripts/package-project-tempest-demo.ps1 `
+            -RuntimeDirectory $runtimeDirectory `
+            -OutputDirectory $primaryPackage
+
+          $repeatBuild = "build\win32-tempest-repro"
+          $repeatBuildFlags = @(
+            "-DRTS_BUILD_ZEROHOUR=OFF",
+            "-DRTS_BUILD_GENERALS=ON",
+            "-DRTS_BUILD_CORE_TOOLS=${{ inputs.tools && 'ON' || 'OFF' }}",
+            "-DRTS_BUILD_GENERALS_TOOLS=${{ inputs.tools && 'ON' || 'OFF' }}",
+            "-DRTS_BUILD_CORE_EXTRAS=${{ inputs.extras && 'ON' || 'OFF' }}",
+            "-DRTS_BUILD_GENERALS_EXTRAS=${{ inputs.extras && 'ON' || 'OFF' }}"
+          )
+          cmake --preset win32 -B $repeatBuild $repeatBuildFlags
+          if ($LASTEXITCODE -ne 0) {
+            throw "The isolated Project Tempest reproducibility configure failed with exit code $LASTEXITCODE."
+          }
+          cmake --build $repeatBuild --config Release --target project_tempest_demo project_tempest_headless_acceptance
+          if ($LASTEXITCODE -ne 0) {
+            throw "The isolated Project Tempest reproducibility build failed with exit code $LASTEXITCODE."
+          }
+
+          $repeatRuntimeDirectory = Join-Path $repeatBuild "ProjectTempest\Release"
+          $repeatAcceptance = Join-Path $repeatBuild "ProjectTempest\headless-acceptance.json"
+          & "$repeatRuntimeDirectory\project_tempest_headless_acceptance.exe" --output $repeatAcceptance
+          if ($LASTEXITCODE -ne 0) {
+            throw "The isolated Project Tempest headless acceptance failed with exit code $LASTEXITCODE."
+          }
+          if ((Get-FileHash -LiteralPath "build\win32\ProjectTempest\headless-acceptance.json" -Algorithm SHA256).Hash -ne
+              (Get-FileHash -LiteralPath $repeatAcceptance -Algorithm SHA256).Hash) {
+            throw "The two isolated Project Tempest acceptance reports are not byte-identical."
+          }
+
+          $repeatMilesStub = Get-ChildItem -Path "$repeatBuild\_deps\miles-build" -Recurse -Filter "mss32.dll" -File |
+            Select-Object -First 1
+          if ($null -eq $repeatMilesStub) {
+            throw "The GPL Miles stub was not produced by the isolated win32 Release build."
+          }
+          Copy-Item -LiteralPath $repeatMilesStub.FullName -Destination $repeatRuntimeDirectory -Force
+
+          $repeatPackage = "$repeatBuild\ProjectTempest\private-package"
+          ./scripts/package-project-tempest-demo.ps1 `
+            -RuntimeDirectory $repeatRuntimeDirectory `
+            -OutputDirectory $repeatPackage
+
+          $primaryArchive = Join-Path $primaryPackage "ProjectTempestDemo-private.zip"
+          $repeatArchive = Join-Path $repeatPackage "ProjectTempestDemo-private.zip"
+          $primaryHash = (Get-FileHash -LiteralPath $primaryArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          $repeatHash = (Get-FileHash -LiteralPath $repeatArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($primaryHash -ne $repeatHash) {
+            throw "Independent Release-build packages are not byte-identical: primary=$primaryHash repeat=$repeatHash."
+          }
+          Write-Host "PASS: Independent Release-build package reproducibility SHA256=$primaryHash"
+
       - name: Save vcpkg binary cache
         # Only one job should save to avoid "Unable to reserve cache" conflicts.
         if: ${{ startsWith(inputs.preset, 'win32') && steps.vcpkg_cache.outputs.cache-hit != 'true' && inputs.game == 'Generals' && inputs.preset == 'win32-vcpkg-debug' }}
@@ -215,6 +288,14 @@ jobs:
               throw "The GPL Miles stub was not produced by the win32 build."
             }
             Copy-Item -LiteralPath $milesStub.FullName -Destination $artifactsDir -Force -Verbose
+
+            if ("${{ inputs.game }}" -eq "Generals" -and "${{ inputs.preset }}" -eq "win32") {
+              $privatePackage = "$buildDir\ProjectTempest\private-package\ProjectTempestDemo-private.zip"
+              if (-not (Test-Path -LiteralPath $privatePackage -PathType Leaf)) {
+                throw "The governed Project Tempest private package was not produced."
+              }
+              Copy-Item -LiteralPath $privatePackage -Destination $artifactsDir -Force -Verbose
+            }
           }
 
       - name: Upload ${{ inputs.game }} ${{ inputs.preset }}${{ inputs.tools && '+t' || '' }}${{ inputs.extras && '+e' || '' }} Artifact
