@@ -193,6 +193,18 @@ jobs:
           }
           Copy-Item -LiteralPath $milesStub.FullName -Destination $runtimeDirectory -Force
 
+          # run-vcpkg materialises its pinned dependency checkout inside the workspace.
+          # Keep the production packager's dirty-tree gate strict: reject every other
+          # change, then exclude only this exact CI-owned directory from Git status.
+          $sourceStatus = @(git status --porcelain=v1 --untracked-files=all)
+          $unexpectedStatus = @($sourceStatus | Where-Object { $_ -ne "?? vcpkg/" })
+          if ($unexpectedStatus.Count -gt 0) {
+            throw "Unexpected source-tree changes before packaging: $($unexpectedStatus -join ', ')."
+          }
+          if ($sourceStatus -contains "?? vcpkg/") {
+            Add-Content -LiteralPath ".git/info/exclude" -Value "/vcpkg/"
+          }
+
           $primaryPackage = "build\win32\ProjectTempest\private-package"
           ./scripts/package-project-tempest-demo.ps1 `
             -RuntimeDirectory $runtimeDirectory `

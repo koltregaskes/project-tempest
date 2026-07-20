@@ -333,14 +333,14 @@ try {
         $entryName = "$($contract.package_directory)/$($file.Name)"
         $zipEntry = $archive.CreateEntry($entryName, [IO.Compression.CompressionLevel]::Optimal)
         $zipEntry.LastWriteTime = $packageTimestamp
-        $input = [IO.File]::OpenRead($file.FullName)
+        $inputStream = [IO.File]::OpenRead($file.FullName)
         $output = $zipEntry.Open()
         try {
-            $input.CopyTo($output)
+            $inputStream.CopyTo($output)
         }
         finally {
             $output.Dispose()
-            $input.Dispose()
+            $inputStream.Dispose()
         }
     }
 }

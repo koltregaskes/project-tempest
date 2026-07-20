@@ -14,6 +14,11 @@ add_executable(project_tempest_demo WIN32
 )
 
 target_compile_features(project_tempest_demo PRIVATE cxx_std_20)
+if(MSVC)
+    # The governed package compares independently linked Release executables.
+    # Remove the PE timestamp and other nondeterministic linker fields.
+    target_link_options(project_tempest_demo PRIVATE "$<$<CONFIG:Release>:/Brepro>")
+endif()
 target_compile_definitions(project_tempest_demo PRIVATE
     NOMINMAX
     WIN32_LEAN_AND_MEAN
@@ -130,6 +135,9 @@ add_executable(project_tempest_headless_acceptance
     Tests/TempestHeadlessAcceptance.cpp
 )
 target_compile_features(project_tempest_headless_acceptance PRIVATE cxx_std_20)
+if(MSVC)
+    target_link_options(project_tempest_headless_acceptance PRIVATE "$<$<CONFIG:Release>:/Brepro>")
+endif()
 target_include_directories(project_tempest_headless_acceptance PRIVATE Code)
 
 add_test(

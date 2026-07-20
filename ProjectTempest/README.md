@@ -219,11 +219,27 @@ manual audible-quality proof, and manual runtime proof of persistence/remapping 
 
 ## Private reproducible package
 
-After a Release build, create the governed private package without launching the demo:
+After a Release build, stage the console-only acceptance report and the pinned GPL Miles stub beside the executable,
+then create the governed private package without launching the demo:
 
 ```powershell
+$runtimeDirectory = ".\build\win32\ProjectTempest\Release"
+
+& "$runtimeDirectory\project_tempest_headless_acceptance.exe" `
+  --output "$runtimeDirectory\headless-acceptance.json"
+if ($LASTEXITCODE -ne 0) {
+  throw "Project Tempest headless acceptance failed with exit code $LASTEXITCODE."
+}
+
+$milesStub = Get-ChildItem -Path ".\build\win32\_deps\miles-build" `
+  -Recurse -Filter "mss32.dll" -File | Select-Object -First 1
+if ($null -eq $milesStub) {
+  throw "The pinned GPL Miles stub was not produced by the Release build."
+}
+Copy-Item -LiteralPath $milesStub.FullName -Destination $runtimeDirectory -Force
+
 .\scripts\package-project-tempest-demo.ps1 `
-  -RuntimeDirectory .\build\win32\ProjectTempest\Release `
+  -RuntimeDirectory $runtimeDirectory `
   -OutputDirectory .\build\win32\ProjectTempest\private-package
 ```
 
