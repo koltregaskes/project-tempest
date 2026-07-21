@@ -74,9 +74,11 @@ if ($milesSourceText -notmatch "(?im)^Pinned commit:\s+$([regex]::Escape([string
 $workflowPath = Join-Path $repositoryRoot ".github/workflows/build-toolchain.yml"
 $workflowText = Get-Content -LiteralPath $workflowPath -Raw
 $packageScriptText = Get-Content -LiteralPath $packageScript -Raw
+$checkoutParentHistory = [regex]::Matches($workflowText, '(?ms)^\s*- name: Checkout Code\s+uses: actions/checkout@[^\r\n]+\s+with:\s+(?:#[^\r\n]*\s+)*fetch-depth: 2\s*$').Count
 $primaryRuntimePolicyIndex = $packageScriptText.IndexOf('build/win32/ProjectTempest/Release', [StringComparison]::Ordinal)
 $repeatRuntimePolicyIndex = $packageScriptText.IndexOf('build/win32-tempest-repro/ProjectTempest/Release', [StringComparison]::Ordinal)
-if ($primaryRuntimePolicyIndex -lt 0 -or
+if ($checkoutParentHistory -ne 1 -or
+    $primaryRuntimePolicyIndex -lt 0 -or
     $repeatRuntimePolicyIndex -lt 0 -or
     $packageScriptText -notmatch 'Production packaging is restricted to the two governed integrated Release runtime directories' -or
     $packageScriptText -notmatch 'Production packaging rejects a reparse-point runtime directory' -or

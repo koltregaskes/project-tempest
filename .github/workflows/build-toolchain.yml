@@ -40,6 +40,11 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # The package gate proves that the reviewed PR head is a parent of
+          # GitHub's synthetic merge revision. A depth-one checkout hides that
+          # relationship and cannot satisfy the provenance proof.
+          fetch-depth: 2
 
       - name: Cache VC6 Installation
         if: startsWith(inputs.preset, 'vc6')

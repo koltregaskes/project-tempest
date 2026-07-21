@@ -294,7 +294,8 @@ machine-readable manifest and `SHA256SUMS.txt`; fixes all ZIP timestamps to the 
 It also rejects a dirty source tree, a missing caller-supplied executable or Miles proof hash, a malformed/non-x86 GUI
 PE, or a binary that does not match its proven hash. The manifest binds the executable hash to both the actual clean
 build revision and the exact reviewed head (which may be a direct parent of GitHub's synthetic PR merge revision), plus
-the two-build policy. The pinned Miles source commit and deterministic build procedure live in provenance; the
+the two-build policy. CI retains the merge revision's parent history so that relationship is proven by Git rather than
+trusted from an unverified workflow string. The pinned Miles source commit and deterministic build procedure live in provenance; the
 compiler-context-dependent DLL hash is recorded in each package manifest rather than hardcoded as a portable source
 identity. `test-project-tempest-package.ps1` proves byte-identical repeated packaging, manifest verification, and
 missing/wrong/forged executable and dependency-hash rejection with an inert fixture. Windows Release CI compares two
