@@ -1004,12 +1004,12 @@ try {
         [string]$consumerReceipt.executable_sha256 -ne $fixtureExecutableHash.ToLowerInvariant() -or
         [string]$consumerReceipt.miles_sha256 -ne $fixtureDependencyHash.ToLowerInvariant() -or
         [string]$consumerReceipt.asset_hash_source -ne "reviewed_checkout_and_canonical_provenance" -or
-        $consumerReceipt.verified_asset_count -ne 22 -or
+        $consumerReceipt.verified_asset_count -ne 25 -or
         [string]$consumerReceipt.renderer_execution -ne "not_performed" -or
         $consumerReceipt.manual_playthrough_claimed -ne $false -or
-        $consumerReceipt.installed_file_count -ne 35 -or
-        @($consumerReceipt.files).Count -ne 35 -or
-        $consumerInstalledFiles.Count -ne 35 -or
+        $consumerReceipt.installed_file_count -ne 38 -or
+        @($consumerReceipt.files).Count -ne 38 -or
+        $consumerInstalledFiles.Count -ne 38 -or
         [string]$consumerReceipt.reviewed_contract_canonical_sha256 -notmatch '^[0-9a-f]{64}$' -or
         [string]$consumerReceipt.reviewed_provenance_canonical_sha256 -notmatch '^[0-9a-f]{64}$' -or
         (Get-FileHash -LiteralPath $consumerReceiptB -Algorithm SHA256).Hash.ToLowerInvariant() -ne $consumerReceiptHash -or

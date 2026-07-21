@@ -41,8 +41,8 @@ deformed sensor housing, powered-off cyan elements, two LODs, and the same colli
 models are re-imported in an empty Blender scene; the test fails unless all expected render meshes and texture references
 survive. The current executable package includes both W3Ds and all seven textures beside the executable.
 
-Generate the dedicated Chorus Drone, Freegrid Relay, Freegrid Arc Sentry, and Chorus Signal Pylon kit through the same
-pinned, headless pipeline:
+Generate the dedicated Chorus Drone, Freegrid Relay, Freegrid Arc Sentry, Chorus Signal Pylon, Freegrid Relay Core,
+Freegrid Fabricator Bay, and Chorus Spire kit through the same pinned, headless pipeline:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\create-substation-kit.ps1
@@ -53,13 +53,15 @@ LOD states (640, 345, and 194 authored vertices). The Relay uses a radial grid-n
 `HouseColor` meshes, and 636, 350, and 191 authored vertices. The Sentry is a directional dual-rail defence with native
 house colour and 880, 470, and 250 authored vertices. The Pylon is a tall three-leg Chorus signal structure with magenta
 rings, cyan nodes, and 820, 441, and 238 authored vertices. Each W3D round trip must recover nine single-material render
-meshes, its exact texture set, one collision box, and the physical/projectile/visibility/vehicle collision flags. Two
-clean background regenerations must produce byte-identical `drone.w3d`, `relay.w3d`, `sentry.w3d`, `pylon.w3d`, and
-`ptmagnta.tga` outputs. Blender containers and Workbench preview PNGs are provenance-pinned review artifacts, not
-deterministic build keys.
+meshes, its exact texture set, one collision box, and the physical/projectile/visibility/vehicle collision flags. The
+Relay Core is a low asymmetric command anchor, the Fabricator Bay is an open workshop gantry, and the Chorus Spire is a
+tall five-fold radial objective silhouette. Their authored LOD vertex counts are 888/485/263, 788/427/228, and
+1280/1040/907 respectively. Two clean background regenerations must produce byte-identical `drone.w3d`, `relay.w3d`,
+`sentry.w3d`, `pylon.w3d`, `relaycore.w3d`, `fabricbay.w3d`, `spire.w3d`, and `ptmagnta.tga` outputs. Blender containers
+and Workbench preview PNGs are provenance-pinned review artifacts, not deterministic build keys.
 
 The release asset gate runs the complete Courier-to-kit dependency graph twice in separate Blender processes and output
-roots, then requires all fourteen runtime W3D/TGA hashes to match each other and the committed files:
+roots, then requires all seventeen runtime W3D/TGA hashes to match each other and the committed files:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-project-tempest-assets.ps1 `
@@ -172,19 +174,20 @@ validation; it is not evidence of rendered gameplay, human usability, audible qu
 The rendered prototype now drives that simulation at the same fixed 20 Hz, converts player input into sequenced
 commands, and presents the current match through a neon procedural grid, faction-coloured and shape-distinct
 substation/building markers, selection brackets, dedicated Courier scout/Skitter visuals, pristine/damaged Courier
-switching, authored Dynamo relay, Arc Sentry, and Signal Pylon models, and a scalable in-window HUD. The original interface includes a loading panel,
+switching, authored Relay Core, Fabricator Bay, Dynamo relay, Arc Sentry, Signal Pylon, and Chorus Spire models, and a
+scalable in-window HUD. The original interface includes a loading panel,
 mission briefing, live resources/objective/selection state, visible command acknowledgement, pause, settings, and a
 victory/defeat explanation with restart and settings available without leaving the process. This is a compile- and
-headless-test-proven integration checkpoint; safe manual gameplay/legibility verification and dedicated Relay Core,
-Fabricator Bay, and Chorus Spire art remain required before the skirmish is release-quality.
+headless-test-proven integration checkpoint; safe manual gameplay/legibility verification remains required before the
+skirmish is release-quality.
 
 Modern Generals Win32 builds also produce `ProjectTempestDemo.exe`, a retail-asset-free executable that loads the
 Courier scout, damaged Courier scout, Skitter, and Freegrid Dynamo relay directly from this tree. Its current Substation
 9 integration slice provides a bounded panning RTS camera, bounded Freegrid unit selection, context-sensitive
 movement/capture/attack/repair orders, node income, Dynamo/Arc Sentry construction, production of all four Freegrid
 roles, role-specific combat, Signal Pylon pressure, grid-link scan, emergency overcharge, Arc Pulse,
-pause/settings/restart/result flow, escalating Chorus reinforcements, and
-victory/defeat. The Dynamo, Arc Sentry, and Signal Pylon now load dedicated authored runtime models rather than sharing
+pause/settings/restart/result flow, escalating Chorus reinforcements, and victory/defeat. The Relay Core, Fabricator
+Bay, Dynamo, Arc Sentry, Signal Pylon, and Chorus Spire now load dedicated authored runtime models rather than sharing
 procedural markers. It is an executable
 integration checkpoint, not the final polished vertical slice.
 

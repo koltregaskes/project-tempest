@@ -32,8 +32,8 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $resultPath)) {
 }
 
 $result = Get-Content -Raw -LiteralPath $resultPath | ConvertFrom-Json
-if (@($result.assets).Count -ne 4) {
-    throw "Substation-kit generation must produce the Drone, Relay, Arc Sentry, and Signal Pylon."
+if (@($result.assets).Count -ne 7) {
+    throw "Substation-kit generation must produce all seven governed unit and structure assets."
 }
 $expectedContracts = @{
     drone = @{
@@ -53,6 +53,21 @@ $expectedContracts = @{
     }
     pylon = @{
         Meshes = @("PYBODY0", "PYBODY1", "PYBODY2", "PYGLOW0", "PYGLOW1", "PYGLOW2", "PYMAG0", "PYMAG1", "PYMAG2")
+        Textures = @("ptcyan.tga", "ptmagnta.tga", "ptsteel.tga")
+        HouseColor = @()
+    }
+    relaycore = @{
+        Meshes = @("HouseColor0", "HouseColor1", "HouseColor2", "RCARMOR0", "RCARMOR1", "RCARMOR2", "RCBODY0", "RCBODY1", "RCBODY2")
+        Textures = @("ptcyan.tga", "ptsteel.tga", "ptwhite.tga")
+        HouseColor = @("HouseColor0", "HouseColor1", "HouseColor2")
+    }
+    fabricbay = @{
+        Meshes = @("FBARMOR0", "FBARMOR1", "FBARMOR2", "FBBODY0", "FBBODY1", "FBBODY2", "HouseColor0", "HouseColor1", "HouseColor2")
+        Textures = @("ptcyan.tga", "ptsteel.tga", "ptwhite.tga")
+        HouseColor = @("HouseColor0", "HouseColor1", "HouseColor2")
+    }
+    spire = @{
+        Meshes = @("CSBODY0", "CSBODY1", "CSBODY2", "CSGLOW0", "CSGLOW1", "CSGLOW2", "CSMAG0", "CSMAG1", "CSMAG2")
         Textures = @("ptcyan.tga", "ptmagnta.tga", "ptsteel.tga")
         HouseColor = @()
     }

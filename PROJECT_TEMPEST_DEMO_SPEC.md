@@ -141,11 +141,12 @@ headless test executable as the simulation. The renderer consumes that controlle
 visible command feedback, a mission/result explanation, adjustable camera/UI/accessibility state, and `+`/`X` plus
 `[F]`/`[C]` colour-independent ownership cues. This proves the compile-time rules/presentation seam; safe manual
 gameplay and multi-resolution evidence remain required before it constitutes the governed skirmish demo. Dedicated
-Chorus Drone, Freegrid Relay, Freegrid Arc Sentry, and Chorus Signal Pylon assets now replace their Courier/procedural
-proxies: each has three authored LOD states, single-pass textured meshes, collision, exact round-trip validation,
-complete internal-development provenance, and a package/load contract. The Relay and Sentry additionally use native
-`HouseColor0`/`HouseColor1`/`HouseColor2` mesh names. Their W3Ds and shared textures are byte-stable across clean
-background regenerations; normal-zoom in-engine readability remains a manual-only non-RDP gate.
+Chorus Drone, Freegrid Relay, Freegrid Arc Sentry, Chorus Signal Pylon, Freegrid Relay Core, Freegrid Fabricator Bay,
+and Chorus Spire assets now replace their Courier/procedural proxies: each has three authored LOD states, single-pass
+textured meshes, collision, exact round-trip validation, complete internal-development provenance, and a package/load
+contract. All four Freegrid structures use native `HouseColor0`/`HouseColor1`/`HouseColor2` mesh names. Their W3Ds and
+shared textures are byte-stable across clean background regenerations; normal-zoom in-engine readability remains a
+manual-only non-RDP gate.
 
 Current interface boundary (2026-07-18): camera speed, UI scale, master/music/effects values, edge scroll, reduced
 motion, reduced flashes, colour-independent cues, and twelve keyboard-or-mouse bindings can be changed in-window.
@@ -173,7 +174,7 @@ movement, range, damage, build-time, salvage, and capacity data. Fabricator rigs
 structures for salvage, while deterministic Machine Nest waves escalate through Skitters, Wardens, and Harrowers.
 Arc Sentries and Signal Pylons now provide deterministic defensive pressure and dedicated runtime art, while targeted
 grid-link scans report contacts and emergency overcharge temporarily boosts Freegrid movement and damage. Dedicated art
-for the remaining expanded roster/structures, manual balance/legibility proof, and the governed manual playtest gates
+for the remaining unit roster and Machine Nest, manual balance/legibility proof, and the governed manual playtest gates
 remain M4/M5 work rather than claimed release-ready content.
 
 ### Golden asset and format decision
