@@ -40,6 +40,11 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # The package gate proves that the reviewed PR head is a parent of
+          # GitHub's synthetic merge revision. A depth-one checkout hides that
+          # relationship and cannot satisfy the provenance proof.
+          fetch-depth: 2
 
       - name: Cache VC6 Installation
         if: startsWith(inputs.preset, 'vc6')
@@ -55,6 +60,28 @@ jobs:
         with:
           path: build\${{ inputs.preset }}\_deps
           key: cmake-deps-${{ inputs.preset }}-${{ hashFiles('CMakePresets.json','cmake/**/*.cmake','**/CMakeLists.txt') }}
+
+      - name: Clear cached Miles outputs for Project Tempest reproducibility
+        if: ${{ inputs.game == 'Generals' && inputs.preset == 'win32' }}
+        shell: pwsh
+        run: |
+          $workspace = [IO.Path]::GetFullPath("${{ github.workspace }}")
+          $buildRoot = [IO.Path]::GetFullPath((Join-Path $workspace "build\${{ inputs.preset }}"))
+          $milesBuild = [IO.Path]::GetFullPath((Join-Path $buildRoot "_deps\miles-build"))
+          $allowedPrefix = $buildRoot.TrimEnd(
+            [IO.Path]::DirectorySeparatorChar,
+            [IO.Path]::AltDirectorySeparatorChar
+          ) + [IO.Path]::DirectorySeparatorChar
+          if (-not $milesBuild.StartsWith($allowedPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Refusing to clear a Miles build directory outside '$buildRoot': '$milesBuild'."
+          }
+          if (Test-Path -LiteralPath $milesBuild) {
+            $resolvedMilesBuild = (Resolve-Path -LiteralPath $milesBuild).Path
+            if (-not $resolvedMilesBuild.StartsWith($allowedPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+              throw "Resolved Miles build directory escaped '$buildRoot': '$resolvedMilesBuild'."
+            }
+            Remove-Item -LiteralPath $resolvedMilesBuild -Recurse -Force
+          }
 
       - name: Download VC6 Portable from itsmattkc repo
         if: ${{ startsWith(inputs.preset, 'vc6') && steps.cache-vc6.outputs.cache-hit != 'true' }}
@@ -175,6 +202,121 @@ jobs:
         run: |
           cmake --build --preset ${{ inputs.preset }}
 
+      - name: Verify Project Tempest headless acceptance and private package
+        if: ${{ inputs.game == 'Generals' && inputs.preset == 'win32' }}
+        shell: pwsh
+        run: |
+          $runtimeDirectory = "build\win32\ProjectTempest\Release"
+          $reviewedSourceRevision = "${{ github.event.pull_request.head.sha || github.sha }}".ToLowerInvariant()
+          if ($reviewedSourceRevision -notmatch '^[0-9a-f]{40}$') {
+            throw "The exact reviewed source revision is unavailable: '$reviewedSourceRevision'."
+          }
+          & "$runtimeDirectory\project_tempest_headless_acceptance.exe" `
+            --output "$runtimeDirectory\headless-acceptance.json"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Project Tempest headless acceptance failed with exit code $LASTEXITCODE."
+          }
+
+          $milesStub = Get-ChildItem -Path "build\win32\_deps\miles-build" -Recurse -Filter "mss32.dll" -File |
+            Select-Object -First 1
+          if ($null -eq $milesStub) {
+            throw "The GPL Miles stub was not produced by the win32 Release build."
+          }
+
+          # run-vcpkg materialises its pinned dependency checkout and binary cache
+          # inside these two workspace roots. Exclude only those CI-owned roots,
+          # then require every remaining source-tree status entry to be absent.
+          $ciOwnedExcludes = @("/vcpkg/", "/vcpkg-bincache/")
+          $existingExcludes = @(Get-Content -LiteralPath ".git/info/exclude" -ErrorAction SilentlyContinue)
+          foreach ($exclude in $ciOwnedExcludes) {
+            if ($exclude -notin $existingExcludes) {
+              Add-Content -LiteralPath ".git/info/exclude" -Value $exclude
+            }
+          }
+          $sourceStatus = @(git status --porcelain=v1 --untracked-files=all)
+          if ($sourceStatus.Count -gt 0) {
+            throw "Unexpected source-tree changes before packaging: $($sourceStatus -join ', ')."
+          }
+
+          $repeatBuild = "build\win32-tempest-repro"
+          $repeatBuildFlags = @(
+            "-DRTS_BUILD_ZEROHOUR=OFF",
+            "-DRTS_BUILD_GENERALS=ON",
+            "-DRTS_BUILD_CORE_TOOLS=${{ inputs.tools && 'ON' || 'OFF' }}",
+            "-DRTS_BUILD_GENERALS_TOOLS=${{ inputs.tools && 'ON' || 'OFF' }}",
+            "-DRTS_BUILD_CORE_EXTRAS=${{ inputs.extras && 'ON' || 'OFF' }}",
+            "-DRTS_BUILD_GENERALS_EXTRAS=${{ inputs.extras && 'ON' || 'OFF' }}"
+          )
+          cmake --preset win32 -B $repeatBuild $repeatBuildFlags
+          if ($LASTEXITCODE -ne 0) {
+            throw "The isolated Project Tempest reproducibility configure failed with exit code $LASTEXITCODE."
+          }
+          cmake --build $repeatBuild --config Release --target project_tempest_demo project_tempest_headless_acceptance
+          if ($LASTEXITCODE -ne 0) {
+            throw "The isolated Project Tempest reproducibility build failed with exit code $LASTEXITCODE."
+          }
+
+          $repeatRuntimeDirectory = Join-Path $repeatBuild "ProjectTempest\Release"
+          $repeatAcceptance = Join-Path $repeatRuntimeDirectory "headless-acceptance.json"
+          & "$repeatRuntimeDirectory\project_tempest_headless_acceptance.exe" --output $repeatAcceptance
+          if ($LASTEXITCODE -ne 0) {
+            throw "The isolated Project Tempest headless acceptance failed with exit code $LASTEXITCODE."
+          }
+          if ((Get-FileHash -LiteralPath "$runtimeDirectory\headless-acceptance.json" -Algorithm SHA256).Hash -ne
+              (Get-FileHash -LiteralPath $repeatAcceptance -Algorithm SHA256).Hash) {
+            throw "The two isolated Project Tempest acceptance reports are not byte-identical."
+          }
+
+          $primaryExecutable = Join-Path $runtimeDirectory "ProjectTempestDemo.exe"
+          $repeatExecutable = Join-Path $repeatRuntimeDirectory "ProjectTempestDemo.exe"
+          $primaryExecutableHash = (Get-FileHash -LiteralPath $primaryExecutable -Algorithm SHA256).Hash.ToLowerInvariant()
+          $repeatExecutableHash = (Get-FileHash -LiteralPath $repeatExecutable -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($primaryExecutableHash -ne $repeatExecutableHash) {
+            throw "Integrated Release-build Project Tempest executables are not byte-identical: primary=$primaryExecutableHash repeat=$repeatExecutableHash."
+          }
+          Write-Host "PASS: Integrated Release-build Project Tempest executable reproducibility SHA256=$primaryExecutableHash"
+
+          $repeatMilesStub = Get-ChildItem -Path "$repeatBuild\_deps\miles-build" -Recurse -Filter "mss32.dll" -File |
+            Select-Object -First 1
+          if ($null -eq $repeatMilesStub) {
+            throw "The GPL Miles stub was not produced by the isolated win32 Release build."
+          }
+
+          $primaryMilesHash = (Get-FileHash -LiteralPath $milesStub.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          $repeatMilesHash = (Get-FileHash -LiteralPath $repeatMilesStub.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($primaryMilesHash -ne $repeatMilesHash) {
+            throw "Integrated Release-build Miles stubs are not byte-identical: primary=$primaryMilesHash repeat=$repeatMilesHash."
+          }
+          Write-Host "PASS: Integrated Release-build Miles reproducibility SHA256=$primaryMilesHash"
+
+          Copy-Item -LiteralPath $milesStub.FullName -Destination $runtimeDirectory -Force
+          Copy-Item -LiteralPath $repeatMilesStub.FullName -Destination $repeatRuntimeDirectory -Force
+
+          $primaryPackage = "build\win32\ProjectTempest\private-package"
+          ./scripts/package-project-tempest-demo.ps1 `
+            -RuntimeDirectory $runtimeDirectory `
+            -OutputDirectory $primaryPackage `
+            -ReviewedSourceRevision $reviewedSourceRevision `
+            -ExpectedExecutableSha256 $primaryExecutableHash `
+            -ExpectedMilesStubSha256 $primaryMilesHash
+
+          $repeatPackage = "$repeatBuild\ProjectTempest\private-package"
+          ./scripts/package-project-tempest-demo.ps1 `
+            -RuntimeDirectory $repeatRuntimeDirectory `
+            -OutputDirectory $repeatPackage `
+            -ReviewedSourceRevision $reviewedSourceRevision `
+            -ExpectedExecutableSha256 $primaryExecutableHash `
+            -ExpectedMilesStubSha256 $primaryMilesHash
+
+          $primaryArchive = Join-Path $primaryPackage "ProjectTempestDemo-private.zip"
+          $repeatArchive = Join-Path $repeatPackage "ProjectTempestDemo-private.zip"
+          $primaryHash = (Get-FileHash -LiteralPath $primaryArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          $repeatHash = (Get-FileHash -LiteralPath $repeatArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($primaryHash -ne $repeatHash) {
+            throw "Independent Release-build packages are not byte-identical: primary=$primaryHash repeat=$repeatHash."
+          }
+          Write-Host "PASS: Independent Release-build package reproducibility SHA256=$primaryHash"
+
       - name: Save vcpkg binary cache
         # Only one job should save to avoid "Unable to reserve cache" conflicts.
         if: ${{ startsWith(inputs.preset, 'win32') && steps.vcpkg_cache.outputs.cache-hit != 'true' && inputs.game == 'Generals' && inputs.preset == 'win32-vcpkg-debug' }}
@@ -195,10 +337,6 @@ jobs:
               "$buildDir\Core\$configToUse"
               "$buildDir\${{ inputs.game }}\$configToUse"
             )
-            $tempestDir = "$buildDir\ProjectTempest\$configToUse"
-            if (Test-Path -LiteralPath $tempestDir) {
-              $artifactSources += $tempestDir
-            }
             $files = Get-ChildItem -Path $artifactSources -File |
               Where-Object { $_.Extension -in @(".exe", ".dll", ".pdb", ".w3d", ".tga", ".wav", ".txt") } -Verbose
           } else {
@@ -215,6 +353,25 @@ jobs:
               throw "The GPL Miles stub was not produced by the win32 build."
             }
             Copy-Item -LiteralPath $milesStub.FullName -Destination $artifactsDir -Force -Verbose
+
+            if ("${{ inputs.game }}" -eq "Generals" -and "${{ inputs.preset }}" -eq "win32") {
+              $privatePackage = "$buildDir\ProjectTempest\private-package\ProjectTempestDemo-private.zip"
+              if (-not (Test-Path -LiteralPath $privatePackage -PathType Leaf)) {
+                throw "The governed Project Tempest private package was not produced."
+              }
+              Copy-Item -LiteralPath $privatePackage -Destination $artifactsDir -Force -Verbose
+            }
+
+            # Project Tempest must enter the outer CI artifact only through its
+            # governed ZIP. The Miles stub remains a shared Generals runtime
+            # dependency and is independently copied above. The same boundary
+            # implementation is executed by the adversarial package tests.
+            $expectedPrivatePackageCount = if (
+              "${{ inputs.game }}" -eq "Generals" -and "${{ inputs.preset }}" -eq "win32"
+            ) { 1 } else { 0 }
+            ./scripts/assert-project-tempest-artifact-boundary.ps1 `
+              -ArtifactDirectory $artifactsDir.FullName `
+              -ExpectedPrivatePackageCount $expectedPrivatePackageCount
           }
 
       - name: Upload ${{ inputs.game }} ${{ inputs.preset }}${{ inputs.tools && '+t' || '' }}${{ inputs.extras && '+e' || '' }} Artifact

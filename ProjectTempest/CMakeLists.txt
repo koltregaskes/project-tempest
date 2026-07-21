@@ -14,6 +14,14 @@ add_executable(project_tempest_demo WIN32
 )
 
 target_compile_features(project_tempest_demo PRIVATE cxx_std_20)
+if(MSVC)
+    # The governed package compares independently linked Release executables.
+    # Remove PE timestamps and build-root-specific PDB paths.
+    target_link_options(project_tempest_demo PRIVATE
+        "$<$<CONFIG:Release>:/Brepro>"
+        "$<$<CONFIG:Release>:/PDBALTPATH:%_PDB%>"
+    )
+endif()
 target_compile_definitions(project_tempest_demo PRIVATE
     NOMINMAX
     WIN32_LEAN_AND_MEAN
@@ -120,6 +128,25 @@ target_compile_features(project_tempest_sim_tests PRIVATE cxx_std_20)
 target_include_directories(project_tempest_sim_tests PRIVATE Code)
 
 add_test(NAME project_tempest_sim_tests COMMAND project_tempest_sim_tests)
+
+add_executable(project_tempest_headless_acceptance
+    Code/TempestAccessibility.cpp
+    Code/TempestAccessibility.h
+    Code/TempestInterface.cpp
+    Code/TempestInterface.h
+    Code/TempestSimulation.cpp
+    Tests/TempestHeadlessAcceptance.cpp
+)
+target_compile_features(project_tempest_headless_acceptance PRIVATE cxx_std_20)
+if(MSVC)
+    target_link_options(project_tempest_headless_acceptance PRIVATE "$<$<CONFIG:Release>:/Brepro>")
+endif()
+target_include_directories(project_tempest_headless_acceptance PRIVATE Code)
+
+add_test(
+    NAME project_tempest_headless_acceptance
+    COMMAND project_tempest_headless_acceptance
+)
 
 add_executable(project_tempest_presentation_shader_tests
     Code/TempestPresentationShader.h

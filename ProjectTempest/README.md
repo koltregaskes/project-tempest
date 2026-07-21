@@ -155,6 +155,20 @@ cmake --build --preset win32 --target project_tempest_sim_tests
 ctest --test-dir .\build\win32 -C Release --output-on-failure
 ```
 
+The separate headless acceptance target runs three consecutive fresh Substation 9 launches: a scripted Freegrid
+victory, an unassisted Chorus-AI defeat path, and a repeated victory. It drives the real simulation and interface state
+machines through terminal result and in-process restart, emits stable full-trace/final checksums, and explicitly records
+that it is not a manual playthrough:
+
+```powershell
+cmake --build --preset win32 --target project_tempest_headless_acceptance
+.\build\win32\ProjectTempest\Release\project_tempest_headless_acceptance.exe `
+  --output .\build\win32\ProjectTempest\headless-acceptance.json
+```
+
+This console executable does not initialise Direct3D, create a window, or play audio. It is permitted in unattended
+validation; it is not evidence of rendered gameplay, human usability, audible quality, or measured frame pacing.
+
 The rendered prototype now drives that simulation at the same fixed 20 Hz, converts player input into sequenced
 commands, and presents the current match through a neon procedural grid, faction-coloured and shape-distinct
 substation/building markers, selection brackets, dedicated Courier scout/Skitter visuals, pristine/damaged Courier
@@ -202,6 +216,97 @@ structure, and ability bindings while preserving existing user remaps.
 Saving writes a same-directory temporary file before replacing the prior profile. The three volume controls now drive
 the XAudio2 master/music/effects routing used by the original score and cues. Player-visible multi-resolution verification,
 manual audible-quality proof, and manual runtime proof of persistence/remapping remain open M5 work.
+
+## Private reproducible package
+
+Build the Release target twice in isolated parent-build trees, compare the console-only acceptance reports, the
+Project Tempest executables, and the actual fetched GPL Miles DLLs, then pass both proven binary hashes to both
+packager invocations. This does not launch the demo:
+
+```powershell
+$primaryBuild = ".\build\win32"
+$repeatBuild = ".\build\win32-tempest-repro"
+$runtimeDirectory = "$primaryBuild\ProjectTempest\Release"
+$repeatRuntimeDirectory = "$repeatBuild\ProjectTempest\Release"
+$reviewedSourceRevision = (git rev-parse HEAD).Trim()
+
+cmake --preset win32
+cmake --build --preset win32 --target project_tempest_demo project_tempest_headless_acceptance
+cmake --preset win32 -B $repeatBuild
+cmake --build $repeatBuild --config Release --target project_tempest_demo project_tempest_headless_acceptance
+
+& "$runtimeDirectory\project_tempest_headless_acceptance.exe" `
+  --output "$runtimeDirectory\headless-acceptance.json"
+if ($LASTEXITCODE -ne 0) {
+  throw "Project Tempest headless acceptance failed with exit code $LASTEXITCODE."
+}
+& "$repeatRuntimeDirectory\project_tempest_headless_acceptance.exe" `
+  --output "$repeatRuntimeDirectory\headless-acceptance.json"
+if ($LASTEXITCODE -ne 0) {
+  throw "Repeated Project Tempest headless acceptance failed with exit code $LASTEXITCODE."
+}
+if ((Get-FileHash "$runtimeDirectory\headless-acceptance.json").Hash -ne
+    (Get-FileHash "$repeatRuntimeDirectory\headless-acceptance.json").Hash) {
+  throw "The two integrated acceptance reports are not byte-identical."
+}
+
+$executableHash = (Get-FileHash "$runtimeDirectory\ProjectTempestDemo.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
+$repeatExecutableHash = (Get-FileHash "$repeatRuntimeDirectory\ProjectTempestDemo.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($executableHash -ne $repeatExecutableHash) {
+  throw "The two integrated Project Tempest executables are not byte-identical."
+}
+
+$milesStub = Get-ChildItem -Path "$primaryBuild\_deps\miles-build" `
+  -Recurse -Filter "mss32.dll" -File | Select-Object -First 1
+$repeatMilesStub = Get-ChildItem -Path "$repeatBuild\_deps\miles-build" `
+  -Recurse -Filter "mss32.dll" -File | Select-Object -First 1
+if ($null -eq $milesStub -or $null -eq $repeatMilesStub) {
+  throw "A pinned GPL Miles stub was not produced by both integrated Release builds."
+}
+$milesHash = (Get-FileHash $milesStub.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+$repeatMilesHash = (Get-FileHash $repeatMilesStub.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($milesHash -ne $repeatMilesHash) {
+  throw "The two integrated Miles DLLs are not byte-identical."
+}
+Copy-Item -LiteralPath $milesStub.FullName -Destination $runtimeDirectory -Force
+Copy-Item -LiteralPath $repeatMilesStub.FullName -Destination $repeatRuntimeDirectory -Force
+
+.\scripts\package-project-tempest-demo.ps1 `
+  -RuntimeDirectory $runtimeDirectory `
+  -OutputDirectory "$primaryBuild\ProjectTempest\private-package" `
+  -ReviewedSourceRevision $reviewedSourceRevision `
+  -ExpectedExecutableSha256 $executableHash `
+  -ExpectedMilesStubSha256 $milesHash
+.\scripts\package-project-tempest-demo.ps1 `
+  -RuntimeDirectory $repeatRuntimeDirectory `
+  -OutputDirectory "$repeatBuild\ProjectTempest\private-package" `
+  -ReviewedSourceRevision $reviewedSourceRevision `
+  -ExpectedExecutableSha256 $executableHash `
+  -ExpectedMilesStubSha256 $milesHash
+```
+
+The packager stages only the executable, GPL Miles stub, governed original runtime assets, provenance, licences,
+notices, the deterministic headless-acceptance report, and the private-demo readme listed in `package-contract.json`.
+It rejects retail BIG/GIB archives, replays,
+EA game executables, WorldBuilder, and W3DView before staging; validates every asset hash against provenance; writes a
+machine-readable manifest and `SHA256SUMS.txt`; fixes all ZIP timestamps to the source commit; and produces a stable
+`ProjectTempestDemo-private.zip`. Production inputs are restricted to the two governed integrated Release directories.
+It also rejects a dirty source tree, a missing caller-supplied executable or Miles proof hash, a malformed/non-x86 GUI
+PE, or a binary that does not match its proven hash. The manifest binds the executable hash to both the actual clean
+build revision and the exact reviewed head (which may be a direct parent of GitHub's synthetic PR merge revision), plus
+the two-build policy. CI retains the merge revision's parent history so that relationship is proven by Git rather than
+trusted from an unverified workflow string. The pinned Miles source commit and deterministic build procedure live in provenance; the
+compiler-context-dependent DLL hash is recorded in each package manifest rather than hardcoded as a portable source
+identity. `test-project-tempest-package.ps1` proves byte-identical repeated packaging, manifest verification, and
+missing/wrong/forged executable and dependency-hash rejection with an inert fixture. Windows Release CI compares two
+isolated integrated executables and Miles DLLs before packaging, then requires identical acceptance reports and
+real-build ZIP hashes. The outer GitHub Actions artifact stages ordinary Generals outputs separately and admits
+Project Tempest only as the governed `ProjectTempestDemo-private.zip`; a runtime gate rejects loose Tempest executables,
+DLLs, symbols, or governed assets before upload. CI and adversarial temporary-directory fixtures both execute the same
+`assert-project-tempest-artifact-boundary.ps1` implementation, including clean governing/non-governing package-count
+cases, recursive nested-payload rejection, and reparse-point containment. The main CI path filter routes changes to
+that shared assertion back through the Tempest validation and Windows build jobs. Public distribution
+remains a separate approval and rights-review gate.
 
 Build with a modern Generals preset, for example:
 

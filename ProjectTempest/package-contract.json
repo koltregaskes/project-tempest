@@ -1,0 +1,70 @@
+{
+  "schema_version": 3,
+  "package_directory": "ProjectTempestDemo-private",
+  "archive_name": "ProjectTempestDemo-private.zip",
+  "runtime_files": [
+    {
+      "name": "ProjectTempestDemo.exe",
+      "kind": "executable",
+      "hash_verification": "two_isolated_integrated_release_builds_byte_identical",
+      "source_binding": "clean_build_revision_and_reviewed_head_and_governed_integrated_release_output"
+    },
+    {
+      "name": "mss32.dll",
+      "kind": "runtime_dependency",
+      "provenance_id": "PT-RUNTIME-MILES-STUB-001",
+      "hash_verification": "two_isolated_integrated_release_builds_byte_identical"
+    },
+    {
+      "name": "headless-acceptance.json",
+      "kind": "headless_evidence",
+      "victory_ticks": 692,
+      "victory_final_checksum": "12952808647802402891",
+      "victory_trace_checksum": "5821017828228671614",
+      "defeat_ticks": 1314,
+      "defeat_final_checksum": "16762171224111744054",
+      "defeat_trace_checksum": "12235278080197510931"
+    },
+    { "name": "courier.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/courier.w3d" },
+    { "name": "courierd.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/courierd.w3d" },
+    { "name": "drone.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/drone.w3d" },
+    { "name": "relay.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/relay.w3d" },
+    { "name": "sentry.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/sentry.w3d" },
+    { "name": "pylon.w3d", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/W3D/pylon.w3d" },
+    { "name": "ptburn.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptburn.tga" },
+    { "name": "ptcable.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptcable.tga" },
+    { "name": "ptcyan.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptcyan.tga" },
+    { "name": "ptoff.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptoff.tga" },
+    { "name": "ptrubber.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptrubber.tga" },
+    { "name": "ptsteel.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptsteel.tga" },
+    { "name": "ptwhite.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptwhite.tga" },
+    { "name": "ptmagnta.tga", "kind": "asset", "repository_path": "ProjectTempest/Content/Art/Textures/ptmagnta.tga" },
+    { "name": "pt_music_substation.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_music_substation.wav" },
+    { "name": "pt_music_pressure.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_music_pressure.wav" },
+    { "name": "pt_music_crisis.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_music_crisis.wav" },
+    { "name": "pt_ui_confirm.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_ui_confirm.wav" },
+    { "name": "pt_select.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_select.wav" },
+    { "name": "pt_command.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_command.wav" },
+    { "name": "pt_arc_pulse.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_arc_pulse.wav" },
+    { "name": "pt_alert.wav", "kind": "asset", "repository_path": "ProjectTempest/Content/Audio/pt_alert.wav" },
+    { "name": "EA-Tunable-Colorblindness-LICENSE.txt", "kind": "third_party_notice" },
+    { "name": "EA-Tunable-Colorblindness-NOTICE.txt", "kind": "third_party_notice" },
+    { "name": "EA-Tunable-Colorblindness-SOURCE.txt", "kind": "third_party_notice" }
+  ],
+  "repository_files": [
+    { "path": "LICENSE.md", "name": "GPL-3.0-LICENSE.md", "kind": "licence" },
+    { "path": "ProjectTempest/package-contract.json", "name": "package-contract.json", "kind": "package_contract" },
+    { "path": "ProjectTempest/asset-provenance.json", "name": "asset-provenance.json", "kind": "provenance" },
+    { "path": "ProjectTempest/PRIVATE-DEMO-README.txt", "name": "README.txt", "kind": "documentation" },
+    { "path": "ProjectTempest/ThirdParty/MilesStub/SOURCE.txt", "name": "MILES-STUB-SOURCE.txt", "kind": "third_party_notice" }
+  ],
+  "forbidden_patterns": [
+    "*.big",
+    "*.gib",
+    "*.rep",
+    "game.dat",
+    "generals*.exe",
+    "WorldBuilder*.exe",
+    "W3DView*.exe"
+  ]
+}

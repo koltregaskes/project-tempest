@@ -49,6 +49,8 @@ jobs:
               - 'Core/**'
               - 'Dependencies/**'
             tempest:
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/build-toolchain.yml'
               - 'ProjectTempest/**'
               - 'PROJECT_TEMPEST*.md'
               - 'scripts/build-windows.ps1'
@@ -56,6 +58,9 @@ jobs:
               - 'scripts/create-substation-kit.*'
               - 'scripts/create-tempest-audio.py'
               - 'scripts/prepare-w3dview-compat.ps1'
+              - 'scripts/package-project-tempest-demo.ps1'
+              - 'scripts/assert-project-tempest-artifact-boundary.ps1'
+              - 'scripts/test-project-tempest-package.ps1'
               - 'scripts/test-project-tempest-assets.ps1'
               - 'scripts/test-project-tempest-no-gui.ps1'
               - 'scripts/test-project-tempest-reproducibility.ps1'
@@ -85,8 +90,9 @@ jobs:
         run: |
           ./scripts/test-project-tempest-assets.ps1
           ./scripts/test-project-tempest-no-gui.ps1
+          ./scripts/test-project-tempest-package.ps1
 
-      - name: Compile and run deterministic Substation 9 simulation and interface tests
+      - name: Compile and run deterministic Substation 9 simulation, interface, and full-match acceptance tests
         shell: bash
         run: |
           g++ -std=c++20 -Wall -Wextra -Werror -pedantic \
@@ -98,6 +104,15 @@ jobs:
             -IProjectTempest/Code \
             -o "$RUNNER_TEMP/project-tempest-sim-tests"
           "$RUNNER_TEMP/project-tempest-sim-tests"
+          g++ -std=c++20 -Wall -Wextra -Werror -pedantic \
+            ProjectTempest/Code/TempestAccessibility.cpp \
+            ProjectTempest/Code/TempestInterface.cpp \
+            ProjectTempest/Code/TempestSimulation.cpp \
+            ProjectTempest/Tests/TempestHeadlessAcceptance.cpp \
+            -IProjectTempest/Code \
+            -o "$RUNNER_TEMP/project-tempest-headless-acceptance"
+          "$RUNNER_TEMP/project-tempest-headless-acceptance" \
+            --output "$RUNNER_TEMP/project-tempest-headless-acceptance.json"
 
   build-generals:
     name: Build Generals${{ matrix.preset && '' }}

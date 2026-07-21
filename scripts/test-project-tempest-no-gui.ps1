@@ -8,18 +8,23 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $fixedUnattendedSurfaces = @(
     ".github/workflows/build-toolchain.yml",
     "scripts/build-windows.ps1",
+    "scripts/package-project-tempest-demo.ps1",
     "scripts/test-w3d-pipeline.ps1",
     "scripts/prepare-w3dview-compat.ps1"
 )
 
-# Discover current and future Project Tempest validation/generation wrappers instead of
+# Discover current and future Project Tempest assertion/validation/generation wrappers instead of
 # relying on an allow-list that can silently omit a newly added unattended entry point.
 $scriptSurfaces = Get-ChildItem -LiteralPath (Join-Path $repositoryRoot "scripts") -File -Filter "*.ps1" |
     Where-Object {
         $_.Name -ne "test-project-tempest-no-gui.ps1" -and
-        $_.Name -match '^(?:create-.*|test-project-tempest-.*)\.ps1$'
+        $_.Name -match '^(?:assert-project-tempest-.*|create-.*|test-project-tempest-.*)\.ps1$'
     } |
     ForEach-Object { "scripts/$($_.Name)" }
+
+if ("scripts/assert-project-tempest-artifact-boundary.ps1" -notin $scriptSurfaces) {
+    throw "Project Tempest no-GUI discovery omitted the shared artifact-boundary assertion."
+}
 
 # A workflow that names Project Tempest is part of the unattended surface even when it
 # invokes a binary directly instead of going through one of the guarded wrappers.
@@ -122,7 +127,11 @@ function Get-UnattendedScriptPolicyViolation {
             $RelativePath -ieq 'scripts/build-windows.ps1' -and
             $firstElement -in @('$cmake', '$vswhere')
         )
-        if (-not $isSafeBlender -and -not $isSafeBuildTool) {
+        $isSafePackageTool = (
+            $RelativePath -ieq 'scripts/test-project-tempest-package.ps1' -and
+            $firstElement -ieq '$packageScript'
+        )
+        if (-not $isSafeBlender -and -not $isSafeBuildTool -and -not $isSafePackageTool) {
             $violations.Add("unapproved dynamic invocation '$firstElement'")
         }
     }
@@ -168,7 +177,8 @@ foreach ($fixture in $adversarialFixtures) {
 
 $safeFixtures = @(
     @{ Content = '& $BlenderPath --background --factory-startup --python $pythonScript'; Path = 'scripts/create-fixture.ps1' },
-    @{ Content = '& $cmake --preset $Preset'; Path = 'scripts/build-windows.ps1' }
+    @{ Content = '& $cmake --preset $Preset'; Path = 'scripts/build-windows.ps1' },
+    @{ Content = '& $packageScript -RuntimeDirectory $runtime'; Path = 'scripts/test-project-tempest-package.ps1' }
 )
 foreach ($fixture in $safeFixtures) {
     $fixtureViolations = @(Get-UnattendedScriptPolicyViolation -Content $fixture.Content -RelativePath $fixture.Path)
