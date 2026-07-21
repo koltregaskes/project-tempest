@@ -1171,6 +1171,7 @@ bool SyncUnitVisuals()
         if (!unit.alive) {
             continue;
         }
+        const bool isChorus = unit.faction == Tempest::Faction::Chorus;
         const bool damaged = unit.kind == Tempest::UnitKind::CourierScout &&
             unit.hitPoints * 2 <= unit.maximumHitPoints;
         const char *modelName = nullptr;
