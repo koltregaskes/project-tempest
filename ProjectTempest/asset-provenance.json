@@ -298,7 +298,7 @@
       "origin": "authored_original_from_primitives",
       "tool": "Blender 5.1.2",
       "source_script": "../scripts/create-substation-kit.py",
-      "sha256": "a0c8a6fae8d9961569263a1c8371ce18a9480be91d4676e5bb66390f1c71a270",
+      "sha256": "dac025ff7e8f4712848306a12ddcfc7dbf743b550dafdfe1626d9190fbe3613e",
       "review": {
         "creative": "approved_as_dedicated_chorus_runtime_blockout",
         "top_down_readability": "pass_distinct_three_arm_radial_silhouette",
@@ -316,7 +316,7 @@
       "tool": "Blender 5.1.2 Workbench --background",
       "source_asset": "PT-MODEL-CH-DRONE-001",
       "source_script": "../scripts/create-substation-kit.py",
-      "sha256": "da25da87dff6211d507f660567f3c768b24440ae5b9db8ef9f49d37b30058733",
+      "sha256": "e751e6110a2729f616241e2f4aa212132bed4dfa8a75c54dad204e6ce4242515",
       "review": {
         "frame": "nonblank_960x720",
         "top_down_silhouette": "pass",
@@ -377,7 +377,7 @@
       "origin": "authored_original_from_primitives",
       "tool": "Blender 5.1.2",
       "source_script": "../scripts/create-substation-kit.py",
-      "sha256": "4808c800fce534cda7e7f20f0c814fa8ecc688cd603ddff7e70aef7c2af3bfd9",
+      "sha256": "32a5e19591a827f75e8158d5b0e6f7ca069bc6fbae8053fc85b7f84752009873",
       "review": {
         "creative": "approved_as_first_buildable_structure_blockout",
         "top_down_readability": "pass_radial_grid_node_silhouette",
@@ -395,7 +395,7 @@
       "tool": "Blender 5.1.2 Workbench --background",
       "source_asset": "PT-MODEL-FG-RELAY-001",
       "source_script": "../scripts/create-substation-kit.py",
-      "sha256": "1aae1c69b3852aa9d00bdcc61a6c47554d47ef08e770851ea068bd91217c8289",
+      "sha256": "4bfe96b696dcfa1ee016d756cb79dadb32438af743466004c3ad9697558ca452",
       "review": {
         "frame": "nonblank_960x720",
         "top_down_silhouette": "pass",
@@ -460,7 +460,7 @@
       "source_script": "../scripts/create-substation-kit.py",
       "generation_date": "2026-07-18",
       "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
-      "sha256": "9e70e6ba6ed4020d21f44243b0f99d184193d5d1970d04ede3b72b79137b14c2",
+      "sha256": "6963cf3afa6d7a2733174e38bc43000989f2523d7f1db5a80550b368fbb1f6f3",
       "review": {
         "creative": "approved_as_directional_freegrid_defence_blockout",
         "top_down_readability": "pass_dual_rail_directional_silhouette",
@@ -479,7 +479,7 @@
       "source_asset": "PT-MODEL-FG-SENTRY-001",
       "source_script": "../scripts/create-substation-kit.py",
       "generation_date": "2026-07-18",
-      "sha256": "b7d247bb36d4a5a363adafa62db626b12a22901e6244a21527d2102557049b3c",
+      "sha256": "f4dc1021afae2664888c57c1147d41d4d8f15d67e2cd02274023cb3c7fec5c27",
       "review": {
         "frame": "nonblank_960x720",
         "top_down_silhouette": "pass",
@@ -546,7 +546,7 @@
       "source_script": "../scripts/create-substation-kit.py",
       "generation_date": "2026-07-18",
       "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
-      "sha256": "a18783629fc84422aa5c994caea9c13c39a5939283db7ecf937a711b9b61de62",
+      "sha256": "31bfddf8c96f476b8da20405692e591f50f573c4c7d3c683e22f75ea61a0199f",
       "review": {
         "creative": "approved_as_radial_chorus_pressure_blockout",
         "top_down_readability": "pass_three_leg_ring_and_spire_silhouette",
@@ -565,7 +565,7 @@
       "source_asset": "PT-MODEL-CH-PYLON-001",
       "source_script": "../scripts/create-substation-kit.py",
       "generation_date": "2026-07-18",
-      "sha256": "6d1c517b87325b767545d709b7a769ab842a321437c4bcabf2962f9f187a863e",
+      "sha256": "7f1ccca199096ca3658976b033be5811e0fd2f23c35fe9935c3faf2df7bbf3a0",
       "review": {
         "frame": "nonblank_960x720",
         "top_down_silhouette": "pass",
@@ -630,7 +630,7 @@
       "source_script": "../scripts/create-substation-kit.py",
       "generation_date": "2026-07-21",
       "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
-      "sha256": "f226198679316bdeeb5d0cca597a96edf3dc28dfeeec7da9c5a92b019bda9c54",
+      "sha256": "d794e2b2b6867b56b52f437a0a1c30d23f3fd4e187e439d1b47c28175e42f5b5",
       "review": {
         "creative": "approved_as_low_asymmetric_freegrid_command_anchor",
         "top_down_readability": "pass_offset_cabin_service_wing_and_signal_mast_silhouette",
@@ -649,7 +649,7 @@
       "source_asset": "PT-MODEL-FG-RELAYCORE-001",
       "source_script": "../scripts/create-substation-kit.py",
       "generation_date": "2026-07-21",
-      "sha256": "169fb7dd329426869cd6bcd506143856be93b4f26ebb1b399d840860834ba286",
+      "sha256": "8042f8daf636fd51efe589290d717b9073621e737dc41c16096c874abe936862",
       "review": {
         "frame": "nonblank_960x720",
         "top_down_silhouette": "pass",
@@ -716,7 +716,7 @@
       "source_script": "../scripts/create-substation-kit.py",
       "generation_date": "2026-07-21",
       "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
-      "sha256": "4aef1f086f9789da7289e4400c4ad51b2456e000ff5f842f7b51b4846e44bc03",
+      "sha256": "1724e7d0535ef67b9eeae58d917460e4133cecc21c7b86248223acab442f0712",
       "review": {
         "creative": "approved_as_open_asymmetric_freegrid_workshop_gantry",
         "top_down_readability": "pass_open_bay_offset_shop_and_crane_silhouette",
@@ -735,7 +735,7 @@
       "source_asset": "PT-MODEL-FG-FABRICATOR-001",
       "source_script": "../scripts/create-substation-kit.py",
       "generation_date": "2026-07-21",
-      "sha256": "06b8a5567c3fc1a5132d1da75cae1582056110634874b2084d40fa9667e8c8d5",
+      "sha256": "483b1067734873e11a76ccef6dc29c94cf81e03898aea913f517500dd0eb8402",
       "review": {
         "frame": "nonblank_960x720",
         "top_down_silhouette": "pass",
@@ -802,7 +802,7 @@
       "source_script": "../scripts/create-substation-kit.py",
       "generation_date": "2026-07-21",
       "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
-      "sha256": "f087eacc421a568032601c96a2a0fe1dcbeab9d9c5323e4008b494e0693fb804",
+      "sha256": "3b51186ec21460177eda7e89a5012b8e4a97bb51e8b0fe8a03245eded0b1e883",
       "review": {
         "creative": "approved_as_five_fold_chorus_objective_spire",
         "top_down_readability": "pass_five_leg_twisted_radial_and_tall_beacon_silhouette",
@@ -821,7 +821,7 @@
       "source_asset": "PT-MODEL-CH-SPIRE-001",
       "source_script": "../scripts/create-substation-kit.py",
       "generation_date": "2026-07-21",
-      "sha256": "fb2bdaebb28077dcca133d62fc600f983f6b3046e5501c6d049f9a76cdadc20f",
+      "sha256": "7900b1067ee9cef9a4056598fe8162b5cbd5790ff76f23d1843d4ffd915fbd83",
       "review": {
         "frame": "nonblank_960x720",
         "top_down_silhouette": "pass",
@@ -869,6 +869,612 @@
         "lod_roundtrip": "pass_three_levels",
         "collision_roundtrip": "pass",
         "texture_roundtrip": "pass",
+        "engine_render": "pending_manual_only_non_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-FG-FABRICRIG-001",
+      "path": "SourceAssets/Models/Freegrid/FabricatorRig/fabricrig-master-v1.blend",
+      "role": "editable procedural Freegrid Fabricator Rig field support unit master with authored three-level LOD and collision sources",
+      "faction": "Freegrid",
+      "subject": "Fabricator Rig field support unit",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "a5e1b5993fb502040d1d206705a743951f788fc0da8d5e2974a6f575c180cb98",
+      "review": {
+        "creative": "approved_as_distinct_roster_blockout",
+        "top_down_readability": "pass_mobile_fabrication_chassis",
+        "lod_and_collision": "pass_scripted_three_lods_and_box_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-FG-FABRICRIG-001",
+      "path": "SourceAssets/Models/Freegrid/FabricatorRig/fabricrig-top-v1.png",
+      "role": "orthographic RTS-view Freegrid Fabricator Rig field support unit review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-FG-FABRICRIG-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "d02f2d65f52ae6a73b1e456da26beae0de125a808068a6fb6ee17c71d4bfdcd8",
+      "review": {
+        "frame": "nonblank_960x720",
+        "top_down_silhouette": "pass",
+        "faction_contrast": "pass_cyan_status_nodes_and_warm_armour",
+        "normal_zoom_engine_readability": "pending_manual_only_non_rdp"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-FG-FABRICRIG-001",
+      "path": "Content/Art/W3D/fabricrig.w3d",
+      "role": "engine-format Freegrid Fabricator Rig field support unit with three HLOD states, textures, and collision",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-FG-FABRICRIG-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "f32419a780a3fdfa19a65682ca6fed6804312a39d6be129f3a43410c46f4a9cc",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod_vertex_counts": [
+          472,
+          256,
+          137
+        ],
+        "imported_render_mesh_count": 9,
+        "imported_box_count": 1,
+        "material_passes_per_render_mesh": 1,
+        "render_meshes": [
+          "FRARMOR0",
+          "FRARMOR1",
+          "FRARMOR2",
+          "FRBODY0",
+          "FRBODY1",
+          "FRBODY2",
+          "HouseColor0",
+          "HouseColor1",
+          "HouseColor2"
+        ],
+        "texture_files": [
+          "ptcyan.tga",
+          "ptsteel.tga",
+          "ptwhite.tga"
+        ],
+        "house_color_meshes": [
+          "HouseColor0",
+          "HouseColor1",
+          "HouseColor2"
+        ],
+        "collision_flags": [
+          "PHYSICAL",
+          "PROJECTILE",
+          "VIS",
+          "VEHICLE"
+        ],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "lod_roundtrip": "pass_three_levels",
+        "collision_roundtrip": "pass",
+        "texture_roundtrip": "pass",
+        "team_colour_roundtrip": "pass_native_housecolor_mesh_names",
+        "engine_render": "pending_manual_only_non_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-FG-LANCER-001",
+      "path": "SourceAssets/Models/Freegrid/LancerCrew/lancer-master-v1.blend",
+      "role": "editable procedural Freegrid Lancer Crew line combat unit master with authored three-level LOD and collision sources",
+      "faction": "Freegrid",
+      "subject": "Lancer Crew line combat unit",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "df29c8b50c461e5ba4c689ec3a8c9dc8a00052e51c416e550817571abd402fb6",
+      "review": {
+        "creative": "approved_as_distinct_roster_blockout",
+        "top_down_readability": "pass_forward_lance_and_split_hull",
+        "lod_and_collision": "pass_scripted_three_lods_and_box_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-FG-LANCER-001",
+      "path": "SourceAssets/Models/Freegrid/LancerCrew/lancer-top-v1.png",
+      "role": "orthographic RTS-view Freegrid Lancer Crew line combat unit review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-FG-LANCER-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "4e9acc82ce1c3cbd058f01731a00b812c0c34b99282944a517a95c747de9bc64",
+      "review": {
+        "frame": "nonblank_960x720",
+        "top_down_silhouette": "pass",
+        "faction_contrast": "pass_cyan_status_nodes_and_warm_armour",
+        "normal_zoom_engine_readability": "pending_manual_only_non_rdp"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-FG-LANCER-001",
+      "path": "Content/Art/W3D/lancer.w3d",
+      "role": "engine-format Freegrid Lancer Crew line combat unit with three HLOD states, textures, and collision",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-FG-LANCER-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "aaf2c5d664478815f367f7d4ff5170a5d69cf170a76c60442a731c3daf25cbf3",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod_vertex_counts": [
+          480,
+          259,
+          138
+        ],
+        "imported_render_mesh_count": 9,
+        "imported_box_count": 1,
+        "material_passes_per_render_mesh": 1,
+        "render_meshes": [
+          "HouseColor0",
+          "HouseColor1",
+          "HouseColor2",
+          "LNARMOR0",
+          "LNARMOR1",
+          "LNARMOR2",
+          "LNBODY0",
+          "LNBODY1",
+          "LNBODY2"
+        ],
+        "texture_files": [
+          "ptcyan.tga",
+          "ptsteel.tga",
+          "ptwhite.tga"
+        ],
+        "house_color_meshes": [
+          "HouseColor0",
+          "HouseColor1",
+          "HouseColor2"
+        ],
+        "collision_flags": [
+          "PHYSICAL",
+          "PROJECTILE",
+          "VIS",
+          "VEHICLE"
+        ],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "lod_roundtrip": "pass_three_levels",
+        "collision_roundtrip": "pass",
+        "texture_roundtrip": "pass",
+        "team_colour_roundtrip": "pass_native_housecolor_mesh_names",
+        "engine_render": "pending_manual_only_non_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-FG-COIL-001",
+      "path": "SourceAssets/Models/Freegrid/CoilCarrier/coil-master-v1.blend",
+      "role": "editable procedural Freegrid Coil Carrier mobile energy unit master with authored three-level LOD and collision sources",
+      "faction": "Freegrid",
+      "subject": "Coil Carrier mobile energy unit",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "c797e9e6634fff8eaa46792c10124b731e747007170246eb2dea6ad64db4b9ee",
+      "review": {
+        "creative": "approved_as_distinct_roster_blockout",
+        "top_down_readability": "pass_twin_coil_energy_carrier",
+        "lod_and_collision": "pass_scripted_three_lods_and_box_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-FG-COIL-001",
+      "path": "SourceAssets/Models/Freegrid/CoilCarrier/coil-top-v1.png",
+      "role": "orthographic RTS-view Freegrid Coil Carrier mobile energy unit review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-FG-COIL-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "ef8ae1b9155eb0e14b2dc5f1dd2055e1d66904d1f30f8e56cb430ee3601adeec",
+      "review": {
+        "frame": "nonblank_960x720",
+        "top_down_silhouette": "pass",
+        "faction_contrast": "pass_cyan_status_nodes_and_warm_armour",
+        "normal_zoom_engine_readability": "pending_manual_only_non_rdp"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-FG-COIL-001",
+      "path": "Content/Art/W3D/coil.w3d",
+      "role": "engine-format Freegrid Coil Carrier mobile energy unit with three HLOD states, textures, and collision",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-FG-COIL-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "5c1dff1bfa3f0984dbabf9acaa097489a89a0e6559add6a2a1eb8fee5fcfaec8",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod_vertex_counts": [
+          516,
+          281,
+          151
+        ],
+        "imported_render_mesh_count": 9,
+        "imported_box_count": 1,
+        "material_passes_per_render_mesh": 1,
+        "render_meshes": [
+          "CCARMOR0",
+          "CCARMOR1",
+          "CCARMOR2",
+          "CCBODY0",
+          "CCBODY1",
+          "CCBODY2",
+          "HouseColor0",
+          "HouseColor1",
+          "HouseColor2"
+        ],
+        "texture_files": [
+          "ptcyan.tga",
+          "ptsteel.tga",
+          "ptwhite.tga"
+        ],
+        "house_color_meshes": [
+          "HouseColor0",
+          "HouseColor1",
+          "HouseColor2"
+        ],
+        "collision_flags": [
+          "PHYSICAL",
+          "PROJECTILE",
+          "VIS",
+          "VEHICLE"
+        ],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "lod_roundtrip": "pass_three_levels",
+        "collision_roundtrip": "pass",
+        "texture_roundtrip": "pass",
+        "team_colour_roundtrip": "pass_native_housecolor_mesh_names",
+        "engine_render": "pending_manual_only_non_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-CH-WARDEN-001",
+      "path": "SourceAssets/Models/Chorus/Warden/warden-master-v1.blend",
+      "role": "editable procedural Chorus Warden command combat unit master with authored three-level LOD and collision sources",
+      "faction": "Chorus",
+      "subject": "Warden command combat unit",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "99f18206b9329673b7ca9039303b2db45e83fc71c0aeb38d1481f7f35bb49be9",
+      "review": {
+        "creative": "approved_as_distinct_roster_blockout",
+        "top_down_readability": "pass_triune_command_crown",
+        "lod_and_collision": "pass_scripted_three_lods_and_box_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-CH-WARDEN-001",
+      "path": "SourceAssets/Models/Chorus/Warden/warden-top-v1.png",
+      "role": "orthographic RTS-view Chorus Warden command combat unit review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-CH-WARDEN-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "2eabecd2f04e6123daa61692048c936a8b1d504eeaeebd978d5a8f42c6a8d7f7",
+      "review": {
+        "frame": "nonblank_960x720",
+        "top_down_silhouette": "pass",
+        "faction_contrast": "pass_magenta_circuitry_and_cyan_energy",
+        "normal_zoom_engine_readability": "pending_manual_only_non_rdp"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-CH-WARDEN-001",
+      "path": "Content/Art/W3D/warden.w3d",
+      "role": "engine-format Chorus Warden command combat unit with three HLOD states, textures, and collision",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-CH-WARDEN-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "8c9492dcea6d639f64ce4a3636931bbed39c7b72c094c0c8d30380ac996a7f1a",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod_vertex_counts": [
+          512,
+          278,
+          152
+        ],
+        "imported_render_mesh_count": 9,
+        "imported_box_count": 1,
+        "material_passes_per_render_mesh": 1,
+        "render_meshes": [
+          "WDBODY0",
+          "WDBODY1",
+          "WDBODY2",
+          "WDGLOW0",
+          "WDGLOW1",
+          "WDGLOW2",
+          "WDMAG0",
+          "WDMAG1",
+          "WDMAG2"
+        ],
+        "texture_files": [
+          "ptcyan.tga",
+          "ptmagnta.tga",
+          "ptsteel.tga"
+        ],
+        "house_color_meshes": [],
+        "collision_flags": [
+          "PHYSICAL",
+          "PROJECTILE",
+          "VIS",
+          "VEHICLE"
+        ],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "lod_roundtrip": "pass_three_levels",
+        "collision_roundtrip": "pass",
+        "texture_roundtrip": "pass",
+        "team_colour_roundtrip": "not_applicable_faction_emissive_identity",
+        "engine_render": "pending_manual_only_non_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-CH-HARROWER-001",
+      "path": "SourceAssets/Models/Chorus/Harrower/harrower-master-v1.blend",
+      "role": "editable procedural Chorus Harrower assault combat unit master with authored three-level LOD and collision sources",
+      "faction": "Chorus",
+      "subject": "Harrower assault combat unit",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "67b07580377ac28d408ca08a0ea41ddd35fda6c25c6f13f5d3a03fd98dd38cc8",
+      "review": {
+        "creative": "approved_as_distinct_roster_blockout",
+        "top_down_readability": "pass_blade_wing_assault_frame",
+        "lod_and_collision": "pass_scripted_three_lods_and_box_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-CH-HARROWER-001",
+      "path": "SourceAssets/Models/Chorus/Harrower/harrower-top-v1.png",
+      "role": "orthographic RTS-view Chorus Harrower assault combat unit review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-CH-HARROWER-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "9428d83f9b0bd318aa573a6a9e654d97451873628e8e78f6e2ac2a8e8e4095a9",
+      "review": {
+        "frame": "nonblank_960x720",
+        "top_down_silhouette": "pass",
+        "faction_contrast": "pass_magenta_circuitry_and_cyan_energy",
+        "normal_zoom_engine_readability": "pending_manual_only_non_rdp"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-CH-HARROWER-001",
+      "path": "Content/Art/W3D/harrower.w3d",
+      "role": "engine-format Chorus Harrower assault combat unit with three HLOD states, textures, and collision",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-CH-HARROWER-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "0dbaafe80652ad8ed24418b5b97f32606e22311919f1b14a5a78e82660c35f75",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod_vertex_counts": [
+          580,
+          316,
+          172
+        ],
+        "imported_render_mesh_count": 9,
+        "imported_box_count": 1,
+        "material_passes_per_render_mesh": 1,
+        "render_meshes": [
+          "HABODY0",
+          "HABODY1",
+          "HABODY2",
+          "HAGLOW0",
+          "HAGLOW1",
+          "HAGLOW2",
+          "HAMAG0",
+          "HAMAG1",
+          "HAMAG2"
+        ],
+        "texture_files": [
+          "ptcyan.tga",
+          "ptmagnta.tga",
+          "ptsteel.tga"
+        ],
+        "house_color_meshes": [],
+        "collision_flags": [
+          "PHYSICAL",
+          "PROJECTILE",
+          "VIS",
+          "VEHICLE"
+        ],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "lod_roundtrip": "pass_three_levels",
+        "collision_roundtrip": "pass",
+        "texture_roundtrip": "pass",
+        "team_colour_roundtrip": "not_applicable_faction_emissive_identity",
+        "engine_render": "pending_manual_only_non_rdp",
+        "automation_policy": "manual_only_never_unattended",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-MODEL-CH-NEST-001",
+      "path": "SourceAssets/Models/Chorus/MachineNest/nest-master-v1.blend",
+      "role": "editable procedural Chorus Machine Nest production structure master with authored three-level LOD and collision sources",
+      "faction": "Chorus",
+      "subject": "Machine Nest production structure",
+      "origin": "authored_original_from_primitives",
+      "tool": "Blender 5.1.2",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "b8c9a740cf98c9f0aa44838b6f4cc0b290f65f3906e87a9e799afda83d50d04d",
+      "review": {
+        "creative": "approved_as_distinct_roster_blockout",
+        "top_down_readability": "pass_radial_brood_foundry",
+        "lod_and_collision": "pass_scripted_three_lods_and_box_source",
+        "public_distribution": "pending_explicit_rights_and_identity_review"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-PREVIEW-CH-NEST-001",
+      "path": "SourceAssets/Models/Chorus/MachineNest/nest-top-v1.png",
+      "role": "orthographic RTS-view Chorus Machine Nest production structure review evidence",
+      "origin": "rendered_from_project_source",
+      "tool": "Blender 5.1.2 Workbench --background",
+      "source_asset": "PT-MODEL-CH-NEST-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "38130088b9f42be0f90c227fed1e96a6c50586e67202d392a1789b5118915b2f",
+      "review": {
+        "frame": "nonblank_960x720",
+        "top_down_silhouette": "pass",
+        "faction_contrast": "pass_magenta_circuitry_and_cyan_energy",
+        "normal_zoom_engine_readability": "pending_manual_only_non_rdp"
+      },
+      "distribution": "internal_development_only"
+    },
+    {
+      "asset_id": "PT-RUNTIME-CH-NEST-001",
+      "path": "Content/Art/W3D/nest.w3d",
+      "role": "engine-format Chorus Machine Nest production structure with three HLOD states, textures, and collision",
+      "origin": "exported_from_project_source",
+      "tool": "OpenSAGE Blender plugin 0.7.3",
+      "tool_commit": "feb80cd0bf22b3c24c0395ae3260a5349c080892",
+      "source_asset": "PT-MODEL-CH-NEST-001",
+      "source_script": "../scripts/create-substation-kit.py",
+      "generation_date": "2026-07-21",
+      "rights_basis": "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input",
+      "sha256": "91b84111965241aa07a78162de17fe404e195f8098d9948fd31cf76a203b7884",
+      "validation": {
+        "repeat_export_hash_stable": true,
+        "roundtrip_import": "pass",
+        "export_mode": "HM",
+        "authored_lod_vertex_counts": [
+          852,
+          462,
+          249
+        ],
+        "imported_render_mesh_count": 9,
+        "imported_box_count": 1,
+        "material_passes_per_render_mesh": 1,
+        "render_meshes": [
+          "MNBODY0",
+          "MNBODY1",
+          "MNBODY2",
+          "MNGLOW0",
+          "MNGLOW1",
+          "MNGLOW2",
+          "MNMAG0",
+          "MNMAG1",
+          "MNMAG2"
+        ],
+        "texture_files": [
+          "ptcyan.tga",
+          "ptmagnta.tga",
+          "ptsteel.tga"
+        ],
+        "house_color_meshes": [],
+        "collision_flags": [
+          "PHYSICAL",
+          "PROJECTILE",
+          "VIS",
+          "VEHICLE"
+        ],
+        "filename_and_mesh_identifier_limit": 16
+      },
+      "review": {
+        "lod_roundtrip": "pass_three_levels",
+        "collision_roundtrip": "pass",
+        "texture_roundtrip": "pass",
+        "team_colour_roundtrip": "not_applicable_faction_emissive_identity",
         "engine_render": "pending_manual_only_non_rdp",
         "automation_policy": "manual_only_never_unattended",
         "public_distribution": "pending_explicit_rights_and_identity_review"

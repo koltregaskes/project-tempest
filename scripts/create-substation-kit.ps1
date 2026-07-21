@@ -32,8 +32,8 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $resultPath)) {
 }
 
 $result = Get-Content -Raw -LiteralPath $resultPath | ConvertFrom-Json
-if (@($result.assets).Count -ne 7) {
-    throw "Substation-kit generation must produce all seven governed unit and structure assets."
+if (@($result.assets).Count -ne 13) {
+    throw "Substation-kit generation must produce all thirteen governed unit and structure assets."
 }
 $expectedContracts = @{
     drone = @{
@@ -68,6 +68,36 @@ $expectedContracts = @{
     }
     spire = @{
         Meshes = @("CSBODY0", "CSBODY1", "CSBODY2", "CSGLOW0", "CSGLOW1", "CSGLOW2", "CSMAG0", "CSMAG1", "CSMAG2")
+        Textures = @("ptcyan.tga", "ptmagnta.tga", "ptsteel.tga")
+        HouseColor = @()
+    }
+    fabricrig = @{
+        Meshes = @("FRARMOR0", "FRARMOR1", "FRARMOR2", "FRBODY0", "FRBODY1", "FRBODY2", "HouseColor0", "HouseColor1", "HouseColor2")
+        Textures = @("ptcyan.tga", "ptsteel.tga", "ptwhite.tga")
+        HouseColor = @("HouseColor0", "HouseColor1", "HouseColor2")
+    }
+    lancer = @{
+        Meshes = @("HouseColor0", "HouseColor1", "HouseColor2", "LNARMOR0", "LNARMOR1", "LNARMOR2", "LNBODY0", "LNBODY1", "LNBODY2")
+        Textures = @("ptcyan.tga", "ptsteel.tga", "ptwhite.tga")
+        HouseColor = @("HouseColor0", "HouseColor1", "HouseColor2")
+    }
+    coil = @{
+        Meshes = @("CCARMOR0", "CCARMOR1", "CCARMOR2", "CCBODY0", "CCBODY1", "CCBODY2", "HouseColor0", "HouseColor1", "HouseColor2")
+        Textures = @("ptcyan.tga", "ptsteel.tga", "ptwhite.tga")
+        HouseColor = @("HouseColor0", "HouseColor1", "HouseColor2")
+    }
+    warden = @{
+        Meshes = @("WDBODY0", "WDBODY1", "WDBODY2", "WDGLOW0", "WDGLOW1", "WDGLOW2", "WDMAG0", "WDMAG1", "WDMAG2")
+        Textures = @("ptcyan.tga", "ptmagnta.tga", "ptsteel.tga")
+        HouseColor = @()
+    }
+    harrower = @{
+        Meshes = @("HABODY0", "HABODY1", "HABODY2", "HAGLOW0", "HAGLOW1", "HAGLOW2", "HAMAG0", "HAMAG1", "HAMAG2")
+        Textures = @("ptcyan.tga", "ptmagnta.tga", "ptsteel.tga")
+        HouseColor = @()
+    }
+    nest = @{
+        Meshes = @("MNBODY0", "MNBODY1", "MNBODY2", "MNGLOW0", "MNGLOW1", "MNGLOW2", "MNMAG0", "MNMAG1", "MNMAG2")
         Textures = @("ptcyan.tga", "ptmagnta.tga", "ptsteel.tga")
         HouseColor = @()
     }

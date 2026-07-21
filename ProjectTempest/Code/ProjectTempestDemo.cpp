@@ -1104,6 +1104,8 @@ const char *BuildingModelName(Tempest::BuildingKind kind)
             return "pylon";
         case Tempest::BuildingKind::ChorusSpire:
             return "spire";
+        case Tempest::BuildingKind::MachineNest:
+            return "nest";
         default:
             return nullptr;
     }
@@ -1169,9 +1171,19 @@ bool SyncUnitVisuals()
         if (!unit.alive) {
             continue;
         }
-        const bool isChorus = unit.faction == Tempest::Faction::Chorus;
-        const bool damaged = !isChorus && unit.hitPoints * 2 <= unit.maximumHitPoints;
-        const char *modelName = isChorus ? "drone" : (damaged ? "courierd" : "courier");
+        const bool damaged = unit.kind == Tempest::UnitKind::CourierScout &&
+            unit.hitPoints * 2 <= unit.maximumHitPoints;
+        const char *modelName = nullptr;
+        switch (unit.kind) {
+            case Tempest::UnitKind::FabricatorRig: modelName = "fabricrig"; break;
+            case Tempest::UnitKind::CourierScout: modelName = damaged ? "courierd" : "courier"; break;
+            case Tempest::UnitKind::LancerCrew: modelName = "lancer"; break;
+            case Tempest::UnitKind::CoilCarrier: modelName = "coil"; break;
+            case Tempest::UnitKind::Skitter: modelName = "drone"; break;
+            case Tempest::UnitKind::Warden: modelName = "warden"; break;
+            case Tempest::UnitKind::Harrower: modelName = "harrower"; break;
+            default: return false;
+        }
         auto found = std::find_if(g_unitVisuals.begin(), g_unitVisuals.end(), [&unit](const UnitVisual &visual) {
             return visual.id == unit.id;
         });
@@ -1280,7 +1292,13 @@ bool InitialiseRenderer()
         !g_assetManager->Load_3D_Assets("pylon.w3d") ||
         !g_assetManager->Load_3D_Assets("relaycore.w3d") ||
         !g_assetManager->Load_3D_Assets("fabricbay.w3d") ||
-        !g_assetManager->Load_3D_Assets("spire.w3d")) {
+        !g_assetManager->Load_3D_Assets("spire.w3d") ||
+        !g_assetManager->Load_3D_Assets("fabricrig.w3d") ||
+        !g_assetManager->Load_3D_Assets("lancer.w3d") ||
+        !g_assetManager->Load_3D_Assets("coil.w3d") ||
+        !g_assetManager->Load_3D_Assets("warden.w3d") ||
+        !g_assetManager->Load_3D_Assets("harrower.w3d") ||
+        !g_assetManager->Load_3D_Assets("nest.w3d")) {
         return false;
     }
 

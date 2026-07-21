@@ -97,6 +97,12 @@ try {
         @{ Name = "relaycore.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\relaycore.w3d"; A = $runA; B = $runB },
         @{ Name = "fabricbay.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\fabricbay.w3d"; A = $runA; B = $runB },
         @{ Name = "spire.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\spire.w3d"; A = $runA; B = $runB },
+        @{ Name = "fabricrig.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\fabricrig.w3d"; A = $runA; B = $runB },
+        @{ Name = "lancer.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\lancer.w3d"; A = $runA; B = $runB },
+        @{ Name = "coil.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\coil.w3d"; A = $runA; B = $runB },
+        @{ Name = "warden.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\warden.w3d"; A = $runA; B = $runB },
+        @{ Name = "harrower.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\harrower.w3d"; A = $runA; B = $runB },
+        @{ Name = "nest.w3d"; RelativePath = "ProjectTempest\Content\Art\W3D\nest.w3d"; A = $runA; B = $runB },
         @{ Name = "ptmagnta.tga"; RelativePath = "ProjectTempest\Content\Art\Textures\ptmagnta.tga"; A = $runA; B = $runB }
     )
 

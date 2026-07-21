@@ -164,7 +164,7 @@ The isolated Apache-2.0 EA-derived colour transform has pinned deterministic vec
 it exactly once to the final world-and-UI presentation surface, then capturing target-resolution/performance evidence,
 remains open rather than being inferred from the portable tests.
 
-Current content-model boundary (2026-07-15): the deterministic rules layer names all four Freegrid units, four Freegrid
+Current content-model boundary (2026-07-21): the deterministic rules layer names all four Freegrid units, four Freegrid
 structures, both governed abilities, three Chorus units, and three Chorus structures through data-backed definitions.
 Substation 9 opens with a Fabricator rig, Courier scout, Relay Core, Fabricator Bay, Machine Nest, Skitter, and Chorus
 Spire. Salvage is the only spendable construction/production resource; captured relays generate separate ability charge,
@@ -173,9 +173,10 @@ Fabricator Bay can produce Fabricator rigs, Courier scouts, Lancer crews, and Co
 movement, range, damage, build-time, salvage, and capacity data. Fabricator rigs repair damaged friendly units and
 structures for salvage, while deterministic Machine Nest waves escalate through Skitters, Wardens, and Harrowers.
 Arc Sentries and Signal Pylons now provide deterministic defensive pressure and dedicated runtime art, while targeted
-grid-link scans report contacts and emergency overcharge temporarily boosts Freegrid movement and damage. Dedicated art
-for the remaining unit roster and Machine Nest, manual balance/legibility proof, and the governed manual playtest gates
-remain M4/M5 work rather than claimed release-ready content.
+grid-link scans report contacts and emergency overcharge temporarily boosts Freegrid movement and damage. Every named
+unit role and production/anchor structure now maps to a dedicated, original, provenance-tracked three-LOD W3D asset.
+Manual balance/legibility proof and the governed manual playtest gates remain open rather than being inferred from
+headless validation or claimed as release-ready content.
 
 ### Golden asset and format decision
 

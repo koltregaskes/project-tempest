@@ -173,8 +173,9 @@ validation; it is not evidence of rendered gameplay, human usability, audible qu
 
 The rendered prototype now drives that simulation at the same fixed 20 Hz, converts player input into sequenced
 commands, and presents the current match through a neon procedural grid, faction-coloured and shape-distinct
-substation/building markers, selection brackets, dedicated Courier scout/Skitter visuals, pristine/damaged Courier
-switching, authored Relay Core, Fabricator Bay, Dynamo relay, Arc Sentry, Signal Pylon, and Chorus Spire models, and a
+substation/building markers, selection brackets, dedicated models for every Freegrid and Chorus unit role,
+pristine/damaged Courier switching, authored Relay Core, Fabricator Bay, Dynamo relay, Arc Sentry, Signal Pylon,
+Chorus Spire, and Machine Nest models, and a
 scalable in-window HUD. The original interface includes a loading panel,
 mission briefing, live resources/objective/selection state, visible command acknowledgement, pause, settings, and a
 victory/defeat explanation with restart and settings available without leaving the process. This is a compile- and
@@ -182,13 +183,13 @@ headless-test-proven integration checkpoint; safe manual gameplay/legibility ver
 skirmish is release-quality.
 
 Modern Generals Win32 builds also produce `ProjectTempestDemo.exe`, a retail-asset-free executable that loads the
-Courier scout, damaged Courier scout, Skitter, and Freegrid Dynamo relay directly from this tree. Its current Substation
+full dedicated unit and structure roster directly from this tree. Its current Substation
 9 integration slice provides a bounded panning RTS camera, bounded Freegrid unit selection, context-sensitive
 movement/capture/attack/repair orders, node income, Dynamo/Arc Sentry construction, production of all four Freegrid
 roles, role-specific combat, Signal Pylon pressure, grid-link scan, emergency overcharge, Arc Pulse,
-pause/settings/restart/result flow, escalating Chorus reinforcements, and victory/defeat. The Relay Core, Fabricator
-Bay, Dynamo, Arc Sentry, Signal Pylon, and Chorus Spire now load dedicated authored runtime models rather than sharing
-procedural markers. It is an executable
+pause/settings/restart/result flow, escalating Chorus reinforcements, and victory/defeat. The four Freegrid roles,
+three Chorus roles, Relay Core, Fabricator Bay, Dynamo, Arc Sentry, Signal Pylon, Chorus Spire, and Machine Nest now load
+dedicated authored runtime models rather than sharing proxy art. It is an executable
 integration checkpoint, not the final polished vertical slice.
 
 Controls:

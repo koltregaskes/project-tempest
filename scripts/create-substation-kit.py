@@ -273,6 +273,122 @@ def build_pylon():
     return objects, groups
 
 
+def build_fabricator_rig():
+    """Author the Freegrid repair/construction rig as an asymmetric utility crawler."""
+    objects, groups, box, cylinder, pipe = make_builder()
+    box("FRDECK", (0.0, 0.0, 0.58), (3.15, 2.15, 0.34), steel, bevel=0.10)
+    box("FRCAB", (-0.78, -0.12, 1.10), (1.32, 1.62, 0.92), white,
+        rotation=(0.0, 0.0, math.radians(-8)), bevel=0.13)
+    box("FRBED", (0.78, 0.08, 0.91), (1.22, 1.72, 0.42), steel, bevel=0.08)
+    for side in (-1.0, 1.0):
+        y = side * 1.02
+        box(f"FRTRACK{int(side)}", (0.0, y, 0.42), (3.45, 0.38, 0.48), steel, bevel=0.09)
+        cylinder(f"FRWHEEL{int(side)}", (-0.92, y, 0.42), 0.32, 0.42, white,
+            rotation=(math.radians(90), 0.0, 0.0), vertices=16)
+    pipe("FRBOOM", (0.72, 0.28, 1.18), (1.86, -0.52, 2.03), 0.11, steel, vertices=10)
+    pipe("FRTOOL", (1.86, -0.52, 2.03), (2.33, -0.72, 1.36), 0.09, steel, vertices=10)
+    cylinder("FRARC", (2.36, -0.74, 1.28), 0.20, 0.22, cyan, vertices=16)
+    box("FRSIGN", (-0.82, -0.96, 1.16), (0.82, 0.14, 0.34), cyan, bevel=0.035)
+    return objects, groups
+
+
+def build_lancer():
+    """Author the fast Freegrid anti-armour team as a narrow twin-rail skiff."""
+    objects, groups, box, cylinder, pipe = make_builder()
+    box("LNKEEL", (0.0, 0.0, 0.55), (3.70, 1.48, 0.38), steel, bevel=0.11)
+    box("LNCAB", (-0.78, 0.0, 0.96), (1.45, 1.22, 0.68), white, bevel=0.13)
+    for side in (-1.0, 1.0):
+        y = side * 0.62
+        box(f"LNRAIL{int(side)}", (0.72, y, 1.16), (2.42, 0.18, 0.18), steel, bevel=0.035)
+        cylinder(f"LNMUZZ{int(side)}", (1.95, y, 1.16), 0.13, 0.22, cyan,
+            rotation=(0.0, math.radians(90), 0.0), vertices=14)
+        box(f"LNFIN{int(side)}", (-1.12, y * 1.28, 0.73), (0.76, 0.18, 0.62), white,
+            rotation=(math.radians(-8), 0.0, 0.0), bevel=0.04)
+    cylinder("LNSENSOR", (-0.52, -0.58, 1.34), 0.18, 0.16, cyan,
+        rotation=(math.radians(90), 0.0, 0.0), vertices=16)
+    box("LNTEAM", (-0.10, 0.0, 0.78), (0.72, 1.54, 0.14), cyan, bevel=0.025)
+    return objects, groups
+
+
+def build_coil_carrier():
+    """Author the heavy Freegrid Coil Carrier as a broad capacitor hauler."""
+    objects, groups, box, cylinder, pipe = make_builder()
+    box("CCCHASSIS", (0.0, 0.0, 0.62), (4.55, 2.75, 0.52), steel, bevel=0.14)
+    box("CCCAB", (-1.38, -0.12, 1.28), (1.45, 2.15, 1.18), white, bevel=0.16)
+    for side in (-1.0, 1.0):
+        y = side * 1.28
+        box(f"CCTRACK{int(side)}", (0.0, y, 0.48), (4.75, 0.42, 0.58), steel, bevel=0.10)
+    for index, x in enumerate((-0.72, 0.34, 1.40)):
+        cylinder(f"CCCOIL{index}", (x, 0.0, 1.40), 0.52, 1.72, cyan,
+            rotation=(math.radians(90), 0.0, 0.0), vertices=20)
+        cylinder(f"CCCAP{index}", (x, -0.92, 1.40), 0.34, 0.14, white,
+            rotation=(math.radians(90), 0.0, 0.0), vertices=16)
+    pipe("CCBUS0", (-0.72, 0.88, 1.40), (1.40, 0.88, 1.40), 0.08, steel, vertices=10)
+    box("CCTEAM", (-1.42, -1.14, 1.35), (0.82, 0.14, 0.42), cyan, bevel=0.035)
+    return objects, groups
+
+
+def build_warden():
+    """Author the Chorus Warden as a compact four-legged interception machine."""
+    objects, groups, box, cylinder, pipe = make_builder()
+    box("WDCORE", (0.0, 0.0, 1.18), (1.72, 1.48, 0.72), steel,
+        rotation=(0.0, 0.0, math.radians(45)), bevel=0.13)
+    cylinder("WDEYE", (0.0, -0.83, 1.22), 0.25, 0.16, magenta,
+        rotation=(math.radians(90), 0.0, 0.0), vertices=18)
+    for index, angle in enumerate((45.0, 135.0, 225.0, 315.0)):
+        radians = math.radians(angle)
+        hip = (math.cos(radians) * 0.62, math.sin(radians) * 0.62, 1.02)
+        knee = (math.cos(radians + 0.18) * 1.24, math.sin(radians + 0.18) * 1.24, 0.58)
+        foot = (math.cos(radians + 0.30) * 1.64, math.sin(radians + 0.30) * 1.64, 0.16)
+        pipe(f"WDLEG{index}", hip, knee, 0.12, steel, vertices=10)
+        pipe(f"WDSHIN{index}", knee, foot, 0.10, magenta, vertices=10)
+        box(f"WDFOOT{index}", foot, (0.48, 0.24, 0.18), steel,
+            rotation=(0.0, 0.0, radians + 0.30), bevel=0.035)
+    cylinder("WDCROWN", (0.0, 0.0, 1.68), 0.38, 0.22, cyan, vertices=18)
+    return objects, groups
+
+
+def build_harrower():
+    """Author the Chorus Harrower as a large three-fold siege organism-machine."""
+    objects, groups, box, cylinder, pipe = make_builder()
+    cylinder("HACORE", (0.0, 0.0, 1.62), 1.10, 1.10, steel, vertices=24)
+    cylinder("HAHEART", (0.0, 0.0, 1.78), 0.62, 1.32, magenta, vertices=22)
+    for index, angle in enumerate((0.0, 120.0, 240.0)):
+        radians = math.radians(angle)
+        shoulder = (math.cos(radians) * 0.72, math.sin(radians) * 0.72, 1.72)
+        knee = (math.cos(radians + 0.22) * 1.82, math.sin(radians + 0.22) * 1.82, 0.90)
+        foot = (math.cos(radians + 0.38) * 2.55, math.sin(radians + 0.38) * 2.55, 0.18)
+        pipe(f"HAARM{index}", shoulder, knee, 0.18, steel, vertices=12)
+        pipe(f"HALEG{index}", knee, foot, 0.15, magenta, vertices=12)
+        box(f"HABLADE{index}", foot, (0.88, 0.24, 0.28), steel,
+            rotation=(0.0, 0.0, radians + 0.38), bevel=0.045)
+        emitter = (math.cos(radians) * 1.30, math.sin(radians) * 1.30, 2.28)
+        cylinder(f"HANODE{index}", emitter, 0.24, 0.24, cyan, vertices=16)
+    pipe("HASPIRE", (0.0, 0.0, 2.18), (0.0, 0.0, 3.58), 0.10, cyan, vertices=12)
+    box("HAAPEX", (0.0, 0.0, 3.72), (0.42, 0.42, 0.42), magenta,
+        rotation=(math.radians(35), math.radians(35), math.radians(45)), bevel=0.05)
+    return objects, groups
+
+
+def build_machine_nest():
+    """Author the Chorus production anchor as a low radial hatch and wave emitter."""
+    objects, groups, box, cylinder, pipe = make_builder()
+    cylinder("MNBASE", (0.0, 0.0, 0.28), 2.85, 0.56, steel, vertices=30)
+    cylinder("MNHATCH", (0.0, 0.0, 0.78), 1.65, 0.62, magenta, vertices=24)
+    for index, angle in enumerate((0.0, 60.0, 120.0, 180.0, 240.0, 300.0)):
+        radians = math.radians(angle)
+        inner = (math.cos(radians) * 1.15, math.sin(radians) * 1.15, 0.72)
+        outer = (math.cos(radians + 0.16) * 2.72, math.sin(radians + 0.16) * 2.72, 0.22)
+        pipe(f"MNRIB{index}", inner, outer, 0.15, steel, vertices=12)
+        box(f"MNCLAW{index}", outer, (0.78, 0.32, 0.26), magenta,
+            rotation=(0.0, 0.0, radians + 0.16), bevel=0.05)
+        node = (math.cos(radians) * 1.82, math.sin(radians) * 1.82, 1.06)
+        cylinder(f"MNNODE{index}", node, 0.20, 0.20, cyan, vertices=16)
+    cylinder("MNCROWN", (0.0, 0.0, 1.38), 0.72, 0.28, steel, vertices=24)
+    pipe("MNBEAM", (0.0, 0.0, 1.34), (0.0, 0.0, 2.72), 0.09, cyan, vertices=12)
+    return objects, groups
+
+
 def build_relay_core():
     """Author the low, asymmetric Freegrid command anchor for the player start."""
     objects, groups, box, cylinder, pipe = make_builder()
@@ -646,6 +762,90 @@ results.append(export_asset(
     (5.8, 5.8, 8.2),
     10.0,
     4.0,
+))
+
+clear_scene()
+fabricator_rig_parts, fabricator_rig_groups = build_fabricator_rig()
+results.append(export_asset(
+    {"slug": "fabricrig", "runtime": "fabricrig", "source_parts": ("Freegrid", "FabricatorRig")},
+    fabricator_rig_parts,
+    fabricator_rig_groups,
+    ((steel, "FRBODY", 0.52, 0.26), (white, "FRARMOR", 0.50, 0.24),
+     (cyan, "HouseColor", 0.55, 0.28)),
+    (0.0, 0.0, 0.88),
+    (4.9, 3.0, 2.1),
+    6.0,
+    1.0,
+))
+
+clear_scene()
+lancer_parts, lancer_groups = build_lancer()
+results.append(export_asset(
+    {"slug": "lancer", "runtime": "lancer", "source_parts": ("Freegrid", "LancerCrew")},
+    lancer_parts,
+    lancer_groups,
+    ((steel, "LNBODY", 0.52, 0.26), (white, "LNARMOR", 0.50, 0.24),
+     (cyan, "HouseColor", 0.55, 0.28)),
+    (0.0, 0.0, 0.72),
+    (4.3, 2.2, 1.6),
+    5.4,
+    0.8,
+))
+
+clear_scene()
+coil_parts, coil_groups = build_coil_carrier()
+results.append(export_asset(
+    {"slug": "coil", "runtime": "coil", "source_parts": ("Freegrid", "CoilCarrier")},
+    coil_parts,
+    coil_groups,
+    ((steel, "CCBODY", 0.52, 0.26), (white, "CCARMOR", 0.50, 0.24),
+     (cyan, "HouseColor", 0.55, 0.28)),
+    (0.0, 0.0, 0.98),
+    (5.4, 3.5, 2.2),
+    6.8,
+    1.1,
+))
+
+clear_scene()
+warden_parts, warden_groups = build_warden()
+results.append(export_asset(
+    {"slug": "warden", "runtime": "warden", "source_parts": ("Chorus", "Warden")},
+    warden_parts,
+    warden_groups,
+    ((steel, "WDBODY", 0.52, 0.26), (magenta, "WDMAG", 0.50, 0.24),
+     (cyan, "WDGLOW", 0.55, 0.28)),
+    (0.0, 0.0, 0.92),
+    (4.0, 4.0, 1.9),
+    5.2,
+    1.0,
+))
+
+clear_scene()
+harrower_parts, harrower_groups = build_harrower()
+results.append(export_asset(
+    {"slug": "harrower", "runtime": "harrower", "source_parts": ("Chorus", "Harrower")},
+    harrower_parts,
+    harrower_groups,
+    ((steel, "HABODY", 0.52, 0.26), (magenta, "HAMAG", 0.50, 0.24),
+     (cyan, "HAGLOW", 0.55, 0.28)),
+    (0.0, 0.0, 1.42),
+    (5.8, 5.8, 3.2),
+    7.2,
+    1.6,
+))
+
+clear_scene()
+nest_parts, nest_groups = build_machine_nest()
+results.append(export_asset(
+    {"slug": "nest", "runtime": "nest", "source_parts": ("Chorus", "MachineNest")},
+    nest_parts,
+    nest_groups,
+    ((steel, "MNBODY", 0.52, 0.26), (magenta, "MNMAG", 0.50, 0.24),
+     (cyan, "MNGLOW", 0.55, 0.28)),
+    (0.0, 0.0, 0.78),
+    (6.2, 6.2, 2.8),
+    7.8,
+    1.1,
 ))
 
 result = {
