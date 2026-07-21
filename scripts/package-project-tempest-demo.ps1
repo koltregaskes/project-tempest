@@ -107,8 +107,6 @@ $provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.jso
 $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
 $provenanceHash = (Get-FileHash -LiteralPath $provenancePath -Algorithm SHA256).Hash.ToLowerInvariant()
 $milesEntries = @($contract.runtime_files | Where-Object { $_.name -eq "mss32.dll" })
-$milesSourcePath = Join-Path $repositoryRoot "ProjectTempest/ThirdParty/MilesStub/SOURCE.txt"
-$milesSourceText = Get-Content -LiteralPath $milesSourcePath -Raw
 if ($milesEntries.Count -ne 1 -or
     [string]$milesEntries[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical" -or
     [string]$milesEntries[0].provenance_id -notmatch '^PT-[A-Z0-9-]+$') {
@@ -125,10 +123,48 @@ if ($milesDependencies.Count -ne 1 -or
     @($milesDependencies[0].deterministic_compile_options) -notcontains "/Brepro" -or
     @($milesDependencies[0].deterministic_link_options) -notcontains "/Brepro" -or
     @($milesDependencies[0].deterministic_link_options) -notcontains "/PDBALTPATH:%_PDB%" -or
-    [string]$milesDependencies[0].verification_policy -ne [string]$milesEntries[0].hash_verification -or
-    $milesSourceText -notmatch "(?im)^Pinned commit:\s+$([regex]::Escape([string]$milesDependencies[0].source_commit))\s*$" -or
+    [string]$milesDependencies[0].verification_policy -ne [string]$milesEntries[0].hash_verification) {
+    throw "Miles source, build procedure, package contract, and runtime-dependency provenance do not agree."
+}
+
+function Resolve-ProvenanceFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RelativePath,
+        [Parameter(Mandatory = $true)]
+        [string]$FieldName
+    )
+
+    if ([IO.Path]::IsPathRooted($RelativePath)) {
+        throw "Miles provenance field '$FieldName' must be repository-relative: '$RelativePath'."
+    }
+    $provenanceDirectory = Split-Path -Parent $provenancePath
+    $candidate = [IO.Path]::GetFullPath((Join-Path $provenanceDirectory $RelativePath))
+    $repositoryPrefix = $repositoryRoot.TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    ) + [IO.Path]::DirectorySeparatorChar
+    if (-not $candidate.StartsWith($repositoryPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+        -not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+        throw "Miles provenance field '$FieldName' does not resolve to a repository file: '$RelativePath'."
+    }
+    return (Resolve-Path -LiteralPath $candidate).Path
+}
+
+$milesSourcePath = Resolve-ProvenanceFile `
+    -RelativePath ([string]$milesDependencies[0].source_record) `
+    -FieldName "source_record"
+$milesFetchPath = Resolve-ProvenanceFile `
+    -RelativePath ([string]$milesDependencies[0].fetch_definition) `
+    -FieldName "fetch_definition"
+$milesSourceText = Get-Content -LiteralPath $milesSourcePath -Raw
+$milesFetchText = Get-Content -LiteralPath $milesFetchPath -Raw
+if ($milesSourceText -notmatch "(?im)^Pinned commit:\s+$([regex]::Escape([string]$milesDependencies[0].source_commit))\s*$" -or
     $milesSourceText -notmatch "(?im)^Toolchain scope:\s+Microsoft Visual C\+\+ 2022 x86;" -or
-    $milesSourceText -notmatch "(?im)^Binary verification:\s+two isolated integrated Release builds must produce byte-identical mss32\.dll files") {
+    $milesSourceText -notmatch "(?im)^Binary verification:\s+two isolated integrated Release builds must produce byte-identical mss32\.dll files" -or
+    $milesFetchText -notmatch "(?im)^\s*GIT_REPOSITORY\s+$([regex]::Escape([string]$milesDependencies[0].source_repository))\s*$" -or
+    $milesFetchText -notmatch "(?im)^\s*GIT_TAG\s+$([regex]::Escape([string]$milesDependencies[0].source_commit))\s*$" -or
+    $milesFetchText -notmatch "(?im)^\s*FetchContent_MakeAvailable\(miles\)\s*$") {
     throw "Miles source, build procedure, package contract, and runtime-dependency provenance do not agree."
 }
 

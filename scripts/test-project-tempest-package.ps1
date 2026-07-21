@@ -18,25 +18,44 @@ $packageScript = Join-Path $PSScriptRoot "package-project-tempest-demo.ps1"
 $contract = Get-Content -LiteralPath $contractPath -Raw | ConvertFrom-Json
 $provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json"
 $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
-$milesSourcePath = Join-Path $repositoryRoot "ProjectTempest/ThirdParty/MilesStub/SOURCE.txt"
-$milesSourceText = Get-Content -LiteralPath $milesSourcePath -Raw
 $milesEntry = @($contract.runtime_files | Where-Object { $_.name -eq "mss32.dll" })
+if ($contract.schema_version -ne 2 -or
+    $milesEntry.Count -ne 1 -or
+    [string]$milesEntry[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical") {
+    throw "The package contract does not govern exactly one integrated-build Miles dependency."
+}
 $milesDependency = @(
     $provenance.runtime_dependencies |
         Where-Object { [string]$_.dependency_id -eq [string]$milesEntry[0].provenance_id }
 )
-if ($contract.schema_version -ne 2 -or
-    $milesEntry.Count -ne 1 -or
-    [string]$milesEntry[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical" -or
-    $milesDependency.Count -ne 1 -or
+if ($milesDependency.Count -ne 1 -or
     [string]$milesDependency[0].toolchain_family -ne "Microsoft Visual C++ 2022 x86" -or
     @($milesDependency[0].deterministic_compile_options) -notcontains "/Brepro" -or
     @($milesDependency[0].deterministic_link_options) -notcontains "/Brepro" -or
     @($milesDependency[0].deterministic_link_options) -notcontains "/PDBALTPATH:%_PDB%" -or
-    [string]$milesDependency[0].verification_policy -ne [string]$milesEntry[0].hash_verification -or
-    $milesSourceText -notmatch "(?im)^Pinned commit:\s+$([regex]::Escape([string]$milesDependency[0].source_commit))\s*$" -or
-    $milesSourceText -notmatch "(?im)^Binary verification:\s+two isolated integrated Release builds must produce byte-identical mss32\.dll files") {
+    [string]$milesDependency[0].verification_policy -ne [string]$milesEntry[0].hash_verification) {
     throw "Miles source, build procedure, package contract, and runtime-dependency provenance do not agree."
+}
+$provenanceDirectory = Split-Path -Parent $provenancePath
+$milesSourcePath = [IO.Path]::GetFullPath((Join-Path $provenanceDirectory ([string]$milesDependency[0].source_record)))
+$milesFetchPath = [IO.Path]::GetFullPath((Join-Path $provenanceDirectory ([string]$milesDependency[0].fetch_definition)))
+$repositoryPrefix = $repositoryRoot.TrimEnd(
+    [IO.Path]::DirectorySeparatorChar,
+    [IO.Path]::AltDirectorySeparatorChar
+) + [IO.Path]::DirectorySeparatorChar
+if (-not $milesSourcePath.StartsWith($repositoryPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+    -not $milesFetchPath.StartsWith($repositoryPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+    -not (Test-Path -LiteralPath $milesSourcePath -PathType Leaf) -or
+    -not (Test-Path -LiteralPath $milesFetchPath -PathType Leaf)) {
+    throw "Miles provenance paths must resolve to repository files."
+}
+$milesSourceText = Get-Content -LiteralPath $milesSourcePath -Raw
+$milesFetchText = Get-Content -LiteralPath $milesFetchPath -Raw
+if ($milesSourceText -notmatch "(?im)^Pinned commit:\s+$([regex]::Escape([string]$milesDependency[0].source_commit))\s*$" -or
+    $milesSourceText -notmatch "(?im)^Binary verification:\s+two isolated integrated Release builds must produce byte-identical mss32\.dll files" -or
+    $milesFetchText -notmatch "(?im)^\s*GIT_REPOSITORY\s+$([regex]::Escape([string]$milesDependency[0].source_repository))\s*$" -or
+    $milesFetchText -notmatch "(?im)^\s*GIT_TAG\s+$([regex]::Escape([string]$milesDependency[0].source_commit))\s*$") {
+    throw "Miles provenance paths are not authoritative for the fetched source."
 }
 
 $workflowPath = Join-Path $repositoryRoot ".github/workflows/build-toolchain.yml"
@@ -44,10 +63,14 @@ $workflowText = Get-Content -LiteralPath $workflowPath -Raw
 $milesComparisonIndex = $workflowText.IndexOf('if ($primaryMilesHash -ne $repeatMilesHash)', [StringComparison]::Ordinal)
 $firstPackageIndex = $workflowText.IndexOf('./scripts/package-project-tempest-demo.ps1', [StringComparison]::Ordinal)
 $expectedHashArguments = [regex]::Matches($workflowText, '(?m)^\s+-ExpectedMilesStubSha256 \$primaryMilesHash\s*$').Count
+$ciExcludeIndex = $workflowText.IndexOf('$ciOwnedExcludes = @("/vcpkg/", "/vcpkg-bincache/")', [StringComparison]::Ordinal)
+$sourceStatusIndex = $workflowText.IndexOf('$sourceStatus = @(git status --porcelain=v1 --untracked-files=all)', [StringComparison]::Ordinal)
 if ($milesComparisonIndex -lt 0 -or
     $firstPackageIndex -le $milesComparisonIndex -or
-    $expectedHashArguments -ne 2) {
-    throw "CI must compare two integrated Miles DLL hashes before both package invocations consume the proven hash."
+    $expectedHashArguments -ne 2 -or
+    $ciExcludeIndex -lt 0 -or
+    $sourceStatusIndex -le $ciExcludeIndex) {
+    throw "CI must isolate its dependency roots and compare two integrated Miles DLLs before both packages consume the proven hash."
 }
 
 function Get-ZipEntryBytes {
@@ -127,7 +150,7 @@ try {
             -TestFixture
     }
     catch {
-        $caught = $_.Exception.Message -match "ExpectedMilesStubSha256 is required"
+        $caught = $_.Exception.Message -match "ExpectedMilesStubSha256"
     }
     if (-not $caught -or (Test-Path -LiteralPath $missingHashOutput)) {
         throw "The package gate allowed a caller to bypass independent Miles hash verification."

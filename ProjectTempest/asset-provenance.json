@@ -7,7 +7,7 @@
       "dependency_id": "PT-RUNTIME-MILES-STUB-001",
       "name": "mss32.dll",
       "role": "GPL Miles SDK compatibility runtime for the private Project Tempest demo",
-      "source_repository": "https://github.com/TheSuperHackers/miles-sdk-stub",
+      "source_repository": "https://github.com/TheSuperHackers/miles-sdk-stub.git",
       "source_commit": "6e32700d7ba4b4713a03bf1f5ffc3b0ac8d17264",
       "licence": "GPL-3.0",
       "source_record": "ThirdParty/MilesStub/SOURCE.txt",
