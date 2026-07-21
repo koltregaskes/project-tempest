@@ -12,6 +12,8 @@ param(
 
     [long]$SourceDateEpoch = 0,
 
+    [string]$ExpectedExecutableSha256 = "",
+
     [string]$ExpectedMilesStubSha256 = "",
 
     [switch]$TestFixture
@@ -38,6 +40,11 @@ if ($ExecutableName -notmatch '^ProjectTempestDemo\.exe$') {
     throw "Only the governed release executable name ProjectTempestDemo.exe can be packaged."
 }
 
+if ($ExpectedExecutableSha256 -notmatch '^[0-9a-fA-F]{64}$') {
+    throw "ExpectedExecutableSha256 is required and must be the SHA-256 proven by two byte-identical integrated Release builds."
+}
+$ExpectedExecutableSha256 = $ExpectedExecutableSha256.ToLowerInvariant()
+
 if ($ExpectedMilesStubSha256 -notmatch '^[0-9a-fA-F]{64}$') {
     throw "ExpectedMilesStubSha256 is required and must be the SHA-256 proven by two byte-identical integrated Release builds."
 }
@@ -60,6 +67,20 @@ if ($TestFixture) {
     $sourceTreeState = "fixture"
 }
 else {
+    $governedRuntimeDirectories = @(
+        [IO.Path]::GetFullPath((Join-Path $repositoryRoot "build/win32/ProjectTempest/Release")),
+        [IO.Path]::GetFullPath((Join-Path $repositoryRoot "build/win32-tempest-repro/ProjectTempest/Release"))
+    )
+    if (-not ($governedRuntimeDirectories | Where-Object {
+        $_.Equals($resolvedRuntimeDirectory, [StringComparison]::OrdinalIgnoreCase)
+    })) {
+        throw "Production packaging is restricted to the two governed integrated Release runtime directories. Received '$resolvedRuntimeDirectory'."
+    }
+    $runtimeDirectoryItem = Get-Item -LiteralPath $resolvedRuntimeDirectory -Force
+    if (($runtimeDirectoryItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "Production packaging rejects a reparse-point runtime directory: '$resolvedRuntimeDirectory'."
+    }
+
     $headRevision = (git -C $repositoryRoot rev-parse HEAD).Trim()
     if ($LASTEXITCODE -ne 0 -or $headRevision -notmatch '^[0-9a-fA-F]{40}$') {
         throw "Could not determine the repository HEAD revision from Git."
@@ -98,7 +119,7 @@ $packageTimestamp = [DateTimeOffset]::FromUnixTimeSeconds($SourceDateEpoch)
 
 $contractPath = Join-Path $repositoryRoot "ProjectTempest/package-contract.json"
 $contract = Get-Content -LiteralPath $contractPath -Raw | ConvertFrom-Json
-if ($contract.schema_version -ne 2) {
+if ($contract.schema_version -ne 3) {
     throw "Unsupported Project Tempest package contract schema '$($contract.schema_version)'."
 }
 $contractHash = (Get-FileHash -LiteralPath $contractPath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -106,6 +127,13 @@ $contractHash = (Get-FileHash -LiteralPath $contractPath -Algorithm SHA256).Hash
 $provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json"
 $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
 $provenanceHash = (Get-FileHash -LiteralPath $provenancePath -Algorithm SHA256).Hash.ToLowerInvariant()
+$executableEntries = @($contract.runtime_files | Where-Object { $_.name -eq "ProjectTempestDemo.exe" })
+if ($executableEntries.Count -ne 1 -or
+    [string]$executableEntries[0].kind -ne "executable" -or
+    [string]$executableEntries[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical" -or
+    [string]$executableEntries[0].source_binding -ne "clean_repository_head_and_governed_integrated_release_output") {
+    throw "The package contract does not bind exactly one Project Tempest executable to the reviewed source and two integrated Release builds."
+}
 $milesEntries = @($contract.runtime_files | Where-Object { $_.name -eq "mss32.dll" })
 if ($milesEntries.Count -ne 1 -or
     [string]$milesEntries[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical" -or
@@ -182,15 +210,47 @@ foreach ($entry in $contract.runtime_files) {
     if (-not (Test-Path -LiteralPath $runtimePath -PathType Leaf)) {
         throw "Required runtime input is missing: '$runtimePath'."
     }
+    $runtimeItem = Get-Item -LiteralPath $runtimePath -Force
+    if (($runtimeItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "Runtime package inputs may not be reparse points: '$runtimePath'."
+    }
     if ($entry.kind -eq "executable") {
         $stream = [IO.File]::OpenRead($runtimePath)
+        $reader = [IO.BinaryReader]::new($stream)
         try {
-            if ($stream.Length -lt 2 -or $stream.ReadByte() -ne 0x4D -or $stream.ReadByte() -ne 0x5A) {
-                throw "Release executable '$runtimeName' is not a PE image."
+            if ($stream.Length -lt 0x100 -or $reader.ReadUInt16() -ne 0x5A4D) {
+                throw "Release executable '$runtimeName' is not a valid PE32 x86 GUI image."
+            }
+            $stream.Position = 0x3C
+            $peOffset = $reader.ReadInt32()
+            if ($peOffset -lt 0x40 -or $peOffset -gt ($stream.Length - 94)) {
+                throw "Release executable '$runtimeName' is not a valid PE32 x86 GUI image."
+            }
+            $stream.Position = $peOffset
+            $signature = $reader.ReadUInt32()
+            $machine = $reader.ReadUInt16()
+            $numberOfSections = $reader.ReadUInt16()
+            $stream.Position = $peOffset + 20
+            $optionalHeaderSize = $reader.ReadUInt16()
+            $optionalHeaderOffset = $peOffset + 24
+            if ($signature -ne 0x00004550 -or $machine -ne 0x014C -or $numberOfSections -lt 1 -or
+                $optionalHeaderSize -lt 70 -or ($optionalHeaderOffset + $optionalHeaderSize) -gt $stream.Length) {
+                throw "Release executable '$runtimeName' is not a valid PE32 x86 GUI image."
+            }
+            $stream.Position = $optionalHeaderOffset
+            $optionalMagic = $reader.ReadUInt16()
+            $stream.Position = $optionalHeaderOffset + 68
+            $subsystem = $reader.ReadUInt16()
+            if ($optionalMagic -ne 0x010B -or $subsystem -ne 2) {
+                throw "Release executable '$runtimeName' is not a valid PE32 x86 GUI image."
             }
         }
         finally {
-            $stream.Dispose()
+            $reader.Dispose()
+        }
+        $runtimeHash = (Get-FileHash -LiteralPath $runtimePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($runtimeHash -ne $ExpectedExecutableSha256) {
+            throw "Release executable '$runtimeName' does not match the independently proven integrated-build hash: actual=$runtimeHash expected=$ExpectedExecutableSha256."
         }
     }
     if ($entry.kind -eq "runtime_dependency") {
@@ -325,7 +385,7 @@ foreach ($entry in $contract.repository_files) {
 
 $orderedManifestFiles = @($manifestFiles | Sort-Object { $_.name.ToLowerInvariant() })
 $manifest = [ordered]@{
-    schema_version = 1
+    schema_version = 2
     package = [string]$contract.package_directory
     distribution = if ($TestFixture) { "test_fixture" } else { "private_internal_demo" }
     source_repository = "https://github.com/koltregaskes/project-tempest"
@@ -334,6 +394,14 @@ $manifest = [ordered]@{
     source_tree = $sourceTreeState
     package_contract_sha256 = $contractHash
     asset_provenance_sha256 = $provenanceHash
+    executable_verification = [ordered]@{
+        name = "ProjectTempestDemo.exe"
+        sha256 = $ExpectedExecutableSha256
+        policy = [string]$executableEntries[0].hash_verification
+        source_binding = [string]$executableEntries[0].source_binding
+        source_revision = $SourceRevision
+        runtime_input_policy = if ($TestFixture) { "restricted_test_fixture" } else { "governed_integrated_release_outputs_only" }
+    }
     runtime_dependency_verification = [ordered]@{
         name = "mss32.dll"
         sha256 = $ExpectedMilesStubSha256

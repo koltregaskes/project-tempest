@@ -1,9 +1,14 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "package_directory": "ProjectTempestDemo-private",
   "archive_name": "ProjectTempestDemo-private.zip",
   "runtime_files": [
-    { "name": "ProjectTempestDemo.exe", "kind": "executable" },
+    {
+      "name": "ProjectTempestDemo.exe",
+      "kind": "executable",
+      "hash_verification": "two_isolated_integrated_release_builds_byte_identical",
+      "source_binding": "clean_repository_head_and_governed_integrated_release_output"
+    },
     {
       "name": "mss32.dll",
       "kind": "runtime_dependency",

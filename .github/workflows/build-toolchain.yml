@@ -258,6 +258,15 @@ jobs:
             throw "The two isolated Project Tempest acceptance reports are not byte-identical."
           }
 
+          $primaryExecutable = Join-Path $runtimeDirectory "ProjectTempestDemo.exe"
+          $repeatExecutable = Join-Path $repeatRuntimeDirectory "ProjectTempestDemo.exe"
+          $primaryExecutableHash = (Get-FileHash -LiteralPath $primaryExecutable -Algorithm SHA256).Hash.ToLowerInvariant()
+          $repeatExecutableHash = (Get-FileHash -LiteralPath $repeatExecutable -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($primaryExecutableHash -ne $repeatExecutableHash) {
+            throw "Integrated Release-build Project Tempest executables are not byte-identical: primary=$primaryExecutableHash repeat=$repeatExecutableHash."
+          }
+          Write-Host "PASS: Integrated Release-build Project Tempest executable reproducibility SHA256=$primaryExecutableHash"
+
           $repeatMilesStub = Get-ChildItem -Path "$repeatBuild\_deps\miles-build" -Recurse -Filter "mss32.dll" -File |
             Select-Object -First 1
           if ($null -eq $repeatMilesStub) {
@@ -278,12 +287,14 @@ jobs:
           ./scripts/package-project-tempest-demo.ps1 `
             -RuntimeDirectory $runtimeDirectory `
             -OutputDirectory $primaryPackage `
+            -ExpectedExecutableSha256 $primaryExecutableHash `
             -ExpectedMilesStubSha256 $primaryMilesHash
 
           $repeatPackage = "$repeatBuild\ProjectTempest\private-package"
           ./scripts/package-project-tempest-demo.ps1 `
             -RuntimeDirectory $repeatRuntimeDirectory `
             -OutputDirectory $repeatPackage `
+            -ExpectedExecutableSha256 $primaryExecutableHash `
             -ExpectedMilesStubSha256 $primaryMilesHash
 
           $primaryArchive = Join-Path $primaryPackage "ProjectTempestDemo-private.zip"

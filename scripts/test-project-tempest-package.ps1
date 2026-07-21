@@ -18,11 +18,15 @@ $packageScript = Join-Path $PSScriptRoot "package-project-tempest-demo.ps1"
 $contract = Get-Content -LiteralPath $contractPath -Raw | ConvertFrom-Json
 $provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json"
 $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
+$executableEntry = @($contract.runtime_files | Where-Object { $_.name -eq "ProjectTempestDemo.exe" })
 $milesEntry = @($contract.runtime_files | Where-Object { $_.name -eq "mss32.dll" })
-if ($contract.schema_version -ne 2 -or
+if ($contract.schema_version -ne 3 -or
+    $executableEntry.Count -ne 1 -or
+    [string]$executableEntry[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical" -or
+    [string]$executableEntry[0].source_binding -ne "clean_repository_head_and_governed_integrated_release_output" -or
     $milesEntry.Count -ne 1 -or
     [string]$milesEntry[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical") {
-    throw "The package contract does not govern exactly one integrated-build Miles dependency."
+    throw "The package contract does not govern exactly one source-bound executable and one integrated-build Miles dependency."
 }
 $milesDependency = @(
     $provenance.runtime_dependencies |
@@ -69,22 +73,36 @@ if ($milesSourceText -notmatch "(?im)^Pinned commit:\s+$([regex]::Escape([string
 
 $workflowPath = Join-Path $repositoryRoot ".github/workflows/build-toolchain.yml"
 $workflowText = Get-Content -LiteralPath $workflowPath -Raw
+$packageScriptText = Get-Content -LiteralPath $packageScript -Raw
+$primaryRuntimePolicyIndex = $packageScriptText.IndexOf('build/win32/ProjectTempest/Release', [StringComparison]::Ordinal)
+$repeatRuntimePolicyIndex = $packageScriptText.IndexOf('build/win32-tempest-repro/ProjectTempest/Release', [StringComparison]::Ordinal)
+if ($primaryRuntimePolicyIndex -lt 0 -or
+    $repeatRuntimePolicyIndex -lt 0 -or
+    $packageScriptText -notmatch 'Production packaging is restricted to the two governed integrated Release runtime directories' -or
+    $packageScriptText -notmatch 'Production packaging rejects a reparse-point runtime directory' -or
+    $packageScriptText -notmatch 'Runtime package inputs may not be reparse points') {
+    throw "Production packaging must reject arbitrary or stale runtime directories."
+}
+$executableComparisonIndex = $workflowText.IndexOf('if ($primaryExecutableHash -ne $repeatExecutableHash)', [StringComparison]::Ordinal)
 $milesComparisonIndex = $workflowText.IndexOf('if ($primaryMilesHash -ne $repeatMilesHash)', [StringComparison]::Ordinal)
 $firstPackageIndex = $workflowText.IndexOf('./scripts/package-project-tempest-demo.ps1', [StringComparison]::Ordinal)
+$expectedExecutableHashArguments = [regex]::Matches($workflowText, '(?m)^\s+-ExpectedExecutableSha256 \$primaryExecutableHash\b').Count
 $expectedHashArguments = [regex]::Matches($workflowText, '(?m)^\s+-ExpectedMilesStubSha256 \$primaryMilesHash\s*$').Count
 $cacheClearIndex = $workflowText.IndexOf('name: Clear cached Miles outputs for Project Tempest reproducibility', [StringComparison]::Ordinal)
 $configureIndex = $workflowText.IndexOf('name: Configure ${{ inputs.game }} with CMake', [StringComparison]::Ordinal)
 $ciExcludeIndex = $workflowText.IndexOf('$ciOwnedExcludes = @("/vcpkg/", "/vcpkg-bincache/")', [StringComparison]::Ordinal)
 $sourceStatusIndex = $workflowText.IndexOf('$sourceStatus = @(git status --porcelain=v1 --untracked-files=all)', [StringComparison]::Ordinal)
-if ($milesComparisonIndex -lt 0 -or
+if ($executableComparisonIndex -lt 0 -or
+    $milesComparisonIndex -le $executableComparisonIndex -or
     $firstPackageIndex -le $milesComparisonIndex -or
+    $expectedExecutableHashArguments -ne 2 -or
     $expectedHashArguments -ne 2 -or
     $cacheClearIndex -lt 0 -or
     $configureIndex -le $cacheClearIndex -or
     $workflowText -notmatch '(?s)name: Clear cached Miles outputs for Project Tempest reproducibility.+?if: \$\{\{ inputs\.game == ''Generals'' && inputs\.preset == ''win32'' \}\}.+?milesBuild\.StartsWith\(\$allowedPrefix.+?resolvedMilesBuild\.StartsWith\(\$allowedPrefix.+?Remove-Item -LiteralPath \$resolvedMilesBuild -Recurse -Force' -or
     $ciExcludeIndex -lt 0 -or
     $sourceStatusIndex -le $ciExcludeIndex) {
-    throw "CI must safely clear its governed Miles cache, isolate dependency roots, and compare two integrated Miles DLLs before both packages consume the proven hash."
+    throw "CI must safely isolate its build roots and compare two integrated executables and Miles DLLs before both packages consume the proven hashes."
 }
 
 function Get-ZipEntryBytes {
@@ -108,6 +126,23 @@ function Get-ZipEntryBytes {
         $memory.Dispose()
         $stream.Dispose()
     }
+}
+
+function New-TestPe32GuiBytes {
+    param([byte]$Marker = 0x31)
+
+    $bytes = [byte[]]::new(512)
+    [BitConverter]::GetBytes([uint16]0x5A4D).CopyTo($bytes, 0)
+    [BitConverter]::GetBytes([int32]0x80).CopyTo($bytes, 0x3C)
+    [BitConverter]::GetBytes([uint32]0x00004550).CopyTo($bytes, 0x80)
+    [BitConverter]::GetBytes([uint16]0x014C).CopyTo($bytes, 0x84)
+    [BitConverter]::GetBytes([uint16]1).CopyTo($bytes, 0x86)
+    [BitConverter]::GetBytes([uint16]0x00E0).CopyTo($bytes, 0x94)
+    [BitConverter]::GetBytes([uint16]0x0102).CopyTo($bytes, 0x96)
+    [BitConverter]::GetBytes([uint16]0x010B).CopyTo($bytes, 0x98)
+    [BitConverter]::GetBytes([uint16]2).CopyTo($bytes, 0xDC)
+    $bytes[0x120] = $Marker
+    return ,$bytes
 }
 
 try {
@@ -140,7 +175,7 @@ try {
         }
         else {
             $bytes = if ($entry.kind -eq "executable") {
-                [byte[]](0x4D, 0x5A, 0x50, 0x54, 0x44, 0x45, 0x4D, 0x4F)
+                New-TestPe32GuiBytes
             }
             else {
                 [byte[]](0x4D, 0x53, 0x53, 0x53, 0x54, 0x55, 0x42)
@@ -151,7 +186,43 @@ try {
 
     $revision = "0123456789abcdef0123456789abcdef01234567"
     $epoch = 1760000000
+    $fixtureExecutablePath = Join-Path $runtimeDirectory "ProjectTempestDemo.exe"
+    $fixtureExecutableHash = (Get-FileHash -LiteralPath $fixtureExecutablePath -Algorithm SHA256).Hash
     $fixtureDependencyHash = (Get-FileHash -LiteralPath (Join-Path $runtimeDirectory "mss32.dll") -Algorithm SHA256).Hash
+
+    $arbitraryProductionOutput = Join-Path $sessionRoot "arbitrary-production-runtime"
+    $caught = $false
+    try {
+        & $packageScript `
+            -RuntimeDirectory $runtimeDirectory `
+            -OutputDirectory $arbitraryProductionOutput `
+            -ExpectedExecutableSha256 $fixtureExecutableHash `
+            -ExpectedMilesStubSha256 $fixtureDependencyHash
+    }
+    catch {
+        $caught = $_.Exception.Message -match "restricted to the two governed integrated Release runtime directories"
+    }
+    if (-not $caught -or (Test-Path -LiteralPath $arbitraryProductionOutput)) {
+        throw "The production package gate accepted an arbitrary or stale runtime directory."
+    }
+
+    $missingExecutableHashOutput = Join-Path $sessionRoot "missing-executable-hash"
+    $caught = $false
+    try {
+        & $packageScript `
+            -RuntimeDirectory $runtimeDirectory `
+            -OutputDirectory $missingExecutableHashOutput `
+            -SourceRevision $revision `
+            -SourceDateEpoch $epoch `
+            -TestFixture `
+            -ExpectedMilesStubSha256 $fixtureDependencyHash
+    }
+    catch {
+        $caught = $_.Exception.Message -match "ExpectedExecutableSha256"
+    }
+    if (-not $caught -or (Test-Path -LiteralPath $missingExecutableHashOutput)) {
+        throw "The package gate allowed a caller to bypass independent executable hash verification."
+    }
 
     $missingHashOutput = Join-Path $sessionRoot "missing-dependency-hash"
     $caught = $false
@@ -161,7 +232,8 @@ try {
             -OutputDirectory $missingHashOutput `
             -SourceRevision $revision `
             -SourceDateEpoch $epoch `
-            -TestFixture
+            -TestFixture `
+            -ExpectedExecutableSha256 $fixtureExecutableHash
     }
     catch {
         $caught = $_.Exception.Message -match "ExpectedMilesStubSha256"
@@ -176,6 +248,7 @@ try {
         -SourceRevision $revision `
         -SourceDateEpoch $epoch `
         -TestFixture `
+        -ExpectedExecutableSha256 $fixtureExecutableHash `
         -ExpectedMilesStubSha256 $fixtureDependencyHash
     & $packageScript `
         -RuntimeDirectory $runtimeDirectory `
@@ -183,6 +256,7 @@ try {
         -SourceRevision $revision `
         -SourceDateEpoch $epoch `
         -TestFixture `
+        -ExpectedExecutableSha256 $fixtureExecutableHash `
         -ExpectedMilesStubSha256 $fixtureDependencyHash
 
     $firstArchive = Join-Path $firstOutput ([string]$contract.archive_name)
@@ -217,12 +291,19 @@ try {
         $utf8 = [Text.UTF8Encoding]::new($false)
         $manifestText = $utf8.GetString((Get-ZipEntryBytes -Archive $archive -Name "${prefix}package-manifest.json"))
         $manifest = $manifestText | ConvertFrom-Json
-        if ($manifest.source_revision -ne $revision -or
+        if ($manifest.schema_version -ne 2 -or
+            $manifest.source_revision -ne $revision -or
             $manifest.source_date_epoch -ne $epoch -or
             $manifest.distribution -ne "test_fixture" -or
             $manifest.source_tree -ne "fixture" -or
             $manifest.package_contract_sha256 -ne (Get-FileHash -LiteralPath $contractPath -Algorithm SHA256).Hash.ToLowerInvariant() -or
             $manifest.asset_provenance_sha256 -ne (Get-FileHash -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json") -Algorithm SHA256).Hash.ToLowerInvariant() -or
+            $manifest.executable_verification.name -ne "ProjectTempestDemo.exe" -or
+            $manifest.executable_verification.sha256 -ne $fixtureExecutableHash.ToLowerInvariant() -or
+            $manifest.executable_verification.policy -ne [string]$executableEntry[0].hash_verification -or
+            $manifest.executable_verification.source_binding -ne [string]$executableEntry[0].source_binding -or
+            $manifest.executable_verification.source_revision -ne $revision -or
+            $manifest.executable_verification.runtime_input_policy -ne "restricted_test_fixture" -or
             $manifest.runtime_dependency_verification.name -ne "mss32.dll" -or
             $manifest.runtime_dependency_verification.sha256 -ne $fixtureDependencyHash.ToLowerInvariant() -or
             $manifest.runtime_dependency_verification.provenance_id -ne [string]$milesEntry[0].provenance_id -or
@@ -230,6 +311,12 @@ try {
             $manifest.renderer_execution -ne "not_performed" -or
             $manifest.manual_playthrough_claimed -ne $false) {
             throw "Private package manifest does not preserve the governed source/evidence state."
+        }
+
+        $manifestExecutable = @($manifest.files | Where-Object { $_.name -eq "ProjectTempestDemo.exe" })
+        if ($manifestExecutable.Count -ne 1 -or
+            $manifestExecutable[0].sha256 -ne $fixtureExecutableHash.ToLowerInvariant()) {
+            throw "Private package manifest does not bind the exact proven executable hash to the reviewed source revision."
         }
 
         $manifestMiles = @($manifest.files | Where-Object { $_.name -eq "mss32.dll" })
@@ -268,6 +355,7 @@ try {
             -SourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
+            -ExpectedExecutableSha256 $fixtureExecutableHash `
             -ExpectedMilesStubSha256 $fixtureDependencyHash
     }
     catch {
@@ -287,6 +375,7 @@ try {
             -SourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
+            -ExpectedExecutableSha256 $fixtureExecutableHash `
             -ExpectedMilesStubSha256 ("0" * 64)
     }
     catch {
@@ -296,8 +385,8 @@ try {
         throw "The package gate did not reject a runtime dependency hash mismatch before staging output."
     }
 
-    $executablePath = Join-Path $runtimeDirectory "ProjectTempestDemo.exe"
-    [IO.File]::WriteAllBytes($executablePath, [byte[]](0x4E, 0x4F, 0x54, 0x50, 0x45))
+    $executablePath = $fixtureExecutablePath
+    [IO.File]::WriteAllBytes($executablePath, [byte[]](0x4D, 0x5A, 0x4E, 0x4F, 0x54, 0x50, 0x45))
     $invalidExecutableOutput = Join-Path $sessionRoot "invalid-executable"
     $caught = $false
     try {
@@ -307,16 +396,37 @@ try {
             -SourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
+            -ExpectedExecutableSha256 $fixtureExecutableHash `
             -ExpectedMilesStubSha256 $fixtureDependencyHash
     }
     catch {
-        $caught = $_.Exception.Message -match "not a PE image"
+        $caught = $_.Exception.Message -match "not a valid PE32 x86 GUI image"
     }
     if (-not $caught -or (Test-Path -LiteralPath $invalidExecutableOutput)) {
-        throw "The package gate did not reject a non-PE release executable before staging output."
+        throw "The package gate did not reject a malformed MZ-prefixed release executable before staging output."
     }
 
-    [IO.File]::WriteAllText($executablePath, "MZPTDEMO", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllBytes($executablePath, (New-TestPe32GuiBytes -Marker 0x72))
+    $forgedExecutableOutput = Join-Path $sessionRoot "forged-executable"
+    $caught = $false
+    try {
+        & $packageScript `
+            -RuntimeDirectory $runtimeDirectory `
+            -OutputDirectory $forgedExecutableOutput `
+            -SourceRevision $revision `
+            -SourceDateEpoch $epoch `
+            -TestFixture `
+            -ExpectedExecutableSha256 $fixtureExecutableHash `
+            -ExpectedMilesStubSha256 $fixtureDependencyHash
+    }
+    catch {
+        $caught = $_.Exception.Message -match "independently proven integrated-build hash"
+    }
+    if (-not $caught -or (Test-Path -LiteralPath $forgedExecutableOutput)) {
+        throw "The package gate accepted a structurally valid old or forged executable that was not produced by the proven builds."
+    }
+
+    [IO.File]::WriteAllBytes($executablePath, (New-TestPe32GuiBytes))
     $acceptancePath = Join-Path $runtimeDirectory "headless-acceptance.json"
     $invalidAcceptance = Get-Content -LiteralPath $acceptancePath -Raw | ConvertFrom-Json
     $invalidAcceptance.manual_playthrough_claimed = $true
@@ -334,6 +444,7 @@ try {
             -SourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
+            -ExpectedExecutableSha256 $fixtureExecutableHash `
             -ExpectedMilesStubSha256 $fixtureDependencyHash
     }
     catch {
