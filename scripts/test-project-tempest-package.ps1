@@ -79,11 +79,20 @@ $artifactGatePathFilters = [regex]::Matches(
     $ciWorkflowText,
     "(?m)^\s+- 'scripts/assert-project-tempest-artifact-boundary\.ps1'\s*$"
 ).Count
+$workflowSurfacePathFilters = [regex]::Matches(
+    $ciWorkflowText,
+    "(?m)^\s+- '\.github/workflows/(?:ci|build-toolchain)\.yml'\s*$"
+).Count
 $tempestFilterIndex = $ciWorkflowText.IndexOf("            tempest:", [StringComparison]::Ordinal)
+$ciWorkflowPathFilterIndex = $ciWorkflowText.IndexOf("              - '.github/workflows/ci.yml'", [StringComparison]::Ordinal)
+$buildWorkflowPathFilterIndex = $ciWorkflowText.IndexOf("              - '.github/workflows/build-toolchain.yml'", [StringComparison]::Ordinal)
 $artifactGatePathFilterIndex = $ciWorkflowText.IndexOf("              - 'scripts/assert-project-tempest-artifact-boundary.ps1'", [StringComparison]::Ordinal)
 $changesSummaryIndex = $ciWorkflowText.IndexOf("      - name: Changes Summary", [StringComparison]::Ordinal)
 if ($artifactGatePathFilters -ne 1 -or
+    $workflowSurfacePathFilters -ne 2 -or
     $tempestFilterIndex -lt 0 -or
+    $ciWorkflowPathFilterIndex -le $tempestFilterIndex -or
+    $buildWorkflowPathFilterIndex -le $ciWorkflowPathFilterIndex -or
     $artifactGatePathFilterIndex -le $tempestFilterIndex -or
     $changesSummaryIndex -le $artifactGatePathFilterIndex -or
     $ciWorkflowText -notmatch '(?s)validate-project-tempest-assets:.+?needs\.detect-changes\.outputs\.tempest == ''true''' -or

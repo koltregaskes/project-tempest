@@ -49,6 +49,8 @@ jobs:
               - 'Core/**'
               - 'Dependencies/**'
             tempest:
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/build-toolchain.yml'
               - 'ProjectTempest/**'
               - 'PROJECT_TEMPEST*.md'
               - 'scripts/build-windows.ps1'
