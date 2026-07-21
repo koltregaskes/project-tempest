@@ -144,6 +144,24 @@ $requiredSubstationAssetIds = @(
     "PT-MODEL-CH-SPIRE-001",
     "PT-PREVIEW-CH-SPIRE-001",
     "PT-RUNTIME-CH-SPIRE-001",
+    "PT-MODEL-FG-FABRICRIG-001",
+    "PT-PREVIEW-FG-FABRICRIG-001",
+    "PT-RUNTIME-FG-FABRICRIG-001",
+    "PT-MODEL-FG-LANCER-001",
+    "PT-PREVIEW-FG-LANCER-001",
+    "PT-RUNTIME-FG-LANCER-001",
+    "PT-MODEL-FG-COIL-001",
+    "PT-PREVIEW-FG-COIL-001",
+    "PT-RUNTIME-FG-COIL-001",
+    "PT-MODEL-CH-WARDEN-001",
+    "PT-PREVIEW-CH-WARDEN-001",
+    "PT-RUNTIME-CH-WARDEN-001",
+    "PT-MODEL-CH-HARROWER-001",
+    "PT-PREVIEW-CH-HARROWER-001",
+    "PT-RUNTIME-CH-HARROWER-001",
+    "PT-MODEL-CH-NEST-001",
+    "PT-PREVIEW-CH-NEST-001",
+    "PT-RUNTIME-CH-NEST-001",
     "PT-TEXTURE-CH-DRONE-001"
 )
 $recordedAssetIds = @($manifest.assets.asset_id)
@@ -193,6 +211,29 @@ foreach ($asset in $anchorStructureAssets) {
     }
 }
 
+$rosterAssets = @($manifest.assets | Where-Object {
+    $_.asset_id -in @(
+        "PT-MODEL-FG-FABRICRIG-001", "PT-RUNTIME-FG-FABRICRIG-001",
+        "PT-MODEL-FG-LANCER-001", "PT-RUNTIME-FG-LANCER-001",
+        "PT-MODEL-FG-COIL-001", "PT-RUNTIME-FG-COIL-001",
+        "PT-MODEL-CH-WARDEN-001", "PT-RUNTIME-CH-WARDEN-001",
+        "PT-MODEL-CH-HARROWER-001", "PT-RUNTIME-CH-HARROWER-001",
+        "PT-MODEL-CH-NEST-001", "PT-RUNTIME-CH-NEST-001"
+    )
+})
+if ($rosterAssets.Count -ne 12) {
+    throw "The six roster replacements require complete model and runtime provenance."
+}
+foreach ($asset in $rosterAssets) {
+    if (
+        $asset.generation_date -ne "2026-07-21" -or
+        $asset.source_script -ne "../scripts/create-substation-kit.py" -or
+        $asset.rights_basis -ne "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input"
+    ) {
+        throw "Original-source provenance is incomplete for $($asset.asset_id)."
+    }
+}
+
 $droneRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-CH-DRONE-001" }
 $relayRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-RELAY-001" }
 $sentryRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-SENTRY-001" }
@@ -200,6 +241,12 @@ $pylonRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTI
 $relayCoreRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-RELAYCORE-001" }
 $fabricatorRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-FABRICATOR-001" }
 $spireRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-CH-SPIRE-001" }
+$fabricatorRigRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-FABRICRIG-001" }
+$lancerRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-LANCER-001" }
+$coilRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-COIL-001" }
+$wardenRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-CH-WARDEN-001" }
+$harrowerRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-CH-HARROWER-001" }
+$nestRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-CH-NEST-001" }
 $expectedKitCollisionFlags = "PHYSICAL,PROJECTILE,VEHICLE,VIS"
 $expectedDroneMeshes = "DRBODY0,DRBODY1,DRBODY2,DRGLOW0,DRGLOW1,DRGLOW2,DRMAG0,DRMAG1,DRMAG2"
 $expectedRelayMeshes = "HouseColor0,HouseColor1,HouseColor2,RLARMOR0,RLARMOR1,RLARMOR2,RLBODY0,RLBODY1,RLBODY2"
@@ -208,6 +255,12 @@ $expectedPylonMeshes = "PYBODY0,PYBODY1,PYBODY2,PYGLOW0,PYGLOW1,PYGLOW2,PYMAG0,P
 $expectedRelayCoreMeshes = "HouseColor0,HouseColor1,HouseColor2,RCARMOR0,RCARMOR1,RCARMOR2,RCBODY0,RCBODY1,RCBODY2"
 $expectedFabricatorMeshes = "FBARMOR0,FBARMOR1,FBARMOR2,FBBODY0,FBBODY1,FBBODY2,HouseColor0,HouseColor1,HouseColor2"
 $expectedSpireMeshes = "CSBODY0,CSBODY1,CSBODY2,CSGLOW0,CSGLOW1,CSGLOW2,CSMAG0,CSMAG1,CSMAG2"
+$expectedFabricatorRigMeshes = "FRARMOR0,FRARMOR1,FRARMOR2,FRBODY0,FRBODY1,FRBODY2,HouseColor0,HouseColor1,HouseColor2"
+$expectedLancerMeshes = "HouseColor0,HouseColor1,HouseColor2,LNARMOR0,LNARMOR1,LNARMOR2,LNBODY0,LNBODY1,LNBODY2"
+$expectedCoilMeshes = "CCARMOR0,CCARMOR1,CCARMOR2,CCBODY0,CCBODY1,CCBODY2,HouseColor0,HouseColor1,HouseColor2"
+$expectedWardenMeshes = "WDBODY0,WDBODY1,WDBODY2,WDGLOW0,WDGLOW1,WDGLOW2,WDMAG0,WDMAG1,WDMAG2"
+$expectedHarrowerMeshes = "HABODY0,HABODY1,HABODY2,HAGLOW0,HAGLOW1,HAGLOW2,HAMAG0,HAMAG1,HAMAG2"
+$expectedNestMeshes = "MNBODY0,MNBODY1,MNBODY2,MNGLOW0,MNGLOW1,MNGLOW2,MNMAG0,MNMAG1,MNMAG2"
 
 if (
     $null -eq $droneRuntimeAsset -or
@@ -297,6 +350,54 @@ $anchorContracts = @(
         Asset = $spireRuntimeAsset
         Lods = "1280,1040,907"
         Meshes = $expectedSpireMeshes
+        Textures = "ptcyan.tga,ptmagnta.tga,ptsteel.tga"
+        HouseColor = ""
+    },
+    @{
+        Label = "Freegrid Fabricator Rig"
+        Asset = $fabricatorRigRuntimeAsset
+        Lods = "472,256,137"
+        Meshes = $expectedFabricatorRigMeshes
+        Textures = "ptcyan.tga,ptsteel.tga,ptwhite.tga"
+        HouseColor = "HouseColor0,HouseColor1,HouseColor2"
+    },
+    @{
+        Label = "Freegrid Lancer Crew"
+        Asset = $lancerRuntimeAsset
+        Lods = "480,259,138"
+        Meshes = $expectedLancerMeshes
+        Textures = "ptcyan.tga,ptsteel.tga,ptwhite.tga"
+        HouseColor = "HouseColor0,HouseColor1,HouseColor2"
+    },
+    @{
+        Label = "Freegrid Coil Carrier"
+        Asset = $coilRuntimeAsset
+        Lods = "516,281,151"
+        Meshes = $expectedCoilMeshes
+        Textures = "ptcyan.tga,ptsteel.tga,ptwhite.tga"
+        HouseColor = "HouseColor0,HouseColor1,HouseColor2"
+    },
+    @{
+        Label = "Chorus Warden"
+        Asset = $wardenRuntimeAsset
+        Lods = "512,278,152"
+        Meshes = $expectedWardenMeshes
+        Textures = "ptcyan.tga,ptmagnta.tga,ptsteel.tga"
+        HouseColor = ""
+    },
+    @{
+        Label = "Chorus Harrower"
+        Asset = $harrowerRuntimeAsset
+        Lods = "580,316,172"
+        Meshes = $expectedHarrowerMeshes
+        Textures = "ptcyan.tga,ptmagnta.tga,ptsteel.tga"
+        HouseColor = ""
+    },
+    @{
+        Label = "Chorus Machine Nest"
+        Asset = $nestRuntimeAsset
+        Lods = "852,462,249"
+        Meshes = $expectedNestMeshes
         Textures = "ptcyan.tga,ptmagnta.tga,ptsteel.tga"
         HouseColor = ""
     }
@@ -460,6 +561,12 @@ foreach ($packagedAsset in @(
     "relaycore.w3d",
     "fabricbay.w3d",
     "spire.w3d",
+    "fabricrig.w3d",
+    "lancer.w3d",
+    "coil.w3d",
+    "warden.w3d",
+    "harrower.w3d",
+    "nest.w3d",
     "ptmagnta.tga",
     "pt_music_substation.wav",
     "pt_music_pressure.wav",
@@ -483,7 +590,13 @@ foreach ($requiredLoad in @(
     "Load_3D_Assets(`"pylon.w3d`")",
     "Load_3D_Assets(`"relaycore.w3d`")",
     "Load_3D_Assets(`"fabricbay.w3d`")",
-    "Load_3D_Assets(`"spire.w3d`")"
+    "Load_3D_Assets(`"spire.w3d`")",
+    "Load_3D_Assets(`"fabricrig.w3d`")",
+    "Load_3D_Assets(`"lancer.w3d`")",
+    "Load_3D_Assets(`"coil.w3d`")",
+    "Load_3D_Assets(`"warden.w3d`")",
+    "Load_3D_Assets(`"harrower.w3d`")",
+    "Load_3D_Assets(`"nest.w3d`")"
 )) {
     if ($demoSource -notmatch [regex]::Escape($requiredLoad)) {
         throw "Project Tempest renderer does not declare required asset load '$requiredLoad'."
@@ -496,10 +609,11 @@ if (
     $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::ArcSentry:\s*return\s+"sentry";' -or
     $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::SignalPylon:\s*return\s+"pylon";' -or
     $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::ChorusSpire:\s*return\s+"spire";' -or
+    $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::MachineNest:\s*return\s+"nest";' -or
     $demoSource -notmatch [regex]::Escape('visual.object = g_assetManager->Create_Render_Obj(modelName);') -or
-    $demoSource -notmatch [regex]::Escape('isChorus ? "drone"')
+    $demoSource -notmatch '(?s)switch\s*\(unit\.kind\).*?UnitKind::FabricatorRig:\s*modelName\s*=\s*"fabricrig";.*?UnitKind::CourierScout:\s*modelName\s*=\s*damaged\s*\?\s*"courierd"\s*:\s*"courier";.*?UnitKind::LancerCrew:\s*modelName\s*=\s*"lancer";.*?UnitKind::CoilCarrier:\s*modelName\s*=\s*"coil";.*?UnitKind::Skitter:\s*modelName\s*=\s*"drone";.*?UnitKind::Warden:\s*modelName\s*=\s*"warden";.*?UnitKind::Harrower:\s*modelName\s*=\s*"harrower";'
 ) {
-    throw "Project Tempest renderer does not map all governed structure simulation entities to dedicated runtime models."
+    throw "Project Tempest renderer does not map all governed simulation entities to dedicated runtime models."
 }
 $presentationSource = Get-Content -LiteralPath (
     Join-Path $repositoryRoot "ProjectTempest/Code/TempestPresentationD3D8.cpp") -Raw
