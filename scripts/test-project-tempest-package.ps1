@@ -20,47 +20,6 @@ $provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.jso
 $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
 $executableEntry = @($contract.runtime_files | Where-Object { $_.name -eq "ProjectTempestDemo.exe" })
 $milesEntry = @($contract.runtime_files | Where-Object { $_.name -eq "mss32.dll" })
-$privatePackageName = "ProjectTempestDemo-private.zip"
-$looseTempestNamePattern = '^(?i:ProjectTempestDemo.*|project_tempest_.+)\.(exe|dll|pdb)$'
-$governedTempestNames = @(
-    $contract.runtime_files |
-        ForEach-Object { [string]$_.name } |
-        Where-Object { $_ -ne "mss32.dll" }
-)
-$artifactNameFixtures = @(
-    "ProjectTempestDemo.exe",
-    "ProjectTempestDemo.pdb",
-    "ProjectTempestDemo-helper.dll",
-    "project_tempest_headless_acceptance.exe",
-    "project_tempest_headless_acceptance.pdb",
-    "project_tempest_runtime.dll",
-    "courier.w3d",
-    $privatePackageName,
-    "generalsv.exe",
-    "generalsv.pdb",
-    "mss32.dll"
-)
-$rejectedArtifactFixtures = @(
-    $artifactNameFixtures |
-        Where-Object {
-            $_ -ne $privatePackageName -and (
-                $_ -in $governedTempestNames -or
-                $_ -match $looseTempestNamePattern
-            )
-        }
-)
-$expectedRejectedArtifactFixtures = @(
-    "ProjectTempestDemo.exe",
-    "ProjectTempestDemo.pdb",
-    "ProjectTempestDemo-helper.dll",
-    "project_tempest_headless_acceptance.exe",
-    "project_tempest_headless_acceptance.pdb",
-    "project_tempest_runtime.dll",
-    "courier.w3d"
-)
-if (@(Compare-Object $rejectedArtifactFixtures $expectedRejectedArtifactFixtures).Count -ne 0) {
-    throw "The outer-artifact regression fixtures do not reject exactly the loose Project Tempest payloads."
-}
 if ($contract.schema_version -ne 3 -or
     $executableEntry.Count -ne 1 -or
     [string]$executableEntry[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical" -or
@@ -140,7 +99,8 @@ $configureIndex = $workflowText.IndexOf('name: Configure ${{ inputs.game }} with
 $ciExcludeIndex = $workflowText.IndexOf('$ciOwnedExcludes = @("/vcpkg/", "/vcpkg-bincache/")', [StringComparison]::Ordinal)
 $sourceStatusIndex = $workflowText.IndexOf('$sourceStatus = @(git status --porcelain=v1 --untracked-files=all)', [StringComparison]::Ordinal)
 $artifactMoveIndex = $workflowText.IndexOf('$files | Move-Item -Destination $artifactsDir', [StringComparison]::Ordinal)
-$artifactLooseGateIndex = $workflowText.IndexOf('$looseTempestPayloads = @(', [StringComparison]::Ordinal)
+$artifactGateIndex = $workflowText.IndexOf('./scripts/assert-project-tempest-artifact-boundary.ps1', [StringComparison]::Ordinal)
+$artifactGateCalls = [regex]::Matches($workflowText, '(?m)^\s*\./scripts/assert-project-tempest-artifact-boundary\.ps1\s+`$').Count
 $artifactUploadIndex = $workflowText.IndexOf('- name: Upload ${{ inputs.game }}', [StringComparison]::Ordinal)
 if ($executableComparisonIndex -lt 0 -or
     $milesComparisonIndex -le $executableComparisonIndex -or
@@ -154,12 +114,13 @@ if ($executableComparisonIndex -lt 0 -or
     $ciExcludeIndex -lt 0 -or
     $sourceStatusIndex -le $ciExcludeIndex -or
     $workflowText -match '\$artifactSources \+= \$tempestDir' -or
+    $workflowText -match '\$looseTempestPayloads\s*=' -or
     $artifactMoveIndex -lt 0 -or
-    $artifactLooseGateIndex -le $artifactMoveIndex -or
-    $artifactUploadIndex -le $artifactLooseGateIndex -or
-    $workflowText -notmatch 'Get-Content -LiteralPath "ProjectTempest/package-contract\.json" -Raw' -or
-    $workflowText -notmatch 'Loose Project Tempest payloads escaped the governed private ZIP' -or
-    $workflowText -notmatch [regex]::Escape($looseTempestNamePattern) -or
+    $artifactGateIndex -le $artifactMoveIndex -or
+    $artifactGateCalls -ne 1 -or
+    $artifactUploadIndex -le $artifactGateIndex -or
+    $workflowText -notmatch '(?m)^\s+-ArtifactDirectory \$artifactsDir\.FullName\s+`$' -or
+    $workflowText -notmatch '(?m)^\s+-ExpectedPrivatePackageCount \$expectedPrivatePackageCount\s*$' -or
     $workflowText -notmatch 'expectedPrivatePackageCount') {
     throw "CI must safely isolate its build roots and compare two integrated executables and Miles DLLs before both packages consume the proven hashes."
 }
@@ -204,7 +165,89 @@ function New-TestPe32GuiBytes {
     return ,$bytes
 }
 
+function New-ArtifactBoundaryFixture {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [switch]$IncludePrivatePackage,
+        [string]$LoosePayloadName = ""
+    )
+
+    $directory = Join-Path $sessionRoot ("artifact-boundary/" + $Name)
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    foreach ($ordinaryName in @("generalsv.exe", "generalsv.pdb", "mss32.dll")) {
+        [IO.File]::WriteAllBytes((Join-Path $directory $ordinaryName), [byte[]](0x47, 0x45, 0x4E))
+    }
+    if ($IncludePrivatePackage) {
+        [IO.File]::WriteAllBytes(
+            (Join-Path $directory "ProjectTempestDemo-private.zip"),
+            [byte[]](0x50, 0x4B, 0x05, 0x06)
+        )
+    }
+    if ($LoosePayloadName.Length -gt 0) {
+        [IO.File]::WriteAllBytes((Join-Path $directory $LoosePayloadName), [byte[]](0x50, 0x54))
+    }
+    return $directory
+}
+
 try {
+    $cleanArtifactDirectory = New-ArtifactBoundaryFixture -Name "clean-governing" -IncludePrivatePackage
+    .\scripts\assert-project-tempest-artifact-boundary.ps1 `
+        -ArtifactDirectory $cleanArtifactDirectory `
+        -ExpectedPrivatePackageCount 1
+
+    $cleanNonGoverningDirectory = New-ArtifactBoundaryFixture -Name "clean-non-governing"
+    .\scripts\assert-project-tempest-artifact-boundary.ps1 `
+        -ArtifactDirectory $cleanNonGoverningDirectory `
+        -ExpectedPrivatePackageCount 0
+
+    $unexpectedPackageDirectory = New-ArtifactBoundaryFixture -Name "unexpected-non-governing-package" -IncludePrivatePackage
+    $caught = $false
+    try {
+        .\scripts\assert-project-tempest-artifact-boundary.ps1 `
+            -ArtifactDirectory $unexpectedPackageDirectory `
+            -ExpectedPrivatePackageCount 0
+    }
+    catch {
+        $caught = $_.Exception.Message -match "exactly 0 governed Project Tempest private package"
+    }
+    if (-not $caught) {
+        throw "The shared artifact boundary accepted a private package in a non-governing job."
+    }
+
+    $looseArtifactFixtures = @(
+        "ProjectTempestDemo.exe",
+        "ProjectTempestDemo.pdb",
+        "ProjectTempestDemo.dll",
+        "ProjectTempestDemo-helper.dll",
+        "project_tempest_headless_acceptance.exe",
+        "project_tempest_headless_acceptance.pdb",
+        "project_tempest_runtime.dll",
+        "courier.w3d",
+        "pt_alert.wav",
+        "EA-Tunable-Colorblindness-NOTICE.txt"
+    )
+    for ($fixtureIndex = 0; $fixtureIndex -lt $looseArtifactFixtures.Count; $fixtureIndex++) {
+        $looseName = $looseArtifactFixtures[$fixtureIndex]
+        $looseDirectory = New-ArtifactBoundaryFixture `
+            -Name ("loose-" + $fixtureIndex) `
+            -IncludePrivatePackage `
+            -LoosePayloadName $looseName
+        $caught = $false
+        try {
+            .\scripts\assert-project-tempest-artifact-boundary.ps1 `
+                -ArtifactDirectory $looseDirectory `
+                -ExpectedPrivatePackageCount 1
+        }
+        catch {
+            $caught = $_.Exception.Message -match "Loose Project Tempest payloads" -and
+                $_.Exception.Message -match [regex]::Escape($looseName)
+        }
+        if (-not $caught) {
+            throw "The shared artifact boundary accepted loose payload '$looseName'."
+        }
+    }
+
     New-Item -ItemType Directory -Path $runtimeDirectory -Force | Out-Null
     foreach ($entry in $contract.runtime_files) {
         $destination = Join-Path $runtimeDirectory ([string]$entry.name)

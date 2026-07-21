@@ -302,7 +302,9 @@ missing/wrong/forged executable and dependency-hash rejection with an inert fixt
 isolated integrated executables and Miles DLLs before packaging, then requires identical acceptance reports and
 real-build ZIP hashes. The outer GitHub Actions artifact stages ordinary Generals outputs separately and admits
 Project Tempest only as the governed `ProjectTempestDemo-private.zip`; a runtime gate rejects loose Tempest executables,
-DLLs, symbols, or governed assets before upload. Public distribution
+DLLs, symbols, or governed assets before upload. CI and adversarial temporary-directory fixtures both execute the same
+`assert-project-tempest-artifact-boundary.ps1` implementation, including clean governing/non-governing package-count
+cases. Public distribution
 remains a separate approval and rights-review gate.
 
 Build with a modern Generals preset, for example:
