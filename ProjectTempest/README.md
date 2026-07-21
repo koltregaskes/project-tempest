@@ -308,6 +308,35 @@ cases, recursive nested-payload rejection, and reparse-point containment. The ma
 that shared assertion back through the Tempest validation and Windows build jobs. Public distribution
 remains a separate approval and rights-review gate.
 
+### Clean-machine package rehearsal
+
+The `verify-project-tempest-private-install` Windows CI job is an independent consumer of the governed outer artifact.
+It starts from a fresh checkout and runner workspace, downloads `Generals-win32+t+e`, re-applies the shared outer-artifact
+boundary, and passes its single private ZIP to `assert-project-tempest-private-package.ps1`. The verifier checks the
+ZIP layout and bounded sizes, rejects traversal, nested, duplicate, case-colliding, link/reparse, unexpected, and
+forbidden entries, verifies the reviewed contract and provenance, verifies every manifest and `SHA256SUMS.txt` hash,
+binds the executable and Miles DLL to their two-build proof, validates the deterministic acceptance report, then stages
+the exact governed files into a previously unused directory. It writes a deterministic receipt outside that directory
+and rehashes the staged tree. It never invokes `ProjectTempestDemo.exe` or any renderer.
+
+To rehearse the same consumer contract locally against a package already produced from the current checkout, use new
+install and receipt paths:
+
+```powershell
+$buildSourceRevision = (git rev-parse HEAD).Trim().ToLowerInvariant()
+$reviewedSourceRevision = $buildSourceRevision
+.\scripts\assert-project-tempest-private-package.ps1 `
+  -PackagePath ".\build\win32\ProjectTempest\private-package\ProjectTempestDemo-private.zip" `
+  -InstallDirectory "$env:TEMP\project-tempest-clean-install" `
+  -ReceiptPath "$env:TEMP\project-tempest-clean-install-receipt.json" `
+  -ExpectedBuildSourceRevision $buildSourceRevision `
+  -ExpectedReviewedSourceRevision $reviewedSourceRevision
+```
+
+The receipt proves package consumption, source binding, containment, and byte integrity without execution. It is not
+renderer, audio, performance, soak, alt-tab, resolution, accessibility, usability, or playthrough evidence; those
+player-visible M5/M6 gates remain explicit manual-only work on an appropriate local Windows desktop.
+
 Build with a modern Generals preset, for example:
 
 ```powershell

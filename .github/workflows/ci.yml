@@ -60,6 +60,7 @@ jobs:
               - 'scripts/prepare-w3dview-compat.ps1'
               - 'scripts/package-project-tempest-demo.ps1'
               - 'scripts/assert-project-tempest-artifact-boundary.ps1'
+              - 'scripts/assert-project-tempest-private-package.ps1'
               - 'scripts/test-project-tempest-package.ps1'
               - 'scripts/test-project-tempest-assets.ps1'
               - 'scripts/test-project-tempest-no-gui.ps1'
@@ -156,6 +157,73 @@ jobs:
       tools: ${{ matrix.tools }}
       extras: ${{ matrix.extras }}
     secrets: inherit
+
+  verify-project-tempest-private-install:
+    name: Verify Project Tempest Private Install
+    needs:
+      - detect-changes
+      - build-generals
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.tempest == 'true' }}
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Download governed Project Tempest private package
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: Generals-win32+t+e
+          path: ${{ runner.temp }}\project-tempest-outer-artifact
+
+      - name: Verify and stage private package without execution
+        shell: pwsh
+        env:
+          EXPECTED_REVIEWED_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          $outerArtifact = Join-Path $env:RUNNER_TEMP "project-tempest-outer-artifact"
+          ./scripts/assert-project-tempest-artifact-boundary.ps1 `
+            -ArtifactDirectory $outerArtifact `
+            -ExpectedPrivatePackageCount 1
+
+          $privatePackages = @(
+            Get-ChildItem -LiteralPath $outerArtifact -Recurse -File -Force |
+              Where-Object { $_.Name -eq "ProjectTempestDemo-private.zip" }
+          )
+          if ($privatePackages.Count -ne 1) {
+            throw "Fresh consumer expected exactly one governed Project Tempest private package."
+          }
+
+          $buildSourceRevision = (git rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($LASTEXITCODE -ne 0 -or $buildSourceRevision -notmatch '^[0-9a-f]{40}$') {
+            throw "Fresh consumer could not resolve its exact build source revision."
+          }
+          $reviewedSourceRevision = $env:EXPECTED_REVIEWED_SOURCE_REVISION.Trim().ToLowerInvariant()
+          if ($reviewedSourceRevision -notmatch '^[0-9a-f]{40}$') {
+            throw "Fresh consumer did not receive an exact reviewed source revision."
+          }
+
+          $installDirectory = Join-Path $env:RUNNER_TEMP "project-tempest-clean-install"
+          $receiptPath = Join-Path $env:RUNNER_TEMP "project-tempest-clean-install-receipt.json"
+          ./scripts/assert-project-tempest-private-package.ps1 `
+            -PackagePath $privatePackages[0].FullName `
+            -InstallDirectory $installDirectory `
+            -ReceiptPath $receiptPath `
+            -ExpectedBuildSourceRevision $buildSourceRevision `
+            -ExpectedReviewedSourceRevision $reviewedSourceRevision
+
+          $receipt = Get-Content -LiteralPath $receiptPath -Raw | ConvertFrom-Json
+          if ([string]$receipt.verification -ne "verified_without_execution" -or
+              [string]$receipt.renderer_execution -ne "not_performed" -or
+              $receipt.manual_playthrough_claimed -ne $false -or
+              $receipt.installed_file_count -ne 35) {
+            throw "Fresh consumer receipt does not preserve the governed no-execution install state."
+          }
+          Get-Content -LiteralPath $receiptPath -Raw
+          Write-Host "Receipt SHA256: $((Get-FileHash -LiteralPath $receiptPath -Algorithm SHA256).Hash.ToLowerInvariant())"
 
   # Note build-generalsmd is split into two jobs for vc6 and win32 because replaycheck-generalsmd
   # only requires the vc6 build and compiling vc6 is much faster than win32

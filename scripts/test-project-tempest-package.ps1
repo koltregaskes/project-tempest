@@ -15,6 +15,7 @@ $firstOutput = Join-Path $sessionRoot "first"
 $secondOutput = Join-Path $sessionRoot "second"
 $contractPath = Join-Path $repositoryRoot "ProjectTempest/package-contract.json"
 $packageScript = Join-Path $PSScriptRoot "package-project-tempest-demo.ps1"
+$packageVerifier = Join-Path $PSScriptRoot "assert-project-tempest-private-package.ps1"
 $contract = Get-Content -LiteralPath $contractPath -Raw | ConvertFrom-Json
 $provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json"
 $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
@@ -79,6 +80,10 @@ $artifactGatePathFilters = [regex]::Matches(
     $ciWorkflowText,
     "(?m)^\s+- 'scripts/assert-project-tempest-artifact-boundary\.ps1'\s*$"
 ).Count
+$privatePackageVerifierPathFilters = [regex]::Matches(
+    $ciWorkflowText,
+    "(?m)^\s+- 'scripts/assert-project-tempest-private-package\.ps1'\s*$"
+).Count
 $workflowSurfacePathFilters = [regex]::Matches(
     $ciWorkflowText,
     "(?m)^\s+- '\.github/workflows/(?:ci|build-toolchain)\.yml'\s*$"
@@ -87,16 +92,20 @@ $tempestFilterIndex = $ciWorkflowText.IndexOf("            tempest:", [StringCom
 $ciWorkflowPathFilterIndex = $ciWorkflowText.IndexOf("              - '.github/workflows/ci.yml'", [StringComparison]::Ordinal)
 $buildWorkflowPathFilterIndex = $ciWorkflowText.IndexOf("              - '.github/workflows/build-toolchain.yml'", [StringComparison]::Ordinal)
 $artifactGatePathFilterIndex = $ciWorkflowText.IndexOf("              - 'scripts/assert-project-tempest-artifact-boundary.ps1'", [StringComparison]::Ordinal)
+$privatePackageVerifierPathFilterIndex = $ciWorkflowText.IndexOf("              - 'scripts/assert-project-tempest-private-package.ps1'", [StringComparison]::Ordinal)
 $changesSummaryIndex = $ciWorkflowText.IndexOf("      - name: Changes Summary", [StringComparison]::Ordinal)
 if ($artifactGatePathFilters -ne 1 -or
+    $privatePackageVerifierPathFilters -ne 1 -or
     $workflowSurfacePathFilters -ne 2 -or
     $tempestFilterIndex -lt 0 -or
     $ciWorkflowPathFilterIndex -le $tempestFilterIndex -or
     $buildWorkflowPathFilterIndex -le $ciWorkflowPathFilterIndex -or
     $artifactGatePathFilterIndex -le $tempestFilterIndex -or
-    $changesSummaryIndex -le $artifactGatePathFilterIndex -or
+    $privatePackageVerifierPathFilterIndex -le $artifactGatePathFilterIndex -or
+    $changesSummaryIndex -le $privatePackageVerifierPathFilterIndex -or
     $ciWorkflowText -notmatch '(?s)validate-project-tempest-assets:.+?needs\.detect-changes\.outputs\.tempest == ''true''' -or
-    $ciWorkflowText -notmatch '(?s)build-generals:.+?needs\.detect-changes\.outputs\.tempest == ''true''') {
+    $ciWorkflowText -notmatch '(?s)build-generals:.+?needs\.detect-changes\.outputs\.tempest == ''true''' -or
+    $ciWorkflowText -notmatch '(?s)verify-project-tempest-private-install:.+?needs:.+?build-generals.+?actions/download-artifact@.+?name: Generals-win32\+t\+e.+?assert-project-tempest-private-package\.ps1') {
     throw "The shared Project Tempest artifact boundary must route boundary-only changes into GenCI exactly once."
 }
 $packageScriptText = Get-Content -LiteralPath $packageScript -Raw
@@ -171,6 +180,114 @@ function Get-ZipEntryBytes {
     finally {
         $memory.Dispose()
         $stream.Dispose()
+    }
+}
+
+function New-MutatedPackageArchive {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourcePath,
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationPath,
+        [string]$AddEntryName = "",
+        [byte[]]$AddEntryBytes = [byte[]]::new(0),
+        [int]$AddEntryExternalAttributes = 0,
+        [string]$ReplaceEntryName = "",
+        [byte[]]$ReplaceEntryBytes = [byte[]]::new(0)
+    )
+
+    $source = [IO.Compression.ZipFile]::OpenRead($SourcePath)
+    $destination = [IO.Compression.ZipFile]::Open(
+        $DestinationPath,
+        [IO.Compression.ZipArchiveMode]::Create
+    )
+    try {
+        foreach ($sourceEntry in $source.Entries) {
+            $destinationEntry = $destination.CreateEntry(
+                $sourceEntry.FullName,
+                [IO.Compression.CompressionLevel]::Optimal
+            )
+            $destinationEntry.LastWriteTime = $sourceEntry.LastWriteTime
+            $destinationEntry.ExternalAttributes = $sourceEntry.ExternalAttributes
+            $outputStream = $destinationEntry.Open()
+            try {
+                if ($sourceEntry.FullName -eq $ReplaceEntryName) {
+                    $outputStream.Write($ReplaceEntryBytes, 0, $ReplaceEntryBytes.Length)
+                }
+                else {
+                    $inputStream = $sourceEntry.Open()
+                    try {
+                        $inputStream.CopyTo($outputStream)
+                    }
+                    finally {
+                        $inputStream.Dispose()
+                    }
+                }
+            }
+            finally {
+                $outputStream.Dispose()
+            }
+        }
+        if ($AddEntryName) {
+            $addedEntry = $destination.CreateEntry(
+                $AddEntryName,
+                [IO.Compression.CompressionLevel]::Optimal
+            )
+            if ($AddEntryExternalAttributes -ne 0) {
+                $addedEntry.ExternalAttributes = $AddEntryExternalAttributes
+            }
+            $addedOutput = $addedEntry.Open()
+            try {
+                $addedOutput.Write($AddEntryBytes, 0, $AddEntryBytes.Length)
+            }
+            finally {
+                $addedOutput.Dispose()
+            }
+        }
+    }
+    finally {
+        $destination.Dispose()
+        $source.Dispose()
+    }
+}
+
+function Assert-PackageVerifierRejects {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackagePath,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [Parameter(Mandatory = $true)]
+        [string]$MessagePattern,
+        [Parameter(Mandatory = $true)]
+        [string]$Revision,
+        [string]$ReviewedRevision = ""
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ReviewedRevision)) {
+        $ReviewedRevision = $Revision
+    }
+    $installDirectory = Join-Path $sessionRoot ("consumer-negative/" + $Name + "/install")
+    $receiptPath = Join-Path $sessionRoot ("consumer-negative/" + $Name + "/receipt.json")
+    New-Item -ItemType Directory -Path (Split-Path -Parent $installDirectory) -Force | Out-Null
+    $caught = $false
+    try {
+        & $packageVerifier `
+            -PackagePath $PackagePath `
+            -InstallDirectory $installDirectory `
+            -ReceiptPath $receiptPath `
+            -ExpectedBuildSourceRevision $Revision `
+            -ExpectedReviewedSourceRevision $ReviewedRevision `
+            -ExpectedDistribution test_fixture `
+            -ExpectedSourceTree fixture
+    }
+    catch {
+        $caught = $_.Exception.Message -match $MessagePattern
+    }
+    if (-not $caught -or
+        (Test-Path -LiteralPath $installDirectory) -or
+        (Test-Path -LiteralPath $receiptPath)) {
+        throw "The private-package consumer accepted '$Name' or left staged output behind."
     }
 }
 
@@ -411,9 +528,9 @@ try {
                 manual_playthrough_claimed = $false
                 fresh_launches = 3
                 scenarios = @(
-                    [ordered]@{ outcome = "victory"; ticks = $entry.victory_ticks; final_checksum = $entry.victory_final_checksum; trace_checksum = $entry.victory_trace_checksum; territory_capture = $true; construction = $true; production = $true; faction_abilities = $true; result_flow = $true; restart_flow = $true },
-                    [ordered]@{ outcome = "defeat"; ticks = $entry.defeat_ticks; final_checksum = $entry.defeat_final_checksum; trace_checksum = $entry.defeat_trace_checksum; result_flow = $true; restart_flow = $true },
-                    [ordered]@{ outcome = "victory"; ticks = $entry.victory_ticks; final_checksum = $entry.victory_final_checksum; trace_checksum = $entry.victory_trace_checksum; territory_capture = $true; construction = $true; production = $true; faction_abilities = $true; result_flow = $true; restart_flow = $true }
+                    [ordered]@{ name = "freegrid_victory_a"; outcome = "victory"; ticks = $entry.victory_ticks; final_checksum = $entry.victory_final_checksum; trace_checksum = $entry.victory_trace_checksum; territory_capture = $true; construction = $true; production = $true; faction_abilities = $true; result_flow = $true; restart_flow = $true },
+                    [ordered]@{ name = "chorus_defeat"; outcome = "defeat"; ticks = $entry.defeat_ticks; final_checksum = $entry.defeat_final_checksum; trace_checksum = $entry.defeat_trace_checksum; result_flow = $true; restart_flow = $true },
+                    [ordered]@{ name = "freegrid_victory_b"; outcome = "victory"; ticks = $entry.victory_ticks; final_checksum = $entry.victory_final_checksum; trace_checksum = $entry.victory_trace_checksum; territory_capture = $true; construction = $true; production = $true; faction_abilities = $true; result_flow = $true; restart_flow = $true }
                 )
             }
             $fixtureJson = ($fixtureAcceptance | ConvertTo-Json -Depth 6) -replace "`r`n", "`n"
@@ -615,6 +732,139 @@ try {
         $archive.Dispose()
     }
 
+    $consumerInstallA = Join-Path $sessionRoot "consumer-clean/install-a"
+    $consumerInstallB = Join-Path $sessionRoot "consumer-clean/install-b"
+    $consumerReceiptA = Join-Path $sessionRoot "consumer-clean/receipt-a.json"
+    $consumerReceiptB = Join-Path $sessionRoot "consumer-clean/receipt-b.json"
+    New-Item -ItemType Directory -Path (Split-Path -Parent $consumerInstallA) -Force | Out-Null
+    & $packageVerifier `
+        -PackagePath $firstArchive `
+        -InstallDirectory $consumerInstallA `
+        -ReceiptPath $consumerReceiptA `
+        -ExpectedBuildSourceRevision $revision `
+        -ExpectedReviewedSourceRevision $revision `
+        -ExpectedDistribution test_fixture `
+        -ExpectedSourceTree fixture
+    & $packageVerifier `
+        -PackagePath $firstArchive `
+        -InstallDirectory $consumerInstallB `
+        -ReceiptPath $consumerReceiptB `
+        -ExpectedBuildSourceRevision $revision `
+        -ExpectedReviewedSourceRevision $revision `
+        -ExpectedDistribution test_fixture `
+        -ExpectedSourceTree fixture
+
+    $consumerReceipt = Get-Content -LiteralPath $consumerReceiptA -Raw | ConvertFrom-Json
+    $consumerReceiptBObject = Get-Content -LiteralPath $consumerReceiptB -Raw | ConvertFrom-Json
+    $consumerInstalledFiles = @(Get-ChildItem -LiteralPath $consumerInstallA -File -Force)
+    $consumerReceiptHash = (Get-FileHash -LiteralPath $consumerReceiptA -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($consumerReceipt.schema_version -ne 1 -or
+        [string]$consumerReceipt.verification -ne "verified_without_execution" -or
+        [string]$consumerReceipt.archive_sha256 -ne $firstHash -or
+        [string]$consumerReceipt.source_revision -ne $revision -or
+        [string]$consumerReceipt.reviewed_source_revision -ne $revision -or
+        [string]$consumerReceipt.source_tree -ne "fixture" -or
+        [string]$consumerReceipt.distribution -ne "test_fixture" -or
+        [string]$consumerReceipt.executable_sha256 -ne $fixtureExecutableHash.ToLowerInvariant() -or
+        [string]$consumerReceipt.miles_sha256 -ne $fixtureDependencyHash.ToLowerInvariant() -or
+        [string]$consumerReceipt.renderer_execution -ne "not_performed" -or
+        $consumerReceipt.manual_playthrough_claimed -ne $false -or
+        $consumerReceipt.installed_file_count -ne 35 -or
+        @($consumerReceipt.files).Count -ne 35 -or
+        $consumerInstalledFiles.Count -ne 35 -or
+        [string]$consumerReceipt.reviewed_contract_canonical_sha256 -notmatch '^[0-9a-f]{64}$' -or
+        [string]$consumerReceipt.reviewed_provenance_canonical_sha256 -notmatch '^[0-9a-f]{64}$' -or
+        (Get-FileHash -LiteralPath $consumerReceiptB -Algorithm SHA256).Hash.ToLowerInvariant() -ne $consumerReceiptHash -or
+        ($consumerReceipt | ConvertTo-Json -Depth 6) -ne ($consumerReceiptBObject | ConvertTo-Json -Depth 6)) {
+        throw "The private-package consumer did not produce two identical no-execution install receipts."
+    }
+
+    $mutatedRoot = Join-Path $sessionRoot "consumer-mutated"
+    New-Item -ItemType Directory -Path $mutatedRoot -Force | Out-Null
+    $traversalArchive = Join-Path $mutatedRoot "traversal.zip"
+    New-MutatedPackageArchive `
+        -SourcePath $firstArchive `
+        -DestinationPath $traversalArchive `
+        -AddEntryName "$($contract.package_directory)/../escape.exe" `
+        -AddEntryBytes ([byte[]](0x4D, 0x5A))
+    Assert-PackageVerifierRejects `
+        -PackagePath $traversalArchive `
+        -Name "traversal" `
+        -MessagePattern "unsafe or nested entry" `
+        -Revision $revision
+
+    $caseCollisionArchive = Join-Path $mutatedRoot "case-collision.zip"
+    New-MutatedPackageArchive `
+        -SourcePath $firstArchive `
+        -DestinationPath $caseCollisionArchive `
+        -AddEntryName "$($contract.package_directory)/readme.txt" `
+        -AddEntryBytes ([byte[]](0x52))
+    Assert-PackageVerifierRejects `
+        -PackagePath $caseCollisionArchive `
+        -Name "case-collision" `
+        -MessagePattern "duplicate or case-colliding entry" `
+        -Revision $revision
+
+    $linkArchive = Join-Path $mutatedRoot "link-entry.zip"
+    $unixLinkAttributes = [BitConverter]::ToInt32(
+        [BitConverter]::GetBytes([uint32]2717843456),
+        0
+    )
+    New-MutatedPackageArchive `
+        -SourcePath $firstArchive `
+        -DestinationPath $linkArchive `
+        -AddEntryName "$($contract.package_directory)/link.txt" `
+        -AddEntryBytes ([Text.Encoding]::UTF8.GetBytes("target")) `
+        -AddEntryExternalAttributes $unixLinkAttributes
+    Assert-PackageVerifierRejects `
+        -PackagePath $linkArchive `
+        -Name "link-entry" `
+        -MessagePattern "link/reparse entry" `
+        -Revision $revision
+
+    $forgedPackageArchive = Join-Path $mutatedRoot "forged-executable.zip"
+    New-MutatedPackageArchive `
+        -SourcePath $firstArchive `
+        -DestinationPath $forgedPackageArchive `
+        -ReplaceEntryName "$($contract.package_directory)/ProjectTempestDemo.exe" `
+        -ReplaceEntryBytes (New-TestPe32GuiBytes -Marker 0x72)
+    Assert-PackageVerifierRejects `
+        -PackagePath $forgedPackageArchive `
+        -Name "forged-executable" `
+        -MessagePattern "manifest verification failed" `
+        -Revision $revision
+
+    Assert-PackageVerifierRejects `
+        -PackagePath $firstArchive `
+        -Name "wrong-reviewed-revision" `
+        -MessagePattern "not bound to the expected reviewed source" `
+        -Revision $revision `
+        -ReviewedRevision ("f" * 40)
+
+    $existingInstall = Join-Path $sessionRoot "consumer-existing/install"
+    $existingReceipt = Join-Path $sessionRoot "consumer-existing/receipt.json"
+    New-Item -ItemType Directory -Path $existingInstall -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $existingInstall "keep.txt"), "keep")
+    $caught = $false
+    try {
+        & $packageVerifier `
+            -PackagePath $firstArchive `
+            -InstallDirectory $existingInstall `
+            -ReceiptPath $existingReceipt `
+            -ExpectedBuildSourceRevision $revision `
+            -ExpectedReviewedSourceRevision $revision `
+            -ExpectedDistribution test_fixture `
+            -ExpectedSourceTree fixture
+    }
+    catch {
+        $caught = $_.Exception.Message -match "requires a new destination directory"
+    }
+    if (-not $caught -or
+        -not (Test-Path -LiteralPath (Join-Path $existingInstall "keep.txt") -PathType Leaf) -or
+        (Test-Path -LiteralPath $existingReceipt)) {
+        throw "The private-package consumer overwrote or disturbed an existing install directory."
+    }
+
     $forbiddenFixture = Join-Path $runtimeDirectory "AudioZH.big"
     [IO.File]::WriteAllBytes($forbiddenFixture, [byte[]](0x45, 0x41))
     $rejectedOutput = Join-Path $sessionRoot "rejected"
@@ -732,6 +982,7 @@ try {
 
     Write-Host "PASS: Project Tempest package contract and reproducibility"
     Write-Host "Fixture archive SHA256: $firstHash"
+    Write-Host "Fixture install receipt SHA256: $consumerReceiptHash"
 }
 finally {
     if (Test-Path -LiteralPath $sessionRoot) {
