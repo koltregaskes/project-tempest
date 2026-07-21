@@ -228,6 +228,7 @@ $primaryBuild = ".\build\win32"
 $repeatBuild = ".\build\win32-tempest-repro"
 $runtimeDirectory = "$primaryBuild\ProjectTempest\Release"
 $repeatRuntimeDirectory = "$repeatBuild\ProjectTempest\Release"
+$reviewedSourceRevision = (git rev-parse HEAD).Trim()
 
 cmake --preset win32
 cmake --build --preset win32 --target project_tempest_demo project_tempest_headless_acceptance
@@ -273,11 +274,13 @@ Copy-Item -LiteralPath $repeatMilesStub.FullName -Destination $repeatRuntimeDire
 .\scripts\package-project-tempest-demo.ps1 `
   -RuntimeDirectory $runtimeDirectory `
   -OutputDirectory "$primaryBuild\ProjectTempest\private-package" `
+  -ReviewedSourceRevision $reviewedSourceRevision `
   -ExpectedExecutableSha256 $executableHash `
   -ExpectedMilesStubSha256 $milesHash
 .\scripts\package-project-tempest-demo.ps1 `
   -RuntimeDirectory $repeatRuntimeDirectory `
   -OutputDirectory "$repeatBuild\ProjectTempest\private-package" `
+  -ReviewedSourceRevision $reviewedSourceRevision `
   -ExpectedExecutableSha256 $executableHash `
   -ExpectedMilesStubSha256 $milesHash
 ```
@@ -289,8 +292,9 @@ EA game executables, WorldBuilder, and W3DView before staging; validates every a
 machine-readable manifest and `SHA256SUMS.txt`; fixes all ZIP timestamps to the source commit; and produces a stable
 `ProjectTempestDemo-private.zip`. Production inputs are restricted to the two governed integrated Release directories.
 It also rejects a dirty source tree, a missing caller-supplied executable or Miles proof hash, a malformed/non-x86 GUI
-PE, or a binary that does not match its proven hash. The manifest binds the executable hash and source revision to the
-two-build policy. The pinned Miles source commit and deterministic build procedure live in provenance; the
+PE, or a binary that does not match its proven hash. The manifest binds the executable hash to both the actual clean
+build revision and the exact reviewed head (which may be a direct parent of GitHub's synthetic PR merge revision), plus
+the two-build policy. The pinned Miles source commit and deterministic build procedure live in provenance; the
 compiler-context-dependent DLL hash is recorded in each package manifest rather than hardcoded as a portable source
 identity. `test-project-tempest-package.ps1` proves byte-identical repeated packaging, manifest verification, and
 missing/wrong/forged executable and dependency-hash rejection with an inert fixture. Windows Release CI compares two

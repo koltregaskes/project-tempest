@@ -23,7 +23,7 @@ $milesEntry = @($contract.runtime_files | Where-Object { $_.name -eq "mss32.dll"
 if ($contract.schema_version -ne 3 -or
     $executableEntry.Count -ne 1 -or
     [string]$executableEntry[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical" -or
-    [string]$executableEntry[0].source_binding -ne "clean_repository_head_and_governed_integrated_release_output" -or
+    [string]$executableEntry[0].source_binding -ne "clean_build_revision_and_reviewed_head_and_governed_integrated_release_output" -or
     $milesEntry.Count -ne 1 -or
     [string]$milesEntry[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical") {
     throw "The package contract does not govern exactly one source-bound executable and one integrated-build Miles dependency."
@@ -80,12 +80,16 @@ if ($primaryRuntimePolicyIndex -lt 0 -or
     $repeatRuntimePolicyIndex -lt 0 -or
     $packageScriptText -notmatch 'Production packaging is restricted to the two governed integrated Release runtime directories' -or
     $packageScriptText -notmatch 'Production packaging rejects a reparse-point runtime directory' -or
-    $packageScriptText -notmatch 'Runtime package inputs may not be reparse points') {
+    $packageScriptText -notmatch 'Runtime package inputs may not be reparse points' -or
+    $packageScriptText -notmatch 'rev-list --parents -n 1' -or
+    $packageScriptText -notmatch 'reviewed_source_revision' -or
+    $packageScriptText -notmatch 'must be the clean build revision or one of its direct parents') {
     throw "Production packaging must reject arbitrary or stale runtime directories."
 }
 $executableComparisonIndex = $workflowText.IndexOf('if ($primaryExecutableHash -ne $repeatExecutableHash)', [StringComparison]::Ordinal)
 $milesComparisonIndex = $workflowText.IndexOf('if ($primaryMilesHash -ne $repeatMilesHash)', [StringComparison]::Ordinal)
 $firstPackageIndex = $workflowText.IndexOf('./scripts/package-project-tempest-demo.ps1', [StringComparison]::Ordinal)
+$reviewedSourceArguments = [regex]::Matches($workflowText, '(?m)^\s+-ReviewedSourceRevision \$reviewedSourceRevision\b').Count
 $expectedExecutableHashArguments = [regex]::Matches($workflowText, '(?m)^\s+-ExpectedExecutableSha256 \$primaryExecutableHash\b').Count
 $expectedHashArguments = [regex]::Matches($workflowText, '(?m)^\s+-ExpectedMilesStubSha256 \$primaryMilesHash\s*$').Count
 $cacheClearIndex = $workflowText.IndexOf('name: Clear cached Miles outputs for Project Tempest reproducibility', [StringComparison]::Ordinal)
@@ -95,6 +99,7 @@ $sourceStatusIndex = $workflowText.IndexOf('$sourceStatus = @(git status --porce
 if ($executableComparisonIndex -lt 0 -or
     $milesComparisonIndex -le $executableComparisonIndex -or
     $firstPackageIndex -le $milesComparisonIndex -or
+    $reviewedSourceArguments -ne 2 -or
     $expectedExecutableHashArguments -ne 2 -or
     $expectedHashArguments -ne 2 -or
     $cacheClearIndex -lt 0 -or
@@ -206,6 +211,25 @@ try {
         throw "The production package gate accepted an arbitrary or stale runtime directory."
     }
 
+    $missingReviewedSourceOutput = Join-Path $sessionRoot "missing-reviewed-source"
+    $caught = $false
+    try {
+        & $packageScript `
+            -RuntimeDirectory $runtimeDirectory `
+            -OutputDirectory $missingReviewedSourceOutput `
+            -SourceRevision $revision `
+            -SourceDateEpoch $epoch `
+            -TestFixture `
+            -ExpectedExecutableSha256 $fixtureExecutableHash `
+            -ExpectedMilesStubSha256 $fixtureDependencyHash
+    }
+    catch {
+        $caught = $_.Exception.Message -match "ReviewedSourceRevision"
+    }
+    if (-not $caught -or (Test-Path -LiteralPath $missingReviewedSourceOutput)) {
+        throw "The package gate allowed the reviewed source identity to be omitted."
+    }
+
     $missingExecutableHashOutput = Join-Path $sessionRoot "missing-executable-hash"
     $caught = $false
     try {
@@ -213,6 +237,7 @@ try {
             -RuntimeDirectory $runtimeDirectory `
             -OutputDirectory $missingExecutableHashOutput `
             -SourceRevision $revision `
+            -ReviewedSourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
             -ExpectedMilesStubSha256 $fixtureDependencyHash
@@ -231,6 +256,7 @@ try {
             -RuntimeDirectory $runtimeDirectory `
             -OutputDirectory $missingHashOutput `
             -SourceRevision $revision `
+            -ReviewedSourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
             -ExpectedExecutableSha256 $fixtureExecutableHash
@@ -246,6 +272,7 @@ try {
         -RuntimeDirectory $runtimeDirectory `
         -OutputDirectory $firstOutput `
         -SourceRevision $revision `
+        -ReviewedSourceRevision $revision `
         -SourceDateEpoch $epoch `
         -TestFixture `
         -ExpectedExecutableSha256 $fixtureExecutableHash `
@@ -254,6 +281,7 @@ try {
         -RuntimeDirectory $runtimeDirectory `
         -OutputDirectory $secondOutput `
         -SourceRevision $revision `
+        -ReviewedSourceRevision $revision `
         -SourceDateEpoch $epoch `
         -TestFixture `
         -ExpectedExecutableSha256 $fixtureExecutableHash `
@@ -293,6 +321,7 @@ try {
         $manifest = $manifestText | ConvertFrom-Json
         if ($manifest.schema_version -ne 2 -or
             $manifest.source_revision -ne $revision -or
+            $manifest.reviewed_source_revision -ne $revision -or
             $manifest.source_date_epoch -ne $epoch -or
             $manifest.distribution -ne "test_fixture" -or
             $manifest.source_tree -ne "fixture" -or
@@ -303,6 +332,7 @@ try {
             $manifest.executable_verification.policy -ne [string]$executableEntry[0].hash_verification -or
             $manifest.executable_verification.source_binding -ne [string]$executableEntry[0].source_binding -or
             $manifest.executable_verification.source_revision -ne $revision -or
+            $manifest.executable_verification.reviewed_source_revision -ne $revision -or
             $manifest.executable_verification.runtime_input_policy -ne "restricted_test_fixture" -or
             $manifest.runtime_dependency_verification.name -ne "mss32.dll" -or
             $manifest.runtime_dependency_verification.sha256 -ne $fixtureDependencyHash.ToLowerInvariant() -or
@@ -353,6 +383,7 @@ try {
             -RuntimeDirectory $runtimeDirectory `
             -OutputDirectory $rejectedOutput `
             -SourceRevision $revision `
+            -ReviewedSourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
             -ExpectedExecutableSha256 $fixtureExecutableHash `
@@ -373,6 +404,7 @@ try {
             -RuntimeDirectory $runtimeDirectory `
             -OutputDirectory $dependencyMismatchOutput `
             -SourceRevision $revision `
+            -ReviewedSourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
             -ExpectedExecutableSha256 $fixtureExecutableHash `
@@ -394,6 +426,7 @@ try {
             -RuntimeDirectory $runtimeDirectory `
             -OutputDirectory $invalidExecutableOutput `
             -SourceRevision $revision `
+            -ReviewedSourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
             -ExpectedExecutableSha256 $fixtureExecutableHash `
@@ -414,6 +447,7 @@ try {
             -RuntimeDirectory $runtimeDirectory `
             -OutputDirectory $forgedExecutableOutput `
             -SourceRevision $revision `
+            -ReviewedSourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
             -ExpectedExecutableSha256 $fixtureExecutableHash `
@@ -442,6 +476,7 @@ try {
             -RuntimeDirectory $runtimeDirectory `
             -OutputDirectory $invalidAcceptanceOutput `
             -SourceRevision $revision `
+            -ReviewedSourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
             -ExpectedExecutableSha256 $fixtureExecutableHash `

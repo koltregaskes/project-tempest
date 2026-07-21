@@ -7,7 +7,7 @@
       "name": "ProjectTempestDemo.exe",
       "kind": "executable",
       "hash_verification": "two_isolated_integrated_release_builds_byte_identical",
-      "source_binding": "clean_repository_head_and_governed_integrated_release_output"
+      "source_binding": "clean_build_revision_and_reviewed_head_and_governed_integrated_release_output"
     },
     {
       "name": "mss32.dll",

@@ -10,6 +10,8 @@ param(
 
     [string]$SourceRevision = "",
 
+    [string]$ReviewedSourceRevision = "",
+
     [long]$SourceDateEpoch = 0,
 
     [string]$ExpectedExecutableSha256 = "",
@@ -64,6 +66,9 @@ if ($TestFixture) {
     if ($SourceRevision -notmatch '^[0-9a-fA-F]{40}$' -or $SourceDateEpoch -eq 0) {
         throw "TestFixture requires an explicit SourceRevision and SourceDateEpoch."
     }
+    if ($ReviewedSourceRevision -notmatch '^[0-9a-fA-F]{40}$') {
+        throw "TestFixture requires an explicit ReviewedSourceRevision."
+    }
     $sourceTreeState = "fixture"
 }
 else {
@@ -100,6 +105,22 @@ else {
     }
     $SourceRevision = $headRevision
 
+    if ($ReviewedSourceRevision -notmatch '^[0-9a-fA-F]{40}$') {
+        throw "ReviewedSourceRevision is required and must identify the exact reviewed head used by this build."
+    }
+    $ReviewedSourceRevision = $ReviewedSourceRevision.ToLowerInvariant()
+    [string]$sourceLineageText = @(
+        git -C $repositoryRoot rev-list --parents -n 1 $SourceRevision
+    ) -join ""
+    $sourceLineageText = $sourceLineageText.Trim().ToLowerInvariant()
+    if ($LASTEXITCODE -ne 0 -or $sourceLineageText -notmatch '^[0-9a-f]{40}( [0-9a-f]{40}){0,2}$') {
+        throw "Unable to verify the clean build revision lineage for '$SourceRevision'."
+    }
+    $sourceLineage = @($sourceLineageText -split '\s+')
+    if ($ReviewedSourceRevision -notin $sourceLineage) {
+        throw "ReviewedSourceRevision '$ReviewedSourceRevision' must be the clean build revision or one of its direct parents: $($sourceLineage -join ', ')."
+    }
+
     $commitEpochText = (git -C $repositoryRoot show -s --format=%ct $SourceRevision).Trim()
     $commitEpoch = 0L
     if ($LASTEXITCODE -ne 0 -or -not [long]::TryParse($commitEpochText, [ref]$commitEpoch)) {
@@ -111,6 +132,7 @@ else {
     $SourceDateEpoch = $commitEpoch
 }
 $SourceRevision = $SourceRevision.ToLowerInvariant()
+$ReviewedSourceRevision = $ReviewedSourceRevision.ToLowerInvariant()
 
 if ($SourceDateEpoch -lt 315532800) {
     throw "SourceDateEpoch must be on or after 1980-01-01 for portable ZIP timestamps."
@@ -131,7 +153,7 @@ $executableEntries = @($contract.runtime_files | Where-Object { $_.name -eq "Pro
 if ($executableEntries.Count -ne 1 -or
     [string]$executableEntries[0].kind -ne "executable" -or
     [string]$executableEntries[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical" -or
-    [string]$executableEntries[0].source_binding -ne "clean_repository_head_and_governed_integrated_release_output") {
+    [string]$executableEntries[0].source_binding -ne "clean_build_revision_and_reviewed_head_and_governed_integrated_release_output") {
     throw "The package contract does not bind exactly one Project Tempest executable to the reviewed source and two integrated Release builds."
 }
 $milesEntries = @($contract.runtime_files | Where-Object { $_.name -eq "mss32.dll" })
@@ -390,6 +412,7 @@ $manifest = [ordered]@{
     distribution = if ($TestFixture) { "test_fixture" } else { "private_internal_demo" }
     source_repository = "https://github.com/koltregaskes/project-tempest"
     source_revision = $SourceRevision
+    reviewed_source_revision = $ReviewedSourceRevision
     source_date_epoch = $SourceDateEpoch
     source_tree = $sourceTreeState
     package_contract_sha256 = $contractHash
@@ -400,6 +423,7 @@ $manifest = [ordered]@{
         policy = [string]$executableEntries[0].hash_verification
         source_binding = [string]$executableEntries[0].source_binding
         source_revision = $SourceRevision
+        reviewed_source_revision = $ReviewedSourceRevision
         runtime_input_policy = if ($TestFixture) { "restricted_test_fixture" } else { "governed_integrated_release_outputs_only" }
     }
     runtime_dependency_verification = [ordered]@{

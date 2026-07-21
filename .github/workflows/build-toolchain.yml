@@ -202,6 +202,10 @@ jobs:
         shell: pwsh
         run: |
           $runtimeDirectory = "build\win32\ProjectTempest\Release"
+          $reviewedSourceRevision = "${{ github.event.pull_request.head.sha || github.sha }}".ToLowerInvariant()
+          if ($reviewedSourceRevision -notmatch '^[0-9a-f]{40}$') {
+            throw "The exact reviewed source revision is unavailable: '$reviewedSourceRevision'."
+          }
           & "$runtimeDirectory\project_tempest_headless_acceptance.exe" `
             --output "$runtimeDirectory\headless-acceptance.json"
           if ($LASTEXITCODE -ne 0) {
@@ -287,6 +291,7 @@ jobs:
           ./scripts/package-project-tempest-demo.ps1 `
             -RuntimeDirectory $runtimeDirectory `
             -OutputDirectory $primaryPackage `
+            -ReviewedSourceRevision $reviewedSourceRevision `
             -ExpectedExecutableSha256 $primaryExecutableHash `
             -ExpectedMilesStubSha256 $primaryMilesHash
 
@@ -294,6 +299,7 @@ jobs:
           ./scripts/package-project-tempest-demo.ps1 `
             -RuntimeDirectory $repeatRuntimeDirectory `
             -OutputDirectory $repeatPackage `
+            -ReviewedSourceRevision $reviewedSourceRevision `
             -ExpectedExecutableSha256 $primaryExecutableHash `
             -ExpectedMilesStubSha256 $primaryMilesHash
 
