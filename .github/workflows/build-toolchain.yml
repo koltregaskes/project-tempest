@@ -337,10 +337,6 @@ jobs:
               "$buildDir\Core\$configToUse"
               "$buildDir\${{ inputs.game }}\$configToUse"
             )
-            $tempestDir = "$buildDir\ProjectTempest\$configToUse"
-            if (Test-Path -LiteralPath $tempestDir) {
-              $artifactSources += $tempestDir
-            }
             $files = Get-ChildItem -Path $artifactSources -File |
               Where-Object { $_.Extension -in @(".exe", ".dll", ".pdb", ".w3d", ".tga", ".wav", ".txt") } -Verbose
           } else {
@@ -364,6 +360,39 @@ jobs:
                 throw "The governed Project Tempest private package was not produced."
               }
               Copy-Item -LiteralPath $privatePackage -Destination $artifactsDir -Force -Verbose
+            }
+
+            # Project Tempest must enter the outer CI artifact only through its
+            # governed ZIP. The Miles stub remains a shared Generals runtime
+            # dependency and is independently copied above.
+            $privatePackageName = "ProjectTempestDemo-private.zip"
+            $contract = Get-Content -LiteralPath "ProjectTempest/package-contract.json" -Raw | ConvertFrom-Json
+            $governedTempestNames = @(
+              $contract.runtime_files |
+                ForEach-Object { [string]$_.name } |
+                Where-Object { $_ -ne "mss32.dll" }
+            )
+            $looseTempestPayloads = @(
+              Get-ChildItem -LiteralPath $artifactsDir -File |
+                Where-Object {
+                  $_.Name -ne $privatePackageName -and (
+                    $_.Name -in $governedTempestNames -or
+                    $_.Name -match '^(?i:ProjectTempestDemo|project_tempest_).+\.(exe|dll|pdb)$'
+                  )
+                }
+            )
+            if ($looseTempestPayloads.Count -gt 0) {
+              throw "Loose Project Tempest payloads escaped the governed private ZIP: $($looseTempestPayloads.Name -join ', ')."
+            }
+
+            $privatePackages = @(
+              Get-ChildItem -LiteralPath $artifactsDir -File -Filter $privatePackageName
+            )
+            $expectedPrivatePackageCount = if (
+              "${{ inputs.game }}" -eq "Generals" -and "${{ inputs.preset }}" -eq "win32"
+            ) { 1 } else { 0 }
+            if ($privatePackages.Count -ne $expectedPrivatePackageCount) {
+              throw "The uploaded artifact must contain exactly $expectedPrivatePackageCount governed Project Tempest private package(s); found $($privatePackages.Count)."
             }
           }
 

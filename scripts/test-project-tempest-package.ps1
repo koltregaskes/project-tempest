@@ -98,6 +98,9 @@ $cacheClearIndex = $workflowText.IndexOf('name: Clear cached Miles outputs for P
 $configureIndex = $workflowText.IndexOf('name: Configure ${{ inputs.game }} with CMake', [StringComparison]::Ordinal)
 $ciExcludeIndex = $workflowText.IndexOf('$ciOwnedExcludes = @("/vcpkg/", "/vcpkg-bincache/")', [StringComparison]::Ordinal)
 $sourceStatusIndex = $workflowText.IndexOf('$sourceStatus = @(git status --porcelain=v1 --untracked-files=all)', [StringComparison]::Ordinal)
+$artifactMoveIndex = $workflowText.IndexOf('$files | Move-Item -Destination $artifactsDir', [StringComparison]::Ordinal)
+$artifactLooseGateIndex = $workflowText.IndexOf('$looseTempestPayloads = @(', [StringComparison]::Ordinal)
+$artifactUploadIndex = $workflowText.IndexOf('- name: Upload ${{ inputs.game }}', [StringComparison]::Ordinal)
 if ($executableComparisonIndex -lt 0 -or
     $milesComparisonIndex -le $executableComparisonIndex -or
     $firstPackageIndex -le $milesComparisonIndex -or
@@ -108,7 +111,15 @@ if ($executableComparisonIndex -lt 0 -or
     $configureIndex -le $cacheClearIndex -or
     $workflowText -notmatch '(?s)name: Clear cached Miles outputs for Project Tempest reproducibility.+?if: \$\{\{ inputs\.game == ''Generals'' && inputs\.preset == ''win32'' \}\}.+?milesBuild\.StartsWith\(\$allowedPrefix.+?resolvedMilesBuild\.StartsWith\(\$allowedPrefix.+?Remove-Item -LiteralPath \$resolvedMilesBuild -Recurse -Force' -or
     $ciExcludeIndex -lt 0 -or
-    $sourceStatusIndex -le $ciExcludeIndex) {
+    $sourceStatusIndex -le $ciExcludeIndex -or
+    $workflowText -match '\$artifactSources \+= \$tempestDir' -or
+    $artifactMoveIndex -lt 0 -or
+    $artifactLooseGateIndex -le $artifactMoveIndex -or
+    $artifactUploadIndex -le $artifactLooseGateIndex -or
+    $workflowText -notmatch 'Get-Content -LiteralPath "ProjectTempest/package-contract\.json" -Raw' -or
+    $workflowText -notmatch 'Loose Project Tempest payloads escaped the governed private ZIP' -or
+    $workflowText -notmatch '\^\(\?i:ProjectTempestDemo\|project_tempest_\)' -or
+    $workflowText -notmatch 'expectedPrivatePackageCount') {
     throw "CI must safely isolate its build roots and compare two integrated executables and Miles DLLs before both packages consume the proven hashes."
 }
 

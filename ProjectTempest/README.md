@@ -300,7 +300,9 @@ compiler-context-dependent DLL hash is recorded in each package manifest rather 
 identity. `test-project-tempest-package.ps1` proves byte-identical repeated packaging, manifest verification, and
 missing/wrong/forged executable and dependency-hash rejection with an inert fixture. Windows Release CI compares two
 isolated integrated executables and Miles DLLs before packaging, then requires identical acceptance reports and
-real-build ZIP hashes. Public distribution
+real-build ZIP hashes. The outer GitHub Actions artifact stages ordinary Generals outputs separately and admits
+Project Tempest only as the governed `ProjectTempestDemo-private.zip`; a runtime gate rejects loose Tempest executables,
+DLLs, symbols, or governed assets before upload. Public distribution
 remains a separate approval and rights-review gate.
 
 Build with a modern Generals preset, for example:
