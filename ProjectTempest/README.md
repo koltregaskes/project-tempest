@@ -315,7 +315,8 @@ It starts from a fresh checkout and runner workspace, downloads `Generals-win32+
 boundary, and passes its single private ZIP to `assert-project-tempest-private-package.ps1`. The verifier checks the
 ZIP layout and bounded sizes, rejects traversal, nested, duplicate, case-colliding, link/reparse, unexpected, and
 forbidden entries, verifies the reviewed contract and provenance, verifies every manifest and `SHA256SUMS.txt` hash,
-binds the executable and Miles DLL to their two-build proof, validates the deterministic acceptance report, then stages
+binds the executable and Miles DLL to hashes emitted independently by the governing two-build job, validates the
+deterministic acceptance report, then stages
 the exact governed files into a previously unused directory. It writes a deterministic receipt outside that directory
 and rehashes the staged tree. It never invokes `ProjectTempestDemo.exe` or any renderer.
 
@@ -330,7 +331,9 @@ $reviewedSourceRevision = $buildSourceRevision
   -InstallDirectory "$env:TEMP\project-tempest-clean-install" `
   -ReceiptPath "$env:TEMP\project-tempest-clean-install-receipt.json" `
   -ExpectedBuildSourceRevision $buildSourceRevision `
-  -ExpectedReviewedSourceRevision $reviewedSourceRevision
+  -ExpectedReviewedSourceRevision $reviewedSourceRevision `
+  -ExpectedExecutableSha256 $executableHash `
+  -ExpectedMilesStubSha256 $milesHash
 ```
 
 The receipt proves package consumption, source binding, containment, and byte integrity without execution. It is not

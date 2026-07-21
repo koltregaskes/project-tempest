@@ -183,6 +183,8 @@ jobs:
         shell: pwsh
         env:
           EXPECTED_REVIEWED_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+          EXPECTED_TEMPEST_EXECUTABLE_SHA256: ${{ needs.build-generals.outputs.tempest_executable_sha256 }}
+          EXPECTED_TEMPEST_MILES_SHA256: ${{ needs.build-generals.outputs.tempest_miles_sha256 }}
         run: |
           $outerArtifact = Join-Path $env:RUNNER_TEMP "project-tempest-outer-artifact"
           ./scripts/assert-project-tempest-artifact-boundary.ps1 `
@@ -205,6 +207,12 @@ jobs:
           if ($reviewedSourceRevision -notmatch '^[0-9a-f]{40}$') {
             throw "Fresh consumer did not receive an exact reviewed source revision."
           }
+          $expectedExecutableSha256 = ([string]$env:EXPECTED_TEMPEST_EXECUTABLE_SHA256).Trim().ToLowerInvariant()
+          $expectedMilesSha256 = ([string]$env:EXPECTED_TEMPEST_MILES_SHA256).Trim().ToLowerInvariant()
+          if ($expectedExecutableSha256 -notmatch '^[0-9a-f]{64}$' -or
+              $expectedMilesSha256 -notmatch '^[0-9a-f]{64}$') {
+            throw "Fresh consumer did not receive the governing job's two-build binary hashes."
+          }
 
           $installDirectory = Join-Path $env:RUNNER_TEMP "project-tempest-clean-install"
           $receiptPath = Join-Path $env:RUNNER_TEMP "project-tempest-clean-install-receipt.json"
@@ -213,7 +221,9 @@ jobs:
             -InstallDirectory $installDirectory `
             -ReceiptPath $receiptPath `
             -ExpectedBuildSourceRevision $buildSourceRevision `
-            -ExpectedReviewedSourceRevision $reviewedSourceRevision
+            -ExpectedReviewedSourceRevision $reviewedSourceRevision `
+            -ExpectedExecutableSha256 $expectedExecutableSha256 `
+            -ExpectedMilesStubSha256 $expectedMilesSha256
 
           $receipt = Get-Content -LiteralPath $receiptPath -Raw | ConvertFrom-Json
           if ([string]$receipt.verification -ne "verified_without_execution" -or

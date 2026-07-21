@@ -25,12 +25,22 @@ on:
         default: false
         type: boolean
         description: "Build extras"
+    outputs:
+      tempest_executable_sha256:
+        description: "Two-build-proven Project Tempest executable SHA-256"
+        value: ${{ jobs.build.outputs.tempest_executable_sha256 }}
+      tempest_miles_sha256:
+        description: "Two-build-proven Project Tempest Miles runtime SHA-256"
+        value: ${{ jobs.build.outputs.tempest_miles_sha256 }}
 
 jobs:
   build:
     name: ${{ inputs.preset }}${{ inputs.tools && '+t' || '' }}${{ inputs.extras && '+e' || '' }}
     runs-on: windows-2022
     timeout-minutes: 30
+    outputs:
+      tempest_executable_sha256: ${{ steps.tempest-package.outputs.tempest_executable_sha256 }}
+      tempest_miles_sha256: ${{ steps.tempest-package.outputs.tempest_miles_sha256 }}
 
     env:
       VCPKG_FILE_CACHE: ${{ github.workspace }}\vcpkg-bincache
@@ -204,6 +214,7 @@ jobs:
 
       - name: Verify Project Tempest headless acceptance and private package
         if: ${{ inputs.game == 'Generals' && inputs.preset == 'win32' }}
+        id: tempest-package
         shell: pwsh
         run: |
           $runtimeDirectory = "build\win32\ProjectTempest\Release"
@@ -316,6 +327,8 @@ jobs:
             throw "Independent Release-build packages are not byte-identical: primary=$primaryHash repeat=$repeatHash."
           }
           Write-Host "PASS: Independent Release-build package reproducibility SHA256=$primaryHash"
+          "tempest_executable_sha256=$primaryExecutableHash" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "tempest_miles_sha256=$primaryMilesHash" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Save vcpkg binary cache
         # Only one job should save to avoid "Unable to reserve cache" conflicts.

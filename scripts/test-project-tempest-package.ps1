@@ -94,6 +94,14 @@ $buildWorkflowPathFilterIndex = $ciWorkflowText.IndexOf("              - '.githu
 $artifactGatePathFilterIndex = $ciWorkflowText.IndexOf("              - 'scripts/assert-project-tempest-artifact-boundary.ps1'", [StringComparison]::Ordinal)
 $privatePackageVerifierPathFilterIndex = $ciWorkflowText.IndexOf("              - 'scripts/assert-project-tempest-private-package.ps1'", [StringComparison]::Ordinal)
 $changesSummaryIndex = $ciWorkflowText.IndexOf("      - name: Changes Summary", [StringComparison]::Ordinal)
+$externalExecutableOutputWrites = [regex]::Matches(
+    $workflowText,
+    '(?m)^\s*"tempest_executable_sha256=\$primaryExecutableHash" \| Out-File -FilePath \$env:GITHUB_OUTPUT\b'
+).Count
+$externalMilesOutputWrites = [regex]::Matches(
+    $workflowText,
+    '(?m)^\s*"tempest_miles_sha256=\$primaryMilesHash" \| Out-File -FilePath \$env:GITHUB_OUTPUT\b'
+).Count
 if ($artifactGatePathFilters -ne 1 -or
     $privatePackageVerifierPathFilters -ne 1 -or
     $workflowSurfacePathFilters -ne 2 -or
@@ -105,7 +113,11 @@ if ($artifactGatePathFilters -ne 1 -or
     $changesSummaryIndex -le $privatePackageVerifierPathFilterIndex -or
     $ciWorkflowText -notmatch '(?s)validate-project-tempest-assets:.+?needs\.detect-changes\.outputs\.tempest == ''true''' -or
     $ciWorkflowText -notmatch '(?s)build-generals:.+?needs\.detect-changes\.outputs\.tempest == ''true''' -or
-    $ciWorkflowText -notmatch '(?s)verify-project-tempest-private-install:.+?needs:.+?build-generals.+?actions/download-artifact@.+?name: Generals-win32\+t\+e.+?assert-project-tempest-private-package\.ps1') {
+    $ciWorkflowText -notmatch '(?s)verify-project-tempest-private-install:.+?needs:.+?build-generals.+?actions/download-artifact@.+?name: Generals-win32\+t\+e.+?EXPECTED_TEMPEST_EXECUTABLE_SHA256: \$\{\{ needs\.build-generals\.outputs\.tempest_executable_sha256 \}\}.+?EXPECTED_TEMPEST_MILES_SHA256: \$\{\{ needs\.build-generals\.outputs\.tempest_miles_sha256 \}\}.+?assert-project-tempest-private-package\.ps1.+?-ExpectedExecutableSha256 \$expectedExecutableSha256.+?-ExpectedMilesStubSha256 \$expectedMilesSha256' -or
+    $workflowText -notmatch '(?m)^\s*tempest_executable_sha256:\s*\$\{\{ steps\.tempest-package\.outputs\.tempest_executable_sha256 \}\}\s*$' -or
+    $workflowText -notmatch '(?m)^\s*tempest_miles_sha256:\s*\$\{\{ steps\.tempest-package\.outputs\.tempest_miles_sha256 \}\}\s*$' -or
+    $externalExecutableOutputWrites -ne 1 -or
+    $externalMilesOutputWrites -ne 1) {
     throw "The shared Project Tempest artifact boundary must route boundary-only changes into GenCI exactly once."
 }
 $packageScriptText = Get-Content -LiteralPath $packageScript -Raw
@@ -251,6 +263,115 @@ function New-MutatedPackageArchive {
     }
 }
 
+function Get-TestBytesSha256 {
+    param(
+        [Parameter(Mandatory = $true)]
+        [byte[]]$Bytes
+    )
+
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($sha.ComputeHash($Bytes))).Replace("-", "").ToLowerInvariant()
+    }
+    finally {
+        $sha.Dispose()
+    }
+}
+
+function New-CoherentlyForgedExecutablePackage {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourcePath,
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationPath,
+        [Parameter(Mandatory = $true)]
+        [byte[]]$ForgedExecutableBytes
+    )
+
+    $prefix = "$($contract.package_directory)/"
+    $executableName = "${prefix}ProjectTempestDemo.exe"
+    $manifestName = "${prefix}package-manifest.json"
+    $sumsName = "${prefix}SHA256SUMS.txt"
+    $utf8 = [Text.UTF8Encoding]::new($false, $true)
+    $source = [IO.Compression.ZipFile]::OpenRead($SourcePath)
+    $destination = $null
+    try {
+        $manifest = $utf8.GetString((Get-ZipEntryBytes -Archive $source -Name $manifestName)) |
+            ConvertFrom-Json
+        $manifestExecutable = @($manifest.files | Where-Object { $_.name -eq "ProjectTempestDemo.exe" })
+        if ($manifestExecutable.Count -ne 1) {
+            throw "Coherent-forgery fixture could not find the manifest executable row."
+        }
+        $forgedExecutableHash = Get-TestBytesSha256 -Bytes $ForgedExecutableBytes
+        $manifestExecutable[0].sha256 = $forgedExecutableHash
+        $manifestExecutable[0].length = $ForgedExecutableBytes.LongLength
+        $manifest.executable_verification.sha256 = $forgedExecutableHash
+        $manifestBytes = $utf8.GetBytes(
+            (($manifest | ConvertTo-Json -Depth 8) -replace "`r`n", "`n") + "`n"
+        )
+        $manifestHash = Get-TestBytesSha256 -Bytes $manifestBytes
+
+        $sumText = $utf8.GetString((Get-ZipEntryBytes -Archive $source -Name $sumsName))
+        $rewrittenSumLines = @(
+            $sumText.TrimEnd("`n") -split "`n" |
+                ForEach-Object {
+                    if ($_ -match '^[0-9a-f]{64}  ProjectTempestDemo\.exe$') {
+                        "$forgedExecutableHash  ProjectTempestDemo.exe"
+                    }
+                    elseif ($_ -match '^[0-9a-f]{64}  package-manifest\.json$') {
+                        "$manifestHash  package-manifest.json"
+                    }
+                    else {
+                        $_
+                    }
+                }
+        )
+        if (@($rewrittenSumLines | Where-Object { $_ -eq "$forgedExecutableHash  ProjectTempestDemo.exe" }).Count -ne 1 -or
+            @($rewrittenSumLines | Where-Object { $_ -eq "$manifestHash  package-manifest.json" }).Count -ne 1) {
+            throw "Coherent-forgery fixture could not rewrite both governed hash records."
+        }
+        $sumBytes = $utf8.GetBytes(($rewrittenSumLines -join "`n") + "`n")
+
+        $destination = [IO.Compression.ZipFile]::Open(
+            $DestinationPath,
+            [IO.Compression.ZipArchiveMode]::Create
+        )
+        foreach ($sourceEntry in $source.Entries) {
+            $destinationEntry = $destination.CreateEntry(
+                $sourceEntry.FullName,
+                [IO.Compression.CompressionLevel]::Optimal
+            )
+            $destinationEntry.LastWriteTime = $sourceEntry.LastWriteTime
+            $destinationEntry.ExternalAttributes = $sourceEntry.ExternalAttributes
+            $bytes = if ($sourceEntry.FullName -eq $executableName) {
+                $ForgedExecutableBytes
+            }
+            elseif ($sourceEntry.FullName -eq $manifestName) {
+                $manifestBytes
+            }
+            elseif ($sourceEntry.FullName -eq $sumsName) {
+                $sumBytes
+            }
+            else {
+                Get-ZipEntryBytes -Archive $source -Name $sourceEntry.FullName
+            }
+            $outputStream = $destinationEntry.Open()
+            try {
+                $outputStream.Write($bytes, 0, $bytes.Length)
+            }
+            finally {
+                $outputStream.Dispose()
+            }
+        }
+    }
+    finally {
+        if ($null -ne $destination) {
+            $destination.Dispose()
+        }
+        $source.Dispose()
+    }
+}
+
 function Assert-PackageVerifierRejects {
     param(
         [Parameter(Mandatory = $true)]
@@ -261,6 +382,10 @@ function Assert-PackageVerifierRejects {
         [string]$MessagePattern,
         [Parameter(Mandatory = $true)]
         [string]$Revision,
+        [Parameter(Mandatory = $true)]
+        [string]$ExecutableSha256,
+        [Parameter(Mandatory = $true)]
+        [string]$MilesSha256,
         [string]$ReviewedRevision = ""
     )
 
@@ -278,6 +403,8 @@ function Assert-PackageVerifierRejects {
             -ReceiptPath $receiptPath `
             -ExpectedBuildSourceRevision $Revision `
             -ExpectedReviewedSourceRevision $ReviewedRevision `
+            -ExpectedExecutableSha256 $ExecutableSha256 `
+            -ExpectedMilesStubSha256 $MilesSha256 `
             -ExpectedDistribution test_fixture `
             -ExpectedSourceTree fixture
     }
@@ -743,6 +870,8 @@ try {
         -ReceiptPath $consumerReceiptA `
         -ExpectedBuildSourceRevision $revision `
         -ExpectedReviewedSourceRevision $revision `
+        -ExpectedExecutableSha256 $fixtureExecutableHash `
+        -ExpectedMilesStubSha256 $fixtureDependencyHash `
         -ExpectedDistribution test_fixture `
         -ExpectedSourceTree fixture
     & $packageVerifier `
@@ -751,6 +880,8 @@ try {
         -ReceiptPath $consumerReceiptB `
         -ExpectedBuildSourceRevision $revision `
         -ExpectedReviewedSourceRevision $revision `
+        -ExpectedExecutableSha256 $fixtureExecutableHash `
+        -ExpectedMilesStubSha256 $fixtureDependencyHash `
         -ExpectedDistribution test_fixture `
         -ExpectedSourceTree fixture
 
@@ -791,7 +922,9 @@ try {
         -PackagePath $traversalArchive `
         -Name "traversal" `
         -MessagePattern "unsafe or nested entry" `
-        -Revision $revision
+        -Revision $revision `
+        -ExecutableSha256 $fixtureExecutableHash `
+        -MilesSha256 $fixtureDependencyHash
 
     $caseCollisionArchive = Join-Path $mutatedRoot "case-collision.zip"
     New-MutatedPackageArchive `
@@ -803,7 +936,9 @@ try {
         -PackagePath $caseCollisionArchive `
         -Name "case-collision" `
         -MessagePattern "duplicate or case-colliding entry" `
-        -Revision $revision
+        -Revision $revision `
+        -ExecutableSha256 $fixtureExecutableHash `
+        -MilesSha256 $fixtureDependencyHash
 
     $linkArchive = Join-Path $mutatedRoot "link-entry.zip"
     $unixLinkAttributes = [BitConverter]::ToInt32(
@@ -820,7 +955,9 @@ try {
         -PackagePath $linkArchive `
         -Name "link-entry" `
         -MessagePattern "link/reparse entry" `
-        -Revision $revision
+        -Revision $revision `
+        -ExecutableSha256 $fixtureExecutableHash `
+        -MilesSha256 $fixtureDependencyHash
 
     $forgedPackageArchive = Join-Path $mutatedRoot "forged-executable.zip"
     New-MutatedPackageArchive `
@@ -832,13 +969,30 @@ try {
         -PackagePath $forgedPackageArchive `
         -Name "forged-executable" `
         -MessagePattern "manifest verification failed" `
-        -Revision $revision
+        -Revision $revision `
+        -ExecutableSha256 $fixtureExecutableHash `
+        -MilesSha256 $fixtureDependencyHash
+
+    $coherentlyForgedArchive = Join-Path $mutatedRoot "coherently-forged-executable.zip"
+    New-CoherentlyForgedExecutablePackage `
+        -SourcePath $firstArchive `
+        -DestinationPath $coherentlyForgedArchive `
+        -ForgedExecutableBytes (New-TestPe32GuiBytes -Marker 0x73)
+    Assert-PackageVerifierRejects `
+        -PackagePath $coherentlyForgedArchive `
+        -Name "coherently-forged-executable" `
+        -MessagePattern "do not match the externally proven two-build hashes" `
+        -Revision $revision `
+        -ExecutableSha256 $fixtureExecutableHash `
+        -MilesSha256 $fixtureDependencyHash
 
     Assert-PackageVerifierRejects `
         -PackagePath $firstArchive `
         -Name "wrong-reviewed-revision" `
         -MessagePattern "not bound to the expected reviewed source" `
         -Revision $revision `
+        -ExecutableSha256 $fixtureExecutableHash `
+        -MilesSha256 $fixtureDependencyHash `
         -ReviewedRevision ("f" * 40)
 
     $existingInstall = Join-Path $sessionRoot "consumer-existing/install"
@@ -853,6 +1007,8 @@ try {
             -ReceiptPath $existingReceipt `
             -ExpectedBuildSourceRevision $revision `
             -ExpectedReviewedSourceRevision $revision `
+            -ExpectedExecutableSha256 $fixtureExecutableHash `
+            -ExpectedMilesStubSha256 $fixtureDependencyHash `
             -ExpectedDistribution test_fixture `
             -ExpectedSourceTree fixture
     }

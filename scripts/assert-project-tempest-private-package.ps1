@@ -17,6 +17,14 @@ param(
     [ValidatePattern('^[0-9a-fA-F]{40}$')]
     [string]$ExpectedReviewedSourceRevision,
 
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9a-fA-F]{64}$')]
+    [string]$ExpectedExecutableSha256,
+
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9a-fA-F]{64}$')]
+    [string]$ExpectedMilesStubSha256,
+
     [ValidateSet("private_internal_demo", "test_fixture")]
     [string]$ExpectedDistribution = "private_internal_demo",
 
@@ -95,6 +103,8 @@ if ($receiptFullPath.StartsWith($installPrefix, [StringComparison]::OrdinalIgnor
 
 $ExpectedBuildSourceRevision = $ExpectedBuildSourceRevision.ToLowerInvariant()
 $ExpectedReviewedSourceRevision = $ExpectedReviewedSourceRevision.ToLowerInvariant()
+$ExpectedExecutableSha256 = $ExpectedExecutableSha256.ToLowerInvariant()
+$ExpectedMilesStubSha256 = $ExpectedMilesStubSha256.ToLowerInvariant()
 
 $strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
 $contract = [IO.File]::ReadAllText($contractPath, $strictUtf8) | ConvertFrom-Json
@@ -386,6 +396,9 @@ if ($executableContract.Count -ne 1 -or $milesContract.Count -ne 1) {
 $executableHash = Get-BytesSha256 -Bytes $entryBytes["ProjectTempestDemo.exe"]
 $milesHash = Get-BytesSha256 -Bytes $entryBytes["mss32.dll"]
 Assert-Pe32X86GuiImage -Bytes $entryBytes["ProjectTempestDemo.exe"] -Name "ProjectTempestDemo.exe"
+if ($executableHash -ne $ExpectedExecutableSha256 -or $milesHash -ne $ExpectedMilesStubSha256) {
+    throw "Project Tempest package binaries do not match the externally proven two-build hashes."
+}
 if ([string]$manifest.executable_verification.name -ne "ProjectTempestDemo.exe" -or
     [string]$manifest.executable_verification.sha256 -ne $executableHash -or
     [string]$manifest.executable_verification.policy -ne [string]$executableContract[0].hash_verification -or
@@ -466,6 +479,7 @@ try {
         asset_provenance_sha256 = $packagedProvenanceHash
         reviewed_contract_canonical_sha256 = $contractHash
         reviewed_provenance_canonical_sha256 = $provenanceHash
+        binary_hash_source = "governing_two_build_job_outputs"
         executable_sha256 = $executableHash
         miles_sha256 = $milesHash
         installed_file_count = $expectedArchiveNames.Count
