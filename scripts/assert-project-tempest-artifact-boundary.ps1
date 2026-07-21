@@ -37,14 +37,28 @@ $governedTempestNames = @(
         ForEach-Object { [string]$_.name } |
         Where-Object { $_ -ne "mss32.dll" }
 )
-$artifactFiles = @(Get-ChildItem -LiteralPath $resolvedArtifactDirectory -File -Force)
-$reparseFiles = @(
-    $artifactFiles |
-        Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 }
-)
-if ($reparseFiles.Count -gt 0) {
-    throw "Project Tempest artifact boundary rejects reparse-point files: $($reparseFiles.Name -join ', ')."
+
+# Walk the exact recursive tree consumed by upload-artifact without following
+# reparse-point directories. Inspect every child before it can be queued.
+$pendingDirectories = [Collections.Generic.Queue[string]]::new()
+$artifactFileList = [Collections.Generic.List[IO.FileInfo]]::new()
+$pendingDirectories.Enqueue($resolvedArtifactDirectory)
+while ($pendingDirectories.Count -gt 0) {
+    $currentDirectory = $pendingDirectories.Dequeue()
+    foreach ($child in @(Get-ChildItem -LiteralPath $currentDirectory -Force)) {
+        if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            $kind = if ($child.PSIsContainer) { "directory" } else { "file" }
+            throw "Project Tempest artifact boundary rejects reparse-point $kind '$($child.FullName)'."
+        }
+        if ($child.PSIsContainer) {
+            $pendingDirectories.Enqueue($child.FullName)
+        }
+        else {
+            $artifactFileList.Add([IO.FileInfo]$child)
+        }
+    }
 }
+$artifactFiles = @($artifactFileList)
 
 $looseTempestPayloads = @(
     $artifactFiles |
@@ -62,6 +76,13 @@ if ($looseTempestPayloads.Count -gt 0) {
 $privatePackages = @(
     $artifactFiles | Where-Object { $_.Name -eq $privatePackageName }
 )
+$nestedPrivatePackages = @(
+    $privatePackages |
+        Where-Object { $_.DirectoryName -ine $resolvedArtifactDirectory }
+)
+if ($nestedPrivatePackages.Count -gt 0) {
+    throw "The governed Project Tempest private ZIP must be staged at the artifact root, not nested: $($nestedPrivatePackages.FullName -join ', ')."
+}
 if ($privatePackages.Count -ne $ExpectedPrivatePackageCount) {
     throw "The uploaded artifact must contain exactly $ExpectedPrivatePackageCount governed Project Tempest private package(s); found $($privatePackages.Count)."
 }

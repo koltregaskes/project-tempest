@@ -73,6 +73,23 @@ if ($milesSourceText -notmatch "(?im)^Pinned commit:\s+$([regex]::Escape([string
 
 $workflowPath = Join-Path $repositoryRoot ".github/workflows/build-toolchain.yml"
 $workflowText = Get-Content -LiteralPath $workflowPath -Raw
+$ciWorkflowPath = Join-Path $repositoryRoot ".github/workflows/ci.yml"
+$ciWorkflowText = Get-Content -LiteralPath $ciWorkflowPath -Raw
+$artifactGatePathFilters = [regex]::Matches(
+    $ciWorkflowText,
+    "(?m)^\s+- 'scripts/assert-project-tempest-artifact-boundary\.ps1'\s*$"
+).Count
+$tempestFilterIndex = $ciWorkflowText.IndexOf("            tempest:", [StringComparison]::Ordinal)
+$artifactGatePathFilterIndex = $ciWorkflowText.IndexOf("              - 'scripts/assert-project-tempest-artifact-boundary.ps1'", [StringComparison]::Ordinal)
+$changesSummaryIndex = $ciWorkflowText.IndexOf("      - name: Changes Summary", [StringComparison]::Ordinal)
+if ($artifactGatePathFilters -ne 1 -or
+    $tempestFilterIndex -lt 0 -or
+    $artifactGatePathFilterIndex -le $tempestFilterIndex -or
+    $changesSummaryIndex -le $artifactGatePathFilterIndex -or
+    $ciWorkflowText -notmatch '(?s)validate-project-tempest-assets:.+?needs\.detect-changes\.outputs\.tempest == ''true''' -or
+    $ciWorkflowText -notmatch '(?s)build-generals:.+?needs\.detect-changes\.outputs\.tempest == ''true''') {
+    throw "The shared Project Tempest artifact boundary must route boundary-only changes into GenCI exactly once."
+}
 $packageScriptText = Get-Content -LiteralPath $packageScript -Raw
 $checkoutParentHistory = [regex]::Matches($workflowText, '(?ms)^\s*- name: Checkout Code\s+uses: actions/checkout@[^\r\n]+\s+with:\s+(?:#[^\r\n]*\s+)*fetch-depth: 2\s*$').Count
 $primaryRuntimePolicyIndex = $packageScriptText.IndexOf('build/win32/ProjectTempest/Release', [StringComparison]::Ordinal)
@@ -170,7 +187,7 @@ function New-ArtifactBoundaryFixture {
         [Parameter(Mandatory = $true)]
         [string]$Name,
         [switch]$IncludePrivatePackage,
-        [string]$LoosePayloadName = ""
+        [string]$LoosePayloadRelativePath = ""
     )
 
     $directory = Join-Path $sessionRoot ("artifact-boundary/" + $Name)
@@ -178,14 +195,27 @@ function New-ArtifactBoundaryFixture {
     foreach ($ordinaryName in @("generalsv.exe", "generalsv.pdb", "mss32.dll")) {
         [IO.File]::WriteAllBytes((Join-Path $directory $ordinaryName), [byte[]](0x47, 0x45, 0x4E))
     }
+    $nestedOrdinaryDirectory = Join-Path $directory "nested/ordinary"
+    New-Item -ItemType Directory -Path $nestedOrdinaryDirectory -Force | Out-Null
+    [IO.File]::WriteAllBytes(
+        (Join-Path $nestedOrdinaryDirectory "generals-helper.pdb"),
+        [byte[]](0x47, 0x45, 0x4E)
+    )
+    [IO.File]::WriteAllBytes(
+        (Join-Path $nestedOrdinaryDirectory "mss32.dll"),
+        [byte[]](0x4D, 0x53, 0x53)
+    )
     if ($IncludePrivatePackage) {
         [IO.File]::WriteAllBytes(
             (Join-Path $directory "ProjectTempestDemo-private.zip"),
             [byte[]](0x50, 0x4B, 0x05, 0x06)
         )
     }
-    if ($LoosePayloadName.Length -gt 0) {
-        [IO.File]::WriteAllBytes((Join-Path $directory $LoosePayloadName), [byte[]](0x50, 0x54))
+    if ($LoosePayloadRelativePath.Length -gt 0) {
+        $loosePayloadPath = Join-Path $directory $LoosePayloadRelativePath
+        $loosePayloadParent = Split-Path -Parent $loosePayloadPath
+        New-Item -ItemType Directory -Path $loosePayloadParent -Force | Out-Null
+        [IO.File]::WriteAllBytes($loosePayloadPath, [byte[]](0x50, 0x54))
     }
     return $directory
 }
@@ -215,24 +245,43 @@ try {
         throw "The shared artifact boundary accepted a private package in a non-governing job."
     }
 
+    $nestedPackageDirectory = New-ArtifactBoundaryFixture -Name "nested-governing-package"
+    $nestedPackagePath = Join-Path $nestedPackageDirectory "nested/package/ProjectTempestDemo-private.zip"
+    New-Item -ItemType Directory -Path (Split-Path -Parent $nestedPackagePath) -Force | Out-Null
+    [IO.File]::WriteAllBytes($nestedPackagePath, [byte[]](0x50, 0x4B, 0x05, 0x06))
+    $caught = $false
+    try {
+        .\scripts\assert-project-tempest-artifact-boundary.ps1 `
+            -ArtifactDirectory $nestedPackageDirectory `
+            -ExpectedPrivatePackageCount 1
+    }
+    catch {
+        $caught = $_.Exception.Message -match "must be staged at the artifact root"
+    }
+    if (-not $caught) {
+        throw "The shared artifact boundary accepted a nested governed private package."
+    }
+
     $looseArtifactFixtures = @(
         "ProjectTempestDemo.exe",
-        "ProjectTempestDemo.pdb",
-        "ProjectTempestDemo.dll",
-        "ProjectTempestDemo-helper.dll",
-        "project_tempest_headless_acceptance.exe",
-        "project_tempest_headless_acceptance.pdb",
-        "project_tempest_runtime.dll",
-        "courier.w3d",
-        "pt_alert.wav",
-        "EA-Tunable-Colorblindness-NOTICE.txt"
+        "nested/demo/ProjectTempestDemo.exe",
+        "nested/demo/ProjectTempestDemo.pdb",
+        "nested/demo/ProjectTempestDemo.dll",
+        "nested/demo/ProjectTempestDemo-helper.dll",
+        "nested/tests/project_tempest_headless_acceptance.exe",
+        "nested/tests/project_tempest_headless_acceptance.pdb",
+        "nested/runtime/project_tempest_runtime.dll",
+        "nested/assets/courier.w3d",
+        "nested/assets/pt_alert.wav",
+        "nested/notices/EA-Tunable-Colorblindness-NOTICE.txt"
     )
     for ($fixtureIndex = 0; $fixtureIndex -lt $looseArtifactFixtures.Count; $fixtureIndex++) {
-        $looseName = $looseArtifactFixtures[$fixtureIndex]
+        $looseRelativePath = $looseArtifactFixtures[$fixtureIndex]
+        $looseName = Split-Path -Leaf $looseRelativePath
         $looseDirectory = New-ArtifactBoundaryFixture `
             -Name ("loose-" + $fixtureIndex) `
             -IncludePrivatePackage `
-            -LoosePayloadName $looseName
+            -LoosePayloadRelativePath $looseRelativePath
         $caught = $false
         try {
             .\scripts\assert-project-tempest-artifact-boundary.ps1 `
@@ -245,6 +294,92 @@ try {
         }
         if (-not $caught) {
             throw "The shared artifact boundary accepted loose payload '$looseName'."
+        }
+    }
+
+    $reparseTargetDirectory = Join-Path $sessionRoot "artifact-boundary/reparse-target-directory"
+    New-Item -ItemType Directory -Path $reparseTargetDirectory -Force | Out-Null
+    [IO.File]::WriteAllBytes(
+        (Join-Path $reparseTargetDirectory "ProjectTempestDemo.exe"),
+        [byte[]](0x50, 0x54)
+    )
+    $reparseDirectoryFixture = New-ArtifactBoundaryFixture -Name "reparse-directory" -IncludePrivatePackage
+    $junctionPath = Join-Path $reparseDirectoryFixture "nested-junction"
+    $reparseDirectoryCreated = $false
+    $reparseDirectoryCreationErrors = [Collections.Generic.List[string]]::new()
+    $reparseDirectoryTypes = if (
+        [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+    ) { @("Junction", "SymbolicLink") } else { @("SymbolicLink") }
+    foreach ($reparseDirectoryType in $reparseDirectoryTypes) {
+        $caught = $false
+        try {
+            New-Item `
+                -ItemType $reparseDirectoryType `
+                -Path $junctionPath `
+                -Target $reparseTargetDirectory `
+                -ErrorAction Stop | Out-Null
+            $reparseDirectoryCreated = $true
+            break
+        }
+        catch {
+            $reparseDirectoryCreationErrors.Add("${reparseDirectoryType}: $($_.Exception.Message)")
+        }
+    }
+    if ($reparseDirectoryCreated) {
+        try {
+            $caught = $false
+            try {
+                .\scripts\assert-project-tempest-artifact-boundary.ps1 `
+                    -ArtifactDirectory $reparseDirectoryFixture `
+                    -ExpectedPrivatePackageCount 1
+            }
+            catch {
+                $caught = $_.Exception.Message -match "reparse-point directory"
+            }
+        }
+        finally {
+            if (Test-Path -LiteralPath $junctionPath) {
+                Remove-Item -LiteralPath $junctionPath -Force
+            }
+        }
+        if (-not $caught) {
+            throw "The shared artifact boundary accepted a nested reparse-point directory."
+        }
+    }
+    else {
+        Write-Host "SKIP: Platform did not permit the reparse-point directory fixture: $($reparseDirectoryCreationErrors -join ' | ')"
+    }
+
+    $reparseFileFixture = New-ArtifactBoundaryFixture -Name "reparse-file" -IncludePrivatePackage
+    $reparseFileTarget = Join-Path $sessionRoot "artifact-boundary/reparse-file-target.bin"
+    [IO.File]::WriteAllBytes($reparseFileTarget, [byte[]](0x50, 0x54))
+    $symbolicLinkPath = Join-Path $reparseFileFixture "ProjectTempestDemo.pdb"
+    $symbolicLinkCreated = $false
+    try {
+        New-Item -ItemType SymbolicLink -Path $symbolicLinkPath -Target $reparseFileTarget -ErrorAction Stop | Out-Null
+        $symbolicLinkCreated = $true
+        $caught = $false
+        try {
+            .\scripts\assert-project-tempest-artifact-boundary.ps1 `
+                -ArtifactDirectory $reparseFileFixture `
+                -ExpectedPrivatePackageCount 1
+        }
+        catch {
+            $caught = $_.Exception.Message -match "reparse-point file"
+        }
+        if (-not $caught) {
+            throw "The shared artifact boundary accepted a nested reparse-point file."
+        }
+    }
+    catch {
+        if ($symbolicLinkCreated -or $_.Exception.Message -match "accepted a nested reparse-point file") {
+            throw
+        }
+        Write-Host "SKIP: Windows did not permit the reparse-point file fixture: $($_.Exception.Message)"
+    }
+    finally {
+        if (Test-Path -LiteralPath $symbolicLinkPath) {
+            Remove-Item -LiteralPath $symbolicLinkPath -Force
         }
     }
 

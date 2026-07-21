@@ -57,6 +57,7 @@ jobs:
               - 'scripts/create-tempest-audio.py'
               - 'scripts/prepare-w3dview-compat.ps1'
               - 'scripts/package-project-tempest-demo.ps1'
+              - 'scripts/assert-project-tempest-artifact-boundary.ps1'
               - 'scripts/test-project-tempest-package.ps1'
               - 'scripts/test-project-tempest-assets.ps1'
               - 'scripts/test-project-tempest-no-gui.ps1'
