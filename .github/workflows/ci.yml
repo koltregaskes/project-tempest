@@ -229,7 +229,7 @@ jobs:
           if ([string]$receipt.verification -ne "verified_without_execution" -or
               [string]$receipt.renderer_execution -ne "not_performed" -or
               $receipt.manual_playthrough_claimed -ne $false -or
-              $receipt.installed_file_count -ne 35) {
+              $receipt.installed_file_count -ne 38) {
             throw "Fresh consumer receipt does not preserve the governed no-execution install state."
           }
           Get-Content -LiteralPath $receiptPath -Raw

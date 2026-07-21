@@ -141,11 +141,12 @@ headless test executable as the simulation. The renderer consumes that controlle
 visible command feedback, a mission/result explanation, adjustable camera/UI/accessibility state, and `+`/`X` plus
 `[F]`/`[C]` colour-independent ownership cues. This proves the compile-time rules/presentation seam; safe manual
 gameplay and multi-resolution evidence remain required before it constitutes the governed skirmish demo. Dedicated
-Chorus Drone, Freegrid Relay, Freegrid Arc Sentry, and Chorus Signal Pylon assets now replace their Courier/procedural
-proxies: each has three authored LOD states, single-pass textured meshes, collision, exact round-trip validation,
-complete internal-development provenance, and a package/load contract. The Relay and Sentry additionally use native
-`HouseColor0`/`HouseColor1`/`HouseColor2` mesh names. Their W3Ds and shared textures are byte-stable across clean
-background regenerations; normal-zoom in-engine readability remains a manual-only non-RDP gate.
+Chorus Drone, Freegrid Relay, Freegrid Arc Sentry, Chorus Signal Pylon, Freegrid Relay Core, Freegrid Fabricator Bay,
+and Chorus Spire assets now replace their Courier/procedural proxies: each has three authored LOD states, single-pass
+textured meshes, collision, exact round-trip validation, complete internal-development provenance, and a package/load
+contract. All four Freegrid structures use native `HouseColor0`/`HouseColor1`/`HouseColor2` mesh names. Their W3Ds and
+shared textures are byte-stable across clean background regenerations; normal-zoom in-engine readability remains a
+manual-only non-RDP gate.
 
 Current interface boundary (2026-07-18): camera speed, UI scale, master/music/effects values, edge scroll, reduced
 motion, reduced flashes, colour-independent cues, and twelve keyboard-or-mouse bindings can be changed in-window.
@@ -173,7 +174,7 @@ movement, range, damage, build-time, salvage, and capacity data. Fabricator rigs
 structures for salvage, while deterministic Machine Nest waves escalate through Skitters, Wardens, and Harrowers.
 Arc Sentries and Signal Pylons now provide deterministic defensive pressure and dedicated runtime art, while targeted
 grid-link scans report contacts and emergency overcharge temporarily boosts Freegrid movement and damage. Dedicated art
-for the remaining expanded roster/structures, manual balance/legibility proof, and the governed manual playtest gates
+for the remaining unit roster and Machine Nest, manual balance/legibility proof, and the governed manual playtest gates
 remain M4/M5 work rather than claimed release-ready content.
 
 ### Golden asset and format decision
@@ -243,7 +244,7 @@ has not been exercised, so the review score is intentionally `null`.
 
 | Need | Primary route | Current verdict and constraint |
 |---|---|---|
-| Source, PRs, CI | GitHub, `gh`, existing Actions workflows | Ready; Codex and CodeRabbit reviews already trigger. Add enforceable PR/check rules without creating a solo-maintainer deadlock. |
+| Source, PRs, CI | GitHub, `gh`, existing Actions workflows | Ready; exact-head CI, Codex review, and local review are required. CodeRabbit is supplementary and time-bounded so an unavailable external service cannot create a solo-maintainer deadlock. |
 | Planning/evidence | Codex goal/plan plus Linear | Ready; goal owns outcome, Linear owns durable issue/evidence state. |
 | Native build | VS Build Tools 2022, bundled CMake/Ninja/MSBuild, vcpkg | Installed; not all tools are on `PATH`. Prove a scripted developer-shell/bootstrap command. |
 | Engine/code | Codex CLI, code-review graph, clang-tidy, tests/replays | Strong for source work; local build and standalone runtime evidence remain unproven. |
@@ -268,7 +269,7 @@ model/version, prompt or brief, generation date, edits, local source path, licen
 - This specification is linked from the repository entry points.
 - A durable Codex goal references this file and the Linear project.
 - Work occurs on `codex/` branches through pull requests.
-- CI, Codex review, CodeRabbit review, and a local review are visible on milestone PRs.
+- CI, Codex review, and a local review are visible on milestone PRs. CodeRabbit evidence is included when the service is available; a recorded rate limit, outage, or unprocessed request is not a hard gate.
 - Main-branch rules require PRs and selected passing checks; required human approval is not enabled until it cannot
   deadlock the sole maintainer.
 
@@ -325,13 +326,20 @@ Every milestone ends in a narrow pull request. Before merge:
 
 1. build and targeted tests pass locally where available;
 2. GitHub Actions completes the applicable matrix;
-3. Codex automated review and CodeRabbit findings are read and resolved or answered;
+3. Codex automated-review findings are read and resolved or answered; CodeRabbit findings are handled the same way when the service returns a written review;
 4. a fresh local review checks correctness, regressions, security, provenance, and scope;
 5. player-visible work includes real launch/play evidence, not only a compile or screenshot of source; and
 6. the Linear milestone/issue receives the PR, commands, results, evidence paths, known risks, and next smallest action.
 
 Do not auto-merge failed, pending, or unreviewed work. Do not weaken tests to make a gate green. Upstream-compatible
 engine fixes should remain separable from Project Tempest identity/content changes.
+
+External review services are advisory and must not halt the goal indefinitely. The enforceable review baseline is an
+exact-head applicable GitHub Actions matrix, a written exact-head Codex review, a fresh local review covering correctness,
+regressions, security, provenance, and scope, plus thread-aware confirmation that no actionable review thread remains.
+CodeRabbit may supplement that baseline. After one no-cost request and either an explicit service refusal/rate limit or a
+15-minute bounded wait without a written review, record the request, timestamps, and service state in Linear and continue.
+Do not repeat requests, enable paid usage, manufacture approval from silence, or ignore any finding that later arrives.
 
 ## Stop, pivot, and blocker policy
 

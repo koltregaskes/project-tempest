@@ -1092,12 +1092,18 @@ void SyncMarkerVisuals()
 const char *BuildingModelName(Tempest::BuildingKind kind)
 {
     switch (kind) {
+        case Tempest::BuildingKind::RelayCore:
+            return "relaycore";
+        case Tempest::BuildingKind::FabricatorBay:
+            return "fabricbay";
         case Tempest::BuildingKind::Dynamo:
             return "relay";
         case Tempest::BuildingKind::ArcSentry:
             return "sentry";
         case Tempest::BuildingKind::SignalPylon:
             return "pylon";
+        case Tempest::BuildingKind::ChorusSpire:
+            return "spire";
         default:
             return nullptr;
     }
@@ -1271,7 +1277,10 @@ bool InitialiseRenderer()
         !g_assetManager->Load_3D_Assets("drone.w3d") ||
         !g_assetManager->Load_3D_Assets("relay.w3d") ||
         !g_assetManager->Load_3D_Assets("sentry.w3d") ||
-        !g_assetManager->Load_3D_Assets("pylon.w3d")) {
+        !g_assetManager->Load_3D_Assets("pylon.w3d") ||
+        !g_assetManager->Load_3D_Assets("relaycore.w3d") ||
+        !g_assetManager->Load_3D_Assets("fabricbay.w3d") ||
+        !g_assetManager->Load_3D_Assets("spire.w3d")) {
         return false;
     }
 

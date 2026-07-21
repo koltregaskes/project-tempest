@@ -273,6 +273,86 @@ def build_pylon():
     return objects, groups
 
 
+def build_relay_core():
+    """Author the low, asymmetric Freegrid command anchor for the player start."""
+    objects, groups, box, cylinder, pipe = make_builder()
+    cylinder("RCBASE", (0.0, 0.0, 0.24), 2.15, 0.48, steel, vertices=28)
+    box("RCDECK", (0.15, 0.0, 0.62), (4.70, 3.45, 0.42), steel, bevel=0.14)
+    box("RCCAB", (-0.55, 0.18, 1.38), (2.40, 2.35, 1.42), white,
+        rotation=(0.0, 0.0, math.radians(-8)), bevel=0.16)
+    box("RCSERVICE", (1.55, 0.55, 1.18), (1.30, 1.60, 1.05), steel,
+        rotation=(0.0, 0.0, math.radians(10)), bevel=0.12)
+    box("RCSHIELD", (-0.62, -1.18, 1.45), (2.15, 0.22, 0.92), white,
+        rotation=(math.radians(7), 0.0, math.radians(-8)), bevel=0.06)
+    for side in (-1.0, 1.0):
+        y = side * 1.50
+        box(f"RCRAIL{int(side)}", (0.10, y, 0.92), (3.80, 0.18, 0.32), steel, bevel=0.04)
+        box(f"RCFOOT{int(side)}", (-1.82, y, 0.31), (0.62, 0.74, 0.28), white, bevel=0.05)
+    box("RCMAST", (0.95, -0.18, 2.28), (0.46, 0.46, 2.70), steel,
+        rotation=(0.0, 0.0, math.radians(45)), bevel=0.07)
+    for index, z in enumerate((1.45, 2.08, 2.70, 3.30)):
+        cylinder(f"RCCOIL{index}", (0.95, -0.18, z), 0.40 - index * 0.035, 0.11, cyan, vertices=18)
+    pipe("RCCABLE0", (-1.55, 0.86, 0.72), (1.05, 1.22, 1.03), 0.075, cyan, vertices=10)
+    pipe("RCCABLE1", (-1.35, -0.82, 0.70), (1.50, -1.05, 1.05), 0.075, cyan, vertices=10)
+    for index, angle in enumerate((-30.0, 75.0, 165.0)):
+        radians = math.radians(angle)
+        start = (0.95, -0.18, 3.18)
+        end = (0.95 + math.cos(radians) * 1.05, -0.18 + math.sin(radians) * 1.05, 3.82)
+        pipe(f"RCARM{index}", start, end, 0.065, steel, vertices=10)
+        cylinder(f"RCLAMP{index}", end, 0.15, 0.20, cyan, vertices=14)
+    return objects, groups
+
+
+def build_fabricator_bay():
+    """Author an open, visibly asymmetric Freegrid workshop and vehicle gantry."""
+    objects, groups, box, cylinder, pipe = make_builder()
+    box("FBPAD", (0.0, 0.0, 0.20), (6.60, 5.20, 0.40), steel, bevel=0.12)
+    box("FBSHOP", (-1.70, 0.60, 1.52), (2.55, 3.35, 2.55), white,
+        rotation=(0.0, 0.0, math.radians(-5)), bevel=0.18)
+    box("FBBACK", (1.35, 1.80, 1.55), (3.05, 0.52, 2.75), steel, bevel=0.10)
+    for index, x in enumerate((-2.55, 0.25, 2.55)):
+        box(f"FBPOST{index}", (x, -1.75, 2.05), (0.38, 0.38, 3.70), steel, bevel=0.07)
+    box("FBGANTRY", (0.0, -1.75, 3.72), (5.55, 0.50, 0.46), steel, bevel=0.08)
+    box("FBCRANE", (1.35, -1.75, 3.25), (0.58, 0.72, 0.72), white, bevel=0.10)
+    pipe("FBHOOK", (1.35, -1.75, 2.95), (1.35, -1.75, 1.28), 0.055, cyan, vertices=10)
+    box("FBBED", (0.75, -0.15, 0.58), (3.70, 2.20, 0.34), white, bevel=0.07)
+    for side in (-1.0, 1.0):
+        y = side * 2.38
+        box(f"FBRAIL{int(side)}", (0.0, y, 0.58), (5.90, 0.22, 0.46), steel, bevel=0.04)
+        cylinder(f"FBLAMP{int(side)}", (2.58, y, 1.08), 0.18, 0.24, cyan, vertices=14)
+    box("FBSIGN", (-1.75, -1.18, 2.25), (1.36, 0.16, 0.58), cyan,
+        rotation=(math.radians(4), 0.0, math.radians(-5)), bevel=0.04)
+    pipe("FBCABLE0", (-2.75, 1.70, 0.62), (0.20, 1.94, 1.26), 0.08, cyan, vertices=10)
+    pipe("FBCABLE1", (-2.62, -0.92, 0.64), (2.28, -0.88, 0.86), 0.08, cyan, vertices=10)
+    return objects, groups
+
+
+def build_chorus_spire():
+    """Author the tall five-fold Chorus victory target and map-scale silhouette."""
+    objects, groups, box, cylinder, pipe = make_builder()
+    cylinder("CSBASE", (0.0, 0.0, 0.28), 2.45, 0.56, steel, vertices=30)
+    cylinder("CSWELL", (0.0, 0.0, 0.78), 1.45, 0.72, magenta, vertices=25)
+    box("CSHEART", (0.0, 0.0, 2.15), (1.18, 1.18, 2.55), steel,
+        rotation=(0.0, 0.0, math.radians(45)), bevel=0.16)
+    for level, z in enumerate((1.20, 1.82, 2.50, 3.18, 3.90, 4.62)):
+        cylinder(f"CSRING{level}", (0.0, 0.0, z), 1.08 - level * 0.09, 0.14, magenta, vertices=25)
+    for index, angle in enumerate((0.0, 72.0, 144.0, 216.0, 288.0)):
+        radians = math.radians(angle)
+        foot = (math.cos(radians) * 2.70, math.sin(radians) * 2.70, 0.15)
+        knee = (math.cos(radians + 0.22) * 1.55, math.sin(radians + 0.22) * 1.55, 2.35)
+        crown = (math.cos(radians + 0.45) * 0.70, math.sin(radians + 0.45) * 0.70, 5.35)
+        pipe(f"CSLEG{index}", foot, knee, 0.16, steel, vertices=12)
+        pipe(f"CSARM{index}", knee, crown, 0.12, steel, vertices=12)
+        box(f"CSFIN{index}", (knee[0], knee[1], 2.65), (0.30, 1.00, 1.55), magenta,
+            rotation=(math.radians(-12), 0.0, radians + 0.22), bevel=0.07)
+        cylinder(f"CSNODE{index}", crown, 0.22, 0.28, cyan, vertices=16)
+    cylinder("CSCROWN", (0.0, 0.0, 5.48), 0.82, 0.40, magenta, vertices=25)
+    pipe("CSBEAM", (0.0, 0.0, 5.42), (0.0, 0.0, 7.85), 0.11, cyan, vertices=14)
+    box("CSAPEX", (0.0, 0.0, 8.00), (0.50, 0.50, 0.50), magenta,
+        rotation=(math.radians(35), math.radians(35), math.radians(45)), bevel=0.06)
+    return objects, groups
+
+
 def join_objects(objects, object_name):
     bpy.ops.object.select_all(action="DESELECT")
     for obj in objects:
@@ -292,13 +372,14 @@ def create_lod(source, collection, name, ratio):
     lod.name = name
     lod.data.name = f"{name}_M"
     collection.objects.link(lod)
-    modifier = lod.modifiers.new("PT_DECIMATE", "DECIMATE")
-    modifier.ratio = ratio
-    modifier.use_collapse_triangulate = True
-    bpy.context.view_layer.objects.active = lod
-    lod.select_set(True)
-    bpy.ops.object.modifier_apply(modifier=modifier.name)
-    lod.select_set(False)
+    if ratio < 0.999:
+        modifier = lod.modifiers.new("PT_DECIMATE", "DECIMATE")
+        modifier.ratio = ratio
+        modifier.use_collapse_triangulate = True
+        bpy.context.view_layer.objects.active = lod
+        lod.select_set(True)
+        bpy.ops.object.modifier_apply(modifier=modifier.name)
+        lod.select_set(False)
     return lod
 
 
@@ -523,6 +604,48 @@ results.append(export_asset(
     (3.2, 3.2, 4.5),
     5.8,
     2.2,
+))
+
+clear_scene()
+relay_core_parts, relay_core_groups = build_relay_core()
+results.append(export_asset(
+    {"slug": "relaycore", "runtime": "relaycore", "source_parts": ("Freegrid", "RelayCore")},
+    relay_core_parts,
+    relay_core_groups,
+    ((steel, "RCBODY", 0.52, 0.26), (white, "RCARMOR", 0.50, 0.24),
+     (cyan, "HouseColor", 0.55, 0.28)),
+    (0.10, 0.0, 1.85),
+    (5.5, 4.2, 3.8),
+    7.2,
+    1.9,
+))
+
+clear_scene()
+fabricator_parts, fabricator_groups = build_fabricator_bay()
+results.append(export_asset(
+    {"slug": "fabricbay", "runtime": "fabricbay", "source_parts": ("Freegrid", "FabricatorBay")},
+    fabricator_parts,
+    fabricator_groups,
+    ((steel, "FBBODY", 0.52, 0.26), (white, "FBARMOR", 0.50, 0.24),
+     (cyan, "HouseColor", 0.55, 0.28)),
+    (0.0, 0.0, 1.95),
+    (6.8, 5.4, 4.1),
+    8.0,
+    2.0,
+))
+
+clear_scene()
+spire_parts, spire_groups = build_chorus_spire()
+results.append(export_asset(
+    {"slug": "spire", "runtime": "spire", "source_parts": ("Chorus", "Spire")},
+    spire_parts,
+    spire_groups,
+    ((steel, "CSBODY", 0.52, 0.26), (magenta, "CSMAG", 1.0, 1.0),
+     (cyan, "CSGLOW", 0.55, 0.28)),
+    (0.0, 0.0, 4.00),
+    (5.8, 5.8, 8.2),
+    10.0,
+    4.0,
 ))
 
 result = {

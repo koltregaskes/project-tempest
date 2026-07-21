@@ -135,6 +135,15 @@ $requiredSubstationAssetIds = @(
     "PT-MODEL-CH-PYLON-001",
     "PT-PREVIEW-CH-PYLON-001",
     "PT-RUNTIME-CH-PYLON-001",
+    "PT-MODEL-FG-RELAYCORE-001",
+    "PT-PREVIEW-FG-RELAYCORE-001",
+    "PT-RUNTIME-FG-RELAYCORE-001",
+    "PT-MODEL-FG-FABRICATOR-001",
+    "PT-PREVIEW-FG-FABRICATOR-001",
+    "PT-RUNTIME-FG-FABRICATOR-001",
+    "PT-MODEL-CH-SPIRE-001",
+    "PT-PREVIEW-CH-SPIRE-001",
+    "PT-RUNTIME-CH-SPIRE-001",
     "PT-TEXTURE-CH-DRONE-001"
 )
 $recordedAssetIds = @($manifest.assets.asset_id)
@@ -161,15 +170,44 @@ foreach ($asset in $newStructureAssets) {
     }
 }
 
+$anchorStructureAssets = @($manifest.assets | Where-Object {
+    $_.asset_id -in @(
+        "PT-MODEL-FG-RELAYCORE-001",
+        "PT-RUNTIME-FG-RELAYCORE-001",
+        "PT-MODEL-FG-FABRICATOR-001",
+        "PT-RUNTIME-FG-FABRICATOR-001",
+        "PT-MODEL-CH-SPIRE-001",
+        "PT-RUNTIME-CH-SPIRE-001"
+    )
+})
+if ($anchorStructureAssets.Count -ne 6) {
+    throw "The three anchor structures require complete model and runtime provenance."
+}
+foreach ($asset in $anchorStructureAssets) {
+    if (
+        $asset.generation_date -ne "2026-07-21" -or
+        $asset.source_script -ne "../scripts/create-substation-kit.py" -or
+        $asset.rights_basis -ne "original procedural modelling from geometric primitives; no EA retail asset or hosted generation input"
+    ) {
+        throw "Original-source provenance is incomplete for $($asset.asset_id)."
+    }
+}
+
 $droneRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-CH-DRONE-001" }
 $relayRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-RELAY-001" }
 $sentryRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-SENTRY-001" }
 $pylonRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-CH-PYLON-001" }
+$relayCoreRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-RELAYCORE-001" }
+$fabricatorRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-FG-FABRICATOR-001" }
+$spireRuntimeAsset = $manifest.assets | Where-Object { $_.asset_id -eq "PT-RUNTIME-CH-SPIRE-001" }
 $expectedKitCollisionFlags = "PHYSICAL,PROJECTILE,VEHICLE,VIS"
 $expectedDroneMeshes = "DRBODY0,DRBODY1,DRBODY2,DRGLOW0,DRGLOW1,DRGLOW2,DRMAG0,DRMAG1,DRMAG2"
 $expectedRelayMeshes = "HouseColor0,HouseColor1,HouseColor2,RLARMOR0,RLARMOR1,RLARMOR2,RLBODY0,RLBODY1,RLBODY2"
 $expectedSentryMeshes = "HouseColor0,HouseColor1,HouseColor2,STARMOR0,STARMOR1,STARMOR2,STBODY0,STBODY1,STBODY2"
 $expectedPylonMeshes = "PYBODY0,PYBODY1,PYBODY2,PYGLOW0,PYGLOW1,PYGLOW2,PYMAG0,PYMAG1,PYMAG2"
+$expectedRelayCoreMeshes = "HouseColor0,HouseColor1,HouseColor2,RCARMOR0,RCARMOR1,RCARMOR2,RCBODY0,RCBODY1,RCBODY2"
+$expectedFabricatorMeshes = "FBARMOR0,FBARMOR1,FBARMOR2,FBBODY0,FBBODY1,FBBODY2,HouseColor0,HouseColor1,HouseColor2"
+$expectedSpireMeshes = "CSBODY0,CSBODY1,CSBODY2,CSGLOW0,CSGLOW1,CSGLOW2,CSMAG0,CSMAG1,CSMAG2"
 
 if (
     $null -eq $droneRuntimeAsset -or
@@ -235,6 +273,59 @@ if (
     $pylonRuntimeAsset.review.automation_policy -ne "manual_only_never_unattended"
 ) {
     throw "The Chorus Signal Pylon three-LOD runtime/provenance contract is incomplete."
+}
+
+$anchorContracts = @(
+    @{
+        Label = "Freegrid Relay Core"
+        Asset = $relayCoreRuntimeAsset
+        Lods = "888,485,263"
+        Meshes = $expectedRelayCoreMeshes
+        Textures = "ptcyan.tga,ptsteel.tga,ptwhite.tga"
+        HouseColor = "HouseColor0,HouseColor1,HouseColor2"
+    },
+    @{
+        Label = "Freegrid Fabricator Bay"
+        Asset = $fabricatorRuntimeAsset
+        Lods = "788,427,228"
+        Meshes = $expectedFabricatorMeshes
+        Textures = "ptcyan.tga,ptsteel.tga,ptwhite.tga"
+        HouseColor = "HouseColor0,HouseColor1,HouseColor2"
+    },
+    @{
+        Label = "Chorus Spire"
+        Asset = $spireRuntimeAsset
+        Lods = "1280,1040,907"
+        Meshes = $expectedSpireMeshes
+        Textures = "ptcyan.tga,ptmagnta.tga,ptsteel.tga"
+        HouseColor = ""
+    }
+)
+foreach ($contract in $anchorContracts) {
+    $asset = $contract.Asset
+    $actualHouseColor = if ($null -ne $asset.validation.PSObject.Properties["house_color_meshes"]) {
+        @($asset.validation.house_color_meshes) -join ","
+    } else {
+        ""
+    }
+    if (
+        $null -eq $asset -or
+        $asset.validation.repeat_export_hash_stable -ne $true -or
+        $asset.validation.roundtrip_import -ne "pass" -or
+        $asset.validation.export_mode -ne "HM" -or
+        $asset.validation.imported_render_mesh_count -ne 9 -or
+        $asset.validation.imported_box_count -ne 1 -or
+        $asset.validation.material_passes_per_render_mesh -ne 1 -or
+        (@($asset.validation.authored_lod_vertex_counts) -join ",") -ne $contract.Lods -or
+        (@($asset.validation.render_meshes) -join ",") -ne $contract.Meshes -or
+        (@($asset.validation.texture_files) -join ",") -ne $contract.Textures -or
+        $actualHouseColor -ne $contract.HouseColor -or
+        (@($asset.validation.collision_flags | Sort-Object) -join ",") -ne $expectedKitCollisionFlags -or
+        $asset.review.automation_policy -ne "manual_only_never_unattended" -or
+        $asset.review.engine_render -ne "pending_manual_only_non_rdp"
+    ) {
+        throw "The $($contract.Label) three-LOD runtime/provenance contract is incomplete."
+    }
 }
 
 $requiredAudioAssetIds = @(
@@ -366,6 +457,9 @@ foreach ($packagedAsset in @(
     "relay.w3d",
     "sentry.w3d",
     "pylon.w3d",
+    "relaycore.w3d",
+    "fabricbay.w3d",
+    "spire.w3d",
     "ptmagnta.tga",
     "pt_music_substation.wav",
     "pt_music_pressure.wav",
@@ -386,20 +480,26 @@ foreach ($requiredLoad in @(
     "Load_3D_Assets(`"drone.w3d`")",
     "Load_3D_Assets(`"relay.w3d`")",
     "Load_3D_Assets(`"sentry.w3d`")",
-    "Load_3D_Assets(`"pylon.w3d`")"
+    "Load_3D_Assets(`"pylon.w3d`")",
+    "Load_3D_Assets(`"relaycore.w3d`")",
+    "Load_3D_Assets(`"fabricbay.w3d`")",
+    "Load_3D_Assets(`"spire.w3d`")"
 )) {
     if ($demoSource -notmatch [regex]::Escape($requiredLoad)) {
         throw "Project Tempest renderer does not declare required asset load '$requiredLoad'."
     }
 }
 if (
+    $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::RelayCore:\s*return\s+"relaycore";' -or
+    $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::FabricatorBay:\s*return\s+"fabricbay";' -or
     $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::Dynamo:\s*return\s+"relay";' -or
     $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::ArcSentry:\s*return\s+"sentry";' -or
     $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::SignalPylon:\s*return\s+"pylon";' -or
+    $demoSource -notmatch '(?s)case\s+Tempest::BuildingKind::ChorusSpire:\s*return\s+"spire";' -or
     $demoSource -notmatch [regex]::Escape('visual.object = g_assetManager->Create_Render_Obj(modelName);') -or
     $demoSource -notmatch [regex]::Escape('isChorus ? "drone"')
 ) {
-    throw "Project Tempest renderer does not map Dynamo/Arc Sentry/Signal Pylon/Chorus simulation entities to dedicated runtime models."
+    throw "Project Tempest renderer does not map all governed structure simulation entities to dedicated runtime models."
 }
 $presentationSource = Get-Content -LiteralPath (
     Join-Path $repositoryRoot "ProjectTempest/Code/TempestPresentationD3D8.cpp") -Raw
