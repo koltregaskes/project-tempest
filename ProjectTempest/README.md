@@ -318,7 +318,8 @@ forbidden entries, verifies the reviewed contract and provenance, verifies every
 binds the executable and Miles DLL to hashes emitted independently by the governing two-build job, validates the
 deterministic acceptance report, then stages
 the exact governed files into a previously unused directory. It writes a deterministic receipt outside that directory
-and rehashes the staged tree. It never invokes `ProjectTempestDemo.exe` or any renderer.
+and rehashes the staged tree. Receipt ordering and JSON encoding are invariant across Windows PowerShell 5.1 and
+PowerShell 7. It never invokes `ProjectTempestDemo.exe` or any renderer.
 
 To rehearse the same consumer contract locally against a package already produced from the current checkout, use new
 install and receipt paths:

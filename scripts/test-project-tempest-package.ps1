@@ -16,6 +16,12 @@ $secondOutput = Join-Path $sessionRoot "second"
 $contractPath = Join-Path $repositoryRoot "ProjectTempest/package-contract.json"
 $packageScript = Join-Path $PSScriptRoot "package-project-tempest-demo.ps1"
 $packageVerifier = Join-Path $PSScriptRoot "assert-project-tempest-private-package.ps1"
+$packageVerifierText = Get-Content -LiteralPath $packageVerifier -Raw
+if ($packageVerifierText -notmatch '\[Array\]::Sort\(\$orderedArchiveNames, \[StringComparer\]::Ordinal\)' -or
+    $packageVerifierText -notmatch '\$receiptJson\s*=\s*\(ConvertTo-DeterministicJson -Value \$receipt\)' -or
+    $packageVerifierText -match '\$receipt\s*\|\s*ConvertTo-Json') {
+    throw "The private-package consumer receipt must use one ordinal order and a PowerShell-version-independent serializer."
+}
 $contract = Get-Content -LiteralPath $contractPath -Raw | ConvertFrom-Json
 $provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json"
 $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json

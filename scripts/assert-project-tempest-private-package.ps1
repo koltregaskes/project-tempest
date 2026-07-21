@@ -180,6 +180,102 @@ function Get-CanonicalTextBytesSha256 {
     return Get-BytesSha256 -Bytes $encoding.GetBytes($canonicalText)
 }
 
+function ConvertTo-DeterministicJsonStringLiteral {
+    param(
+        [AllowNull()]
+        [string]$Value
+    )
+
+    if ($null -eq $Value) {
+        return "null"
+    }
+    $builder = [Text.StringBuilder]::new()
+    [void]$builder.Append('"')
+    foreach ($character in $Value.ToCharArray()) {
+        $code = [int][char]$character
+        switch ($code) {
+            8 { [void]$builder.Append('\b'); continue }
+            9 { [void]$builder.Append('\t'); continue }
+            10 { [void]$builder.Append('\n'); continue }
+            12 { [void]$builder.Append('\f'); continue }
+            13 { [void]$builder.Append('\r'); continue }
+            34 { [void]$builder.Append('\"'); continue }
+            92 { [void]$builder.Append('\\'); continue }
+        }
+        if ($code -lt 0x20 -or $code -gt 0x7E) {
+            [void]$builder.Append(('\u{0:x4}' -f $code))
+        }
+        else {
+            [void]$builder.Append($character)
+        }
+    }
+    [void]$builder.Append('"')
+    return $builder.ToString()
+}
+
+function ConvertTo-DeterministicJson {
+    param(
+        [AllowNull()]
+        [object]$Value,
+        [int]$Depth = 0
+    )
+
+    if ($Depth -gt 12) {
+        throw "Install receipt exceeded the deterministic JSON depth limit."
+    }
+    if ($null -eq $Value) {
+        return "null"
+    }
+    if ($Value -is [string] -or $Value -is [char]) {
+        return ConvertTo-DeterministicJsonStringLiteral -Value ([string]$Value)
+    }
+    if ($Value -is [bool]) {
+        return $(if ($Value) { "true" } else { "false" })
+    }
+    if ($Value -is [byte] -or $Value -is [sbyte] -or
+        $Value -is [int16] -or $Value -is [uint16] -or
+        $Value -is [int32] -or $Value -is [uint32] -or
+        $Value -is [int64] -or $Value -is [uint64] -or
+        $Value -is [decimal] -or $Value -is [single] -or $Value -is [double]) {
+        return ([IFormattable]$Value).ToString($null, [Globalization.CultureInfo]::InvariantCulture)
+    }
+
+    $indent = "  " * $Depth
+    $childIndent = "  " * ($Depth + 1)
+    $properties = [Collections.Generic.List[object]]::new()
+    if ($Value -is [Collections.IDictionary]) {
+        foreach ($key in $Value.Keys) {
+            $properties.Add([ordered]@{ name = [string]$key; value = $Value[$key] })
+        }
+    }
+    elseif ($Value -is [Management.Automation.PSCustomObject]) {
+        foreach ($property in $Value.PSObject.Properties) {
+            $properties.Add([ordered]@{ name = $property.Name; value = $property.Value })
+        }
+    }
+    if ($properties.Count -gt 0) {
+        $records = [Collections.Generic.List[string]]::new()
+        foreach ($property in $properties) {
+            $name = ConvertTo-DeterministicJsonStringLiteral -Value ([string]$property.name)
+            $jsonValue = ConvertTo-DeterministicJson -Value $property.value -Depth ($Depth + 1)
+            $records.Add("$childIndent$name`: $jsonValue")
+        }
+        return "{`n$($records -join ",`n")`n$indent}"
+    }
+    if ($Value -is [Collections.IEnumerable]) {
+        $items = @($Value)
+        if ($items.Count -eq 0) {
+            return "[]"
+        }
+        $records = [Collections.Generic.List[string]]::new()
+        foreach ($item in $items) {
+            $records.Add("$childIndent$(ConvertTo-DeterministicJson -Value $item -Depth ($Depth + 1))")
+        }
+        return "[`n$($records -join ",`n")`n$indent]"
+    }
+    throw "Install receipt contains unsupported JSON value type '$($Value.GetType().FullName)'."
+}
+
 $contractHash = Get-CanonicalTextFileSha256 -Path $contractPath
 $provenanceHash = Get-CanonicalTextFileSha256 -Path $provenancePath
 
@@ -498,7 +594,7 @@ try {
                 }
         )
     }
-    $receiptJson = (($receipt | ConvertTo-Json -Depth 6) -replace "`r`n", "`n") + "`n"
+    $receiptJson = (ConvertTo-DeterministicJson -Value $receipt) + "`n"
     [IO.File]::WriteAllText($receiptFullPath, $receiptJson, $utf8)
 }
 catch {
