@@ -4,7 +4,7 @@ https://github.com/TheSuperHackers/miles-sdk-stub
 Pinned commit: 6e32700d7ba4b4713a03bf1f5ffc3b0ac8d17264
 Licence: GPL-3.0 (see GPL-3.0-LICENSE.md in the private demo package)
 
-Build definition: cmake/miles.cmake target milesstub through the parent MSVC Win32 Release build in both Generals and GeneralsMD contexts.
+Build definition: cmake/miles.cmake target milesstub through the modern parent MSVC Win32 Release build in both Generals and GeneralsMD contexts; legacy VC6 builds are excluded from these modern linker settings.
 Toolchain scope: Microsoft Visual C++ 2022 x86; CI uses GitHub Actions windows-2022 and pinned ilammy/msvc-dev-cmd action commit 0b201ec74fa43914dc39ae48a89fd1d8cb592756.
 Deterministic compiler setting: /Brepro.
 Deterministic linker settings: /Brepro and /PDBALTPATH:%_PDB%.

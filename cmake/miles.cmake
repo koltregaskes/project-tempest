@@ -6,7 +6,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(miles)
 
-if(MSVC AND TARGET milesstub)
+if(MSVC AND MSVC_VERSION GREATER_EQUAL 1900 AND TARGET milesstub)
     # Every parent build context (Generals and GeneralsMD) shares this fetched
     # target and may populate the dependency cache. Make the object and DLL
     # deterministic here, immediately after target creation, rather than in a

@@ -58,6 +58,7 @@ if ($milesSourceText -notmatch "(?im)^Pinned commit:\s+$([regex]::Escape([string
     $milesSourceText -notmatch "(?im)^Binary verification:\s+two isolated integrated Release builds must produce byte-identical mss32\.dll files" -or
     $milesFetchText -notmatch "(?im)^\s*GIT_REPOSITORY\s+$([regex]::Escape([string]$milesDependency[0].source_repository))\s*$" -or
     $milesFetchText -notmatch "(?im)^\s*GIT_TAG\s+$([regex]::Escape([string]$milesDependency[0].source_commit))\s*$" -or
+    $milesFetchText -notmatch '(?m)^if\(MSVC AND MSVC_VERSION GREATER_EQUAL 1900 AND TARGET milesstub\)\s*$' -or
     $milesTargetCreationIndex -lt 0 -or
     $milesCompileOptionsIndex -le $milesTargetCreationIndex -or
     $milesLinkOptionsIndex -le $milesTargetCreationIndex -or
