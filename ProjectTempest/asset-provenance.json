@@ -2,6 +2,28 @@
   "schema_version": 1,
   "project": "Project Tempest",
   "public_distribution_default": "prohibited_until_reviewed",
+  "runtime_dependencies": [
+    {
+      "dependency_id": "PT-RUNTIME-MILES-STUB-001",
+      "name": "mss32.dll",
+      "role": "GPL Miles SDK compatibility runtime for the private Project Tempest demo",
+      "source_repository": "https://github.com/TheSuperHackers/miles-sdk-stub",
+      "source_commit": "6e32700d7ba4b4713a03bf1f5ffc3b0ac8d17264",
+      "licence": "GPL-3.0",
+      "source_record": "ThirdParty/MilesStub/SOURCE.txt",
+      "fetch_definition": "../cmake/miles.cmake",
+      "build_target": "milesstub",
+      "build_context": "parent Project Tempest MSVC Win32 Release build",
+      "toolchain_family": "Microsoft Visual C++ 2022 x86",
+      "ci_runner": "GitHub Actions windows-2022",
+      "ci_environment_action": "ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756",
+      "deterministic_compile_options": ["/Brepro"],
+      "deterministic_link_options": ["/Brepro", "/PDBALTPATH:%_PDB%"],
+      "verification_policy": "two_isolated_integrated_release_builds_byte_identical",
+      "hash_record": "the exact proven DLL SHA-256 is written to package-manifest.json and SHA256SUMS.txt",
+      "distribution": "private_internal_demo_only"
+    }
+  ],
   "assets": [
     {
       "asset_id": "PT-CONCEPT-FG-COURIER-001",
@@ -728,7 +750,7 @@
         "d3d8to9_sha256": "ab6bf7a9a9f4b3e66a75ca038d8d10289c88acbfe8d52c3b5a8a9a259cb26cd5",
         "miles_stub_commit": "6e32700d7ba4b4713a03bf1f5ffc3b0ac8d17264",
         "miles_stub_license": "GPL-3.0",
-        "miles_stub_sha256": "eab12552ef840e7b1b1eaa4a1626d64e3ce3a41c8aec1fd9e4adfa7ee4d645da",
+        "miles_stub_binary_verification": "current packages record and verify the exact integrated-build hash in package-manifest.json",
         "rendered_polygons": 3424,
         "window_title": "courier.w3d - W3D Viewer"
       },

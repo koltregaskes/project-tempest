@@ -16,13 +16,38 @@ $secondOutput = Join-Path $sessionRoot "second"
 $contractPath = Join-Path $repositoryRoot "ProjectTempest/package-contract.json"
 $packageScript = Join-Path $PSScriptRoot "package-project-tempest-demo.ps1"
 $contract = Get-Content -LiteralPath $contractPath -Raw | ConvertFrom-Json
+$provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json"
+$provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
 $milesSourcePath = Join-Path $repositoryRoot "ProjectTempest/ThirdParty/MilesStub/SOURCE.txt"
 $milesSourceText = Get-Content -LiteralPath $milesSourcePath -Raw
 $milesEntry = @($contract.runtime_files | Where-Object { $_.name -eq "mss32.dll" })
-if ($milesEntry.Count -ne 1 -or
-    ([string]$milesEntry[0].sha256).ToLowerInvariant() -notmatch '^[0-9a-f]{64}$' -or
-    $milesSourceText -notmatch "(?im)^Expected mss32\.dll SHA-256:\s+$([regex]::Escape([string]$milesEntry[0].sha256))\s*$") {
-    throw "The package contract and Miles stub source record do not agree on one governed SHA-256."
+$milesDependency = @(
+    $provenance.runtime_dependencies |
+        Where-Object { [string]$_.dependency_id -eq [string]$milesEntry[0].provenance_id }
+)
+if ($contract.schema_version -ne 2 -or
+    $milesEntry.Count -ne 1 -or
+    [string]$milesEntry[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical" -or
+    $milesDependency.Count -ne 1 -or
+    [string]$milesDependency[0].toolchain_family -ne "Microsoft Visual C++ 2022 x86" -or
+    @($milesDependency[0].deterministic_compile_options) -notcontains "/Brepro" -or
+    @($milesDependency[0].deterministic_link_options) -notcontains "/Brepro" -or
+    @($milesDependency[0].deterministic_link_options) -notcontains "/PDBALTPATH:%_PDB%" -or
+    [string]$milesDependency[0].verification_policy -ne [string]$milesEntry[0].hash_verification -or
+    $milesSourceText -notmatch "(?im)^Pinned commit:\s+$([regex]::Escape([string]$milesDependency[0].source_commit))\s*$" -or
+    $milesSourceText -notmatch "(?im)^Binary verification:\s+two isolated integrated Release builds must produce byte-identical mss32\.dll files") {
+    throw "Miles source, build procedure, package contract, and runtime-dependency provenance do not agree."
+}
+
+$workflowPath = Join-Path $repositoryRoot ".github/workflows/build-toolchain.yml"
+$workflowText = Get-Content -LiteralPath $workflowPath -Raw
+$milesComparisonIndex = $workflowText.IndexOf('if ($primaryMilesHash -ne $repeatMilesHash)', [StringComparison]::Ordinal)
+$firstPackageIndex = $workflowText.IndexOf('./scripts/package-project-tempest-demo.ps1', [StringComparison]::Ordinal)
+$expectedHashArguments = [regex]::Matches($workflowText, '(?m)^\s+-ExpectedMilesStubSha256 \$primaryMilesHash\s*$').Count
+if ($milesComparisonIndex -lt 0 -or
+    $firstPackageIndex -le $milesComparisonIndex -or
+    $expectedHashArguments -ne 2) {
+    throw "CI must compare two integrated Miles DLL hashes before both package invocations consume the proven hash."
 }
 
 function Get-ZipEntryBytes {
@@ -90,20 +115,38 @@ try {
     $revision = "0123456789abcdef0123456789abcdef01234567"
     $epoch = 1760000000
     $fixtureDependencyHash = (Get-FileHash -LiteralPath (Join-Path $runtimeDirectory "mss32.dll") -Algorithm SHA256).Hash
+
+    $missingHashOutput = Join-Path $sessionRoot "missing-dependency-hash"
+    $caught = $false
+    try {
+        & $packageScript `
+            -RuntimeDirectory $runtimeDirectory `
+            -OutputDirectory $missingHashOutput `
+            -SourceRevision $revision `
+            -SourceDateEpoch $epoch `
+            -TestFixture
+    }
+    catch {
+        $caught = $_.Exception.Message -match "ExpectedMilesStubSha256 is required"
+    }
+    if (-not $caught -or (Test-Path -LiteralPath $missingHashOutput)) {
+        throw "The package gate allowed a caller to bypass independent Miles hash verification."
+    }
+
     & $packageScript `
         -RuntimeDirectory $runtimeDirectory `
         -OutputDirectory $firstOutput `
         -SourceRevision $revision `
         -SourceDateEpoch $epoch `
         -TestFixture `
-        -TestFixtureRuntimeDependencySha256 $fixtureDependencyHash
+        -ExpectedMilesStubSha256 $fixtureDependencyHash
     & $packageScript `
         -RuntimeDirectory $runtimeDirectory `
         -OutputDirectory $secondOutput `
         -SourceRevision $revision `
         -SourceDateEpoch $epoch `
         -TestFixture `
-        -TestFixtureRuntimeDependencySha256 $fixtureDependencyHash
+        -ExpectedMilesStubSha256 $fixtureDependencyHash
 
     $firstArchive = Join-Path $firstOutput ([string]$contract.archive_name)
     $secondArchive = Join-Path $secondOutput ([string]$contract.archive_name)
@@ -143,9 +186,20 @@ try {
             $manifest.source_tree -ne "fixture" -or
             $manifest.package_contract_sha256 -ne (Get-FileHash -LiteralPath $contractPath -Algorithm SHA256).Hash.ToLowerInvariant() -or
             $manifest.asset_provenance_sha256 -ne (Get-FileHash -LiteralPath (Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json") -Algorithm SHA256).Hash.ToLowerInvariant() -or
+            $manifest.runtime_dependency_verification.name -ne "mss32.dll" -or
+            $manifest.runtime_dependency_verification.sha256 -ne $fixtureDependencyHash.ToLowerInvariant() -or
+            $manifest.runtime_dependency_verification.provenance_id -ne [string]$milesEntry[0].provenance_id -or
+            $manifest.runtime_dependency_verification.policy -ne [string]$milesEntry[0].hash_verification -or
             $manifest.renderer_execution -ne "not_performed" -or
             $manifest.manual_playthrough_claimed -ne $false) {
             throw "Private package manifest does not preserve the governed source/evidence state."
+        }
+
+        $manifestMiles = @($manifest.files | Where-Object { $_.name -eq "mss32.dll" })
+        if ($manifestMiles.Count -ne 1 -or
+            $manifestMiles[0].sha256 -ne $fixtureDependencyHash.ToLowerInvariant() -or
+            $manifestMiles[0].provenance_asset_id -ne [string]$milesEntry[0].provenance_id) {
+            throw "Private package manifest does not bind the exact proven Miles hash to its source provenance."
         }
 
         $sha = [Security.Cryptography.SHA256]::Create()
@@ -177,7 +231,7 @@ try {
             -SourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
-            -TestFixtureRuntimeDependencySha256 $fixtureDependencyHash
+            -ExpectedMilesStubSha256 $fixtureDependencyHash
     }
     catch {
         $caught = $_.Exception.Message -match "forbidden"
@@ -196,10 +250,10 @@ try {
             -SourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
-            -TestFixtureRuntimeDependencySha256 ("0" * 64)
+            -ExpectedMilesStubSha256 ("0" * 64)
     }
     catch {
-        $caught = $_.Exception.Message -match "governed source build"
+        $caught = $_.Exception.Message -match "independently proven integrated-build hash"
     }
     if (-not $caught -or (Test-Path -LiteralPath $dependencyMismatchOutput)) {
         throw "The package gate did not reject a runtime dependency hash mismatch before staging output."
@@ -216,7 +270,7 @@ try {
             -SourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
-            -TestFixtureRuntimeDependencySha256 $fixtureDependencyHash
+            -ExpectedMilesStubSha256 $fixtureDependencyHash
     }
     catch {
         $caught = $_.Exception.Message -match "not a PE image"
@@ -243,7 +297,7 @@ try {
             -SourceRevision $revision `
             -SourceDateEpoch $epoch `
             -TestFixture `
-            -TestFixtureRuntimeDependencySha256 $fixtureDependencyHash
+            -ExpectedMilesStubSha256 $fixtureDependencyHash
     }
     catch {
         $caught = $_.Exception.Message -match "does not prove three deterministic"

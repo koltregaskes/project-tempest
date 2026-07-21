@@ -12,9 +12,9 @@ param(
 
     [long]$SourceDateEpoch = 0,
 
-    [switch]$TestFixture,
+    [string]$ExpectedMilesStubSha256 = "",
 
-    [string]$TestFixtureRuntimeDependencySha256 = ""
+    [switch]$TestFixture
 )
 
 Set-StrictMode -Version Latest
@@ -38,6 +38,11 @@ if ($ExecutableName -notmatch '^ProjectTempestDemo\.exe$') {
     throw "Only the governed release executable name ProjectTempestDemo.exe can be packaged."
 }
 
+if ($ExpectedMilesStubSha256 -notmatch '^[0-9a-fA-F]{64}$') {
+    throw "ExpectedMilesStubSha256 is required and must be the SHA-256 proven by two byte-identical integrated Release builds."
+}
+$ExpectedMilesStubSha256 = $ExpectedMilesStubSha256.ToLowerInvariant()
+
 $sourceTreeState = "clean"
 if ($TestFixture) {
     $fixturePrefix = [IO.Path]::GetFullPath((Join-Path $buildRoot "package-contract-test")).TrimEnd(
@@ -49,17 +54,12 @@ if ($TestFixture) {
         -not $resolvedOutputDirectory.StartsWith($fixturePrefix, [StringComparison]::OrdinalIgnoreCase)) {
         throw "TestFixture is restricted to inputs and outputs under '$fixturePrefix'."
     }
-    if ($SourceRevision -notmatch '^[0-9a-fA-F]{40}$' -or
-        $SourceDateEpoch -eq 0 -or
-        $TestFixtureRuntimeDependencySha256 -notmatch '^[0-9a-fA-F]{64}$') {
-        throw "TestFixture requires an explicit SourceRevision, SourceDateEpoch, and runtime-dependency SHA-256."
+    if ($SourceRevision -notmatch '^[0-9a-fA-F]{40}$' -or $SourceDateEpoch -eq 0) {
+        throw "TestFixture requires an explicit SourceRevision and SourceDateEpoch."
     }
     $sourceTreeState = "fixture"
 }
 else {
-    if ($TestFixtureRuntimeDependencySha256) {
-        throw "TestFixtureRuntimeDependencySha256 is valid only with TestFixture."
-    }
     $headRevision = (git -C $repositoryRoot rev-parse HEAD).Trim()
     if ($LASTEXITCODE -ne 0 -or $headRevision -notmatch '^[0-9a-fA-F]{40}$') {
         throw "Could not determine the repository HEAD revision from Git."
@@ -98,7 +98,7 @@ $packageTimestamp = [DateTimeOffset]::FromUnixTimeSeconds($SourceDateEpoch)
 
 $contractPath = Join-Path $repositoryRoot "ProjectTempest/package-contract.json"
 $contract = Get-Content -LiteralPath $contractPath -Raw | ConvertFrom-Json
-if ($contract.schema_version -ne 1) {
+if ($contract.schema_version -ne 2) {
     throw "Unsupported Project Tempest package contract schema '$($contract.schema_version)'."
 }
 $contractHash = (Get-FileHash -LiteralPath $contractPath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -110,21 +110,26 @@ $milesEntries = @($contract.runtime_files | Where-Object { $_.name -eq "mss32.dl
 $milesSourcePath = Join-Path $repositoryRoot "ProjectTempest/ThirdParty/MilesStub/SOURCE.txt"
 $milesSourceText = Get-Content -LiteralPath $milesSourcePath -Raw
 if ($milesEntries.Count -ne 1 -or
-    ([string]$milesEntries[0].sha256).ToLowerInvariant() -notmatch '^[0-9a-f]{64}$' -or
-    $milesSourceText -notmatch "(?im)^Expected mss32\.dll SHA-256:\s+$([regex]::Escape([string]$milesEntries[0].sha256))\s*$") {
-    throw "The package contract and Miles stub source record do not agree on one governed SHA-256."
+    [string]$milesEntries[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical" -or
+    [string]$milesEntries[0].provenance_id -notmatch '^PT-[A-Z0-9-]+$') {
+    throw "The package contract does not require integrated two-build verification for one governed Miles stub."
 }
-$provenanceMilesHashes = @(
-    $provenance.assets |
-        Where-Object {
-            $_.PSObject.Properties.Name -contains "validation" -and
-            $null -ne $_.validation -and
-            $_.validation.PSObject.Properties.Name -contains "miles_stub_sha256"
-        } |
-        ForEach-Object { ([string]$_.validation.miles_stub_sha256).ToLowerInvariant() }
+$milesDependencies = @(
+    $provenance.runtime_dependencies |
+        Where-Object { [string]$_.dependency_id -eq [string]$milesEntries[0].provenance_id }
 )
-if (([string]$milesEntries[0].sha256).ToLowerInvariant() -notin $provenanceMilesHashes) {
-    throw "The governed Miles stub SHA-256 is not anchored in asset provenance."
+if ($milesDependencies.Count -ne 1 -or
+    [string]$milesDependencies[0].name -ne "mss32.dll" -or
+    [string]$milesDependencies[0].source_commit -notmatch '^[0-9a-f]{40}$' -or
+    [string]$milesDependencies[0].toolchain_family -ne "Microsoft Visual C++ 2022 x86" -or
+    @($milesDependencies[0].deterministic_compile_options) -notcontains "/Brepro" -or
+    @($milesDependencies[0].deterministic_link_options) -notcontains "/Brepro" -or
+    @($milesDependencies[0].deterministic_link_options) -notcontains "/PDBALTPATH:%_PDB%" -or
+    [string]$milesDependencies[0].verification_policy -ne [string]$milesEntries[0].hash_verification -or
+    $milesSourceText -notmatch "(?im)^Pinned commit:\s+$([regex]::Escape([string]$milesDependencies[0].source_commit))\s*$" -or
+    $milesSourceText -notmatch "(?im)^Toolchain scope:\s+Microsoft Visual C\+\+ 2022 x86;" -or
+    $milesSourceText -notmatch "(?im)^Binary verification:\s+two isolated integrated Release builds must produce byte-identical mss32\.dll files") {
+    throw "Miles source, build procedure, package contract, and runtime-dependency provenance do not agree."
 }
 
 foreach ($pattern in $contract.forbidden_patterns) {
@@ -153,18 +158,9 @@ foreach ($entry in $contract.runtime_files) {
         }
     }
     if ($entry.kind -eq "runtime_dependency") {
-        $expectedHash = if ($TestFixture) {
-            $TestFixtureRuntimeDependencySha256.ToLowerInvariant()
-        }
-        else {
-            ([string]$entry.sha256).ToLowerInvariant()
-        }
-        if ($expectedHash -notmatch '^[0-9a-f]{64}$') {
-            throw "Runtime dependency '$runtimeName' has no valid governed SHA-256 in the package contract."
-        }
         $runtimeHash = (Get-FileHash -LiteralPath $runtimePath -Algorithm SHA256).Hash.ToLowerInvariant()
-        if ($runtimeHash -ne $expectedHash) {
-            throw "Runtime dependency '$runtimeName' does not match the governed source build: actual=$runtimeHash expected=$expectedHash."
+        if ($runtimeHash -ne $ExpectedMilesStubSha256) {
+            throw "Runtime dependency '$runtimeName' does not match the independently proven integrated-build hash: actual=$runtimeHash expected=$ExpectedMilesStubSha256."
         }
     }
     if ($entry.kind -eq "headless_evidence") {
@@ -277,6 +273,9 @@ foreach ($entry in $contract.runtime_files) {
         }
         $provenanceAssetId = [string]$asset.asset_id
     }
+    elseif ($entry.kind -eq "runtime_dependency") {
+        $provenanceAssetId = [string]$entry.provenance_id
+    }
     Add-PackageFile -SourcePath $runtimePath -PackageName ([string]$entry.name) -Kind ([string]$entry.kind) `
         -ProvenanceAssetId $provenanceAssetId
 }
@@ -299,6 +298,12 @@ $manifest = [ordered]@{
     source_tree = $sourceTreeState
     package_contract_sha256 = $contractHash
     asset_provenance_sha256 = $provenanceHash
+    runtime_dependency_verification = [ordered]@{
+        name = "mss32.dll"
+        sha256 = $ExpectedMilesStubSha256
+        provenance_id = [string]$milesEntries[0].provenance_id
+        policy = [string]$milesEntries[0].hash_verification
+    }
     renderer_execution = "not_performed"
     manual_playthrough_claimed = $false
     files = $orderedManifestFiles

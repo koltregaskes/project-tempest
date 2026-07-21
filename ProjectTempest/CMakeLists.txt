@@ -22,6 +22,12 @@ if(MSVC)
         "$<$<CONFIG:Release>:/PDBALTPATH:%_PDB%>"
     )
     if(TARGET milesstub)
+        # Make the fetched C object deterministic before CI compares two clean
+        # integrated parent builds; the target-level linker options below then
+        # make the final DLL deterministic as well.
+        target_compile_options(milesstub PRIVATE
+            "$<$<CONFIG:Release>:/Brepro>"
+        )
         target_link_options(milesstub PRIVATE
             "$<$<CONFIG:Release>:/Brepro>"
             "$<$<CONFIG:Release>:/PDBALTPATH:%_PDB%>"

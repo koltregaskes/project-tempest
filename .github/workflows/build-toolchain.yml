@@ -191,7 +191,6 @@ jobs:
           if ($null -eq $milesStub) {
             throw "The GPL Miles stub was not produced by the win32 Release build."
           }
-          Copy-Item -LiteralPath $milesStub.FullName -Destination $runtimeDirectory -Force
 
           # run-vcpkg materialises its pinned dependency checkout inside the workspace.
           # Keep the production packager's dirty-tree gate strict: reject every other
@@ -208,11 +207,6 @@ jobs:
           if ($sourceStatus -contains "?? vcpkg-bincache/") {
             Add-Content -LiteralPath ".git/info/exclude" -Value "/vcpkg-bincache/"
           }
-
-          $primaryPackage = "build\win32\ProjectTempest\private-package"
-          ./scripts/package-project-tempest-demo.ps1 `
-            -RuntimeDirectory $runtimeDirectory `
-            -OutputDirectory $primaryPackage
 
           $repeatBuild = "build\win32-tempest-repro"
           $repeatBuildFlags = @(
@@ -248,12 +242,28 @@ jobs:
           if ($null -eq $repeatMilesStub) {
             throw "The GPL Miles stub was not produced by the isolated win32 Release build."
           }
+
+          $primaryMilesHash = (Get-FileHash -LiteralPath $milesStub.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          $repeatMilesHash = (Get-FileHash -LiteralPath $repeatMilesStub.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($primaryMilesHash -ne $repeatMilesHash) {
+            throw "Integrated Release-build Miles stubs are not byte-identical: primary=$primaryMilesHash repeat=$repeatMilesHash."
+          }
+          Write-Host "PASS: Integrated Release-build Miles reproducibility SHA256=$primaryMilesHash"
+
+          Copy-Item -LiteralPath $milesStub.FullName -Destination $runtimeDirectory -Force
           Copy-Item -LiteralPath $repeatMilesStub.FullName -Destination $repeatRuntimeDirectory -Force
+
+          $primaryPackage = "build\win32\ProjectTempest\private-package"
+          ./scripts/package-project-tempest-demo.ps1 `
+            -RuntimeDirectory $runtimeDirectory `
+            -OutputDirectory $primaryPackage `
+            -ExpectedMilesStubSha256 $primaryMilesHash
 
           $repeatPackage = "$repeatBuild\ProjectTempest\private-package"
           ./scripts/package-project-tempest-demo.ps1 `
             -RuntimeDirectory $repeatRuntimeDirectory `
-            -OutputDirectory $repeatPackage
+            -OutputDirectory $repeatPackage `
+            -ExpectedMilesStubSha256 $primaryMilesHash
 
           $primaryArchive = Join-Path $primaryPackage "ProjectTempestDemo-private.zip"
           $repeatArchive = Join-Path $repeatPackage "ProjectTempestDemo-private.zip"

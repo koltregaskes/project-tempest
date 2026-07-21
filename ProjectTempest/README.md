@@ -219,28 +219,58 @@ manual audible-quality proof, and manual runtime proof of persistence/remapping 
 
 ## Private reproducible package
 
-After a Release build, stage the console-only acceptance report and the pinned GPL Miles stub beside the executable,
-then create the governed private package without launching the demo:
+Build the Release target twice in isolated parent-build trees, compare the console-only acceptance reports and the
+actual fetched GPL Miles DLLs, then pass the proven DLL hash to both packager invocations. This does not launch the demo:
 
 ```powershell
-$runtimeDirectory = ".\build\win32\ProjectTempest\Release"
+$primaryBuild = ".\build\win32"
+$repeatBuild = ".\build\win32-tempest-repro"
+$runtimeDirectory = "$primaryBuild\ProjectTempest\Release"
+$repeatRuntimeDirectory = "$repeatBuild\ProjectTempest\Release"
+
+cmake --preset win32
+cmake --build --preset win32 --target project_tempest_demo project_tempest_headless_acceptance
+cmake --preset win32 -B $repeatBuild
+cmake --build $repeatBuild --config Release --target project_tempest_demo project_tempest_headless_acceptance
 
 & "$runtimeDirectory\project_tempest_headless_acceptance.exe" `
   --output "$runtimeDirectory\headless-acceptance.json"
 if ($LASTEXITCODE -ne 0) {
   throw "Project Tempest headless acceptance failed with exit code $LASTEXITCODE."
 }
+& "$repeatRuntimeDirectory\project_tempest_headless_acceptance.exe" `
+  --output "$repeatRuntimeDirectory\headless-acceptance.json"
+if ($LASTEXITCODE -ne 0) {
+  throw "Repeated Project Tempest headless acceptance failed with exit code $LASTEXITCODE."
+}
+if ((Get-FileHash "$runtimeDirectory\headless-acceptance.json").Hash -ne
+    (Get-FileHash "$repeatRuntimeDirectory\headless-acceptance.json").Hash) {
+  throw "The two integrated acceptance reports are not byte-identical."
+}
 
-$milesStub = Get-ChildItem -Path ".\build\win32\_deps\miles-build" `
+$milesStub = Get-ChildItem -Path "$primaryBuild\_deps\miles-build" `
   -Recurse -Filter "mss32.dll" -File | Select-Object -First 1
-if ($null -eq $milesStub) {
-  throw "The pinned GPL Miles stub was not produced by the Release build."
+$repeatMilesStub = Get-ChildItem -Path "$repeatBuild\_deps\miles-build" `
+  -Recurse -Filter "mss32.dll" -File | Select-Object -First 1
+if ($null -eq $milesStub -or $null -eq $repeatMilesStub) {
+  throw "A pinned GPL Miles stub was not produced by both integrated Release builds."
+}
+$milesHash = (Get-FileHash $milesStub.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+$repeatMilesHash = (Get-FileHash $repeatMilesStub.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($milesHash -ne $repeatMilesHash) {
+  throw "The two integrated Miles DLLs are not byte-identical."
 }
 Copy-Item -LiteralPath $milesStub.FullName -Destination $runtimeDirectory -Force
+Copy-Item -LiteralPath $repeatMilesStub.FullName -Destination $repeatRuntimeDirectory -Force
 
 .\scripts\package-project-tempest-demo.ps1 `
   -RuntimeDirectory $runtimeDirectory `
-  -OutputDirectory .\build\win32\ProjectTempest\private-package
+  -OutputDirectory "$primaryBuild\ProjectTempest\private-package" `
+  -ExpectedMilesStubSha256 $milesHash
+.\scripts\package-project-tempest-demo.ps1 `
+  -RuntimeDirectory $repeatRuntimeDirectory `
+  -OutputDirectory "$repeatBuild\ProjectTempest\private-package" `
+  -ExpectedMilesStubSha256 $milesHash
 ```
 
 The packager stages only the executable, GPL Miles stub, governed original runtime assets, provenance, licences,
@@ -248,11 +278,13 @@ notices, the deterministic headless-acceptance report, and the private-demo read
 It rejects retail BIG/GIB archives, replays,
 EA game executables, WorldBuilder, and W3DView before staging; validates every asset hash against provenance; writes a
 machine-readable manifest and `SHA256SUMS.txt`; fixes all ZIP timestamps to the source commit; and produces a stable
-`ProjectTempestDemo-private.zip`. It also rejects a dirty source tree or a Miles stub whose hash does not match the
-pinned GPL source build. `test-project-tempest-package.ps1` proves byte-identical repeated packaging and manifest
-verification with an inert fixture; the Windows Release CI builds in two isolated build trees, compares the headless
-acceptance reports, and requires identical real-build ZIP hashes. Public distribution remains a separate approval and
-rights-review gate.
+`ProjectTempestDemo-private.zip`. It also rejects a dirty source tree, a missing caller-supplied Miles proof hash, or a
+DLL that does not match that hash. The pinned source commit and deterministic build procedure live in provenance; the
+compiler-context-dependent DLL hash is recorded in each package manifest rather than hardcoded as a portable source
+identity. `test-project-tempest-package.ps1` proves byte-identical repeated packaging, manifest verification, and
+missing/wrong dependency-hash rejection with an inert fixture. Windows Release CI compares two isolated integrated
+Miles DLLs before packaging, then requires identical acceptance reports and real-build ZIP hashes. Public distribution
+remains a separate approval and rights-review gate.
 
 Build with a modern Generals preset, for example:
 

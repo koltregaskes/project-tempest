@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "package_directory": "ProjectTempestDemo-private",
   "archive_name": "ProjectTempestDemo-private.zip",
   "runtime_files": [
@@ -7,7 +7,8 @@
     {
       "name": "mss32.dll",
       "kind": "runtime_dependency",
-      "sha256": "eab12552ef840e7b1b1eaa4a1626d64e3ce3a41c8aec1fd9e4adfa7ee4d645da"
+      "provenance_id": "PT-RUNTIME-MILES-STUB-001",
+      "hash_verification": "two_isolated_integrated_release_builds_byte_identical"
     },
     {
       "name": "headless-acceptance.json",
