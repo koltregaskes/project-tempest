@@ -123,7 +123,10 @@ if ($artifactGatePathFilters -ne 1 -or
     $workflowText -notmatch '(?m)^\s*tempest_executable_sha256:\s*\$\{\{ steps\.tempest-package\.outputs\.tempest_executable_sha256 \}\}\s*$' -or
     $workflowText -notmatch '(?m)^\s*tempest_miles_sha256:\s*\$\{\{ steps\.tempest-package\.outputs\.tempest_miles_sha256 \}\}\s*$' -or
     $externalExecutableOutputWrites -ne 1 -or
-    $externalMilesOutputWrites -ne 1) {
+    $externalMilesOutputWrites -ne 1 -or
+    $ciWorkflowText -notmatch '(?m)^\s*\$expectedInstalledFileCount = @\(\$contract\.runtime_files\)\.Count \+ @\(\$contract\.repository_files\)\.Count \+ 2\s*$' -or
+    $ciWorkflowText -notmatch '(?m)^\s*\$receipt\.installed_file_count -ne \$expectedInstalledFileCount\) \{\s*$' -or
+    $ciWorkflowText -match '(?m)^\s*\$receipt\.installed_file_count -ne \d+') {
     throw "The shared Project Tempest artifact boundary must route boundary-only changes into GenCI exactly once."
 }
 $packageScriptText = Get-Content -LiteralPath $packageScript -Raw
