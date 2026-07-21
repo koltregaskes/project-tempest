@@ -51,11 +51,19 @@ if (-not $milesSourcePath.StartsWith($repositoryPrefix, [StringComparison]::Ordi
 }
 $milesSourceText = Get-Content -LiteralPath $milesSourcePath -Raw
 $milesFetchText = Get-Content -LiteralPath $milesFetchPath -Raw
+$milesTargetCreationIndex = $milesFetchText.IndexOf("FetchContent_MakeAvailable(miles)", [StringComparison]::Ordinal)
+$milesCompileOptionsIndex = $milesFetchText.IndexOf("target_compile_options(milesstub", [StringComparison]::Ordinal)
+$milesLinkOptionsIndex = $milesFetchText.IndexOf("target_link_options(milesstub", [StringComparison]::Ordinal)
 if ($milesSourceText -notmatch "(?im)^Pinned commit:\s+$([regex]::Escape([string]$milesDependency[0].source_commit))\s*$" -or
     $milesSourceText -notmatch "(?im)^Binary verification:\s+two isolated integrated Release builds must produce byte-identical mss32\.dll files" -or
     $milesFetchText -notmatch "(?im)^\s*GIT_REPOSITORY\s+$([regex]::Escape([string]$milesDependency[0].source_repository))\s*$" -or
-    $milesFetchText -notmatch "(?im)^\s*GIT_TAG\s+$([regex]::Escape([string]$milesDependency[0].source_commit))\s*$") {
-    throw "Miles provenance paths are not authoritative for the fetched source."
+    $milesFetchText -notmatch "(?im)^\s*GIT_TAG\s+$([regex]::Escape([string]$milesDependency[0].source_commit))\s*$" -or
+    $milesTargetCreationIndex -lt 0 -or
+    $milesCompileOptionsIndex -le $milesTargetCreationIndex -or
+    $milesLinkOptionsIndex -le $milesTargetCreationIndex -or
+    $milesFetchText -notmatch '(?s)target_compile_options\(milesstub.+?\$<\$<CONFIG:Release>:/Brepro>' -or
+    $milesFetchText -notmatch '(?s)target_link_options\(milesstub.+?\$<\$<CONFIG:Release>:/Brepro>.+?\$<\$<CONFIG:Release>:/PDBALTPATH:%_PDB%>') {
+    throw "Miles provenance paths and deterministic target settings are not authoritative for the fetched source."
 }
 
 $workflowPath = Join-Path $repositoryRoot ".github/workflows/build-toolchain.yml"
@@ -63,14 +71,19 @@ $workflowText = Get-Content -LiteralPath $workflowPath -Raw
 $milesComparisonIndex = $workflowText.IndexOf('if ($primaryMilesHash -ne $repeatMilesHash)', [StringComparison]::Ordinal)
 $firstPackageIndex = $workflowText.IndexOf('./scripts/package-project-tempest-demo.ps1', [StringComparison]::Ordinal)
 $expectedHashArguments = [regex]::Matches($workflowText, '(?m)^\s+-ExpectedMilesStubSha256 \$primaryMilesHash\s*$').Count
+$cacheClearIndex = $workflowText.IndexOf('name: Clear cached Miles outputs for Project Tempest reproducibility', [StringComparison]::Ordinal)
+$configureIndex = $workflowText.IndexOf('name: Configure ${{ inputs.game }} with CMake', [StringComparison]::Ordinal)
 $ciExcludeIndex = $workflowText.IndexOf('$ciOwnedExcludes = @("/vcpkg/", "/vcpkg-bincache/")', [StringComparison]::Ordinal)
 $sourceStatusIndex = $workflowText.IndexOf('$sourceStatus = @(git status --porcelain=v1 --untracked-files=all)', [StringComparison]::Ordinal)
 if ($milesComparisonIndex -lt 0 -or
     $firstPackageIndex -le $milesComparisonIndex -or
     $expectedHashArguments -ne 2 -or
+    $cacheClearIndex -lt 0 -or
+    $configureIndex -le $cacheClearIndex -or
+    $workflowText -notmatch '(?s)name: Clear cached Miles outputs for Project Tempest reproducibility.+?if: \$\{\{ inputs\.game == ''Generals'' && inputs\.preset == ''win32'' \}\}.+?milesBuild\.StartsWith\(\$allowedPrefix.+?resolvedMilesBuild\.StartsWith\(\$allowedPrefix.+?Remove-Item -LiteralPath \$resolvedMilesBuild -Recurse -Force' -or
     $ciExcludeIndex -lt 0 -or
     $sourceStatusIndex -le $ciExcludeIndex) {
-    throw "CI must isolate its dependency roots and compare two integrated Miles DLLs before both packages consume the proven hash."
+    throw "CI must safely clear its governed Miles cache, isolate dependency roots, and compare two integrated Miles DLLs before both packages consume the proven hash."
 }
 
 function Get-ZipEntryBytes {

@@ -56,6 +56,28 @@ jobs:
           path: build\${{ inputs.preset }}\_deps
           key: cmake-deps-${{ inputs.preset }}-${{ hashFiles('CMakePresets.json','cmake/**/*.cmake','**/CMakeLists.txt') }}
 
+      - name: Clear cached Miles outputs for Project Tempest reproducibility
+        if: ${{ inputs.game == 'Generals' && inputs.preset == 'win32' }}
+        shell: pwsh
+        run: |
+          $workspace = [IO.Path]::GetFullPath("${{ github.workspace }}")
+          $buildRoot = [IO.Path]::GetFullPath((Join-Path $workspace "build\${{ inputs.preset }}"))
+          $milesBuild = [IO.Path]::GetFullPath((Join-Path $buildRoot "_deps\miles-build"))
+          $allowedPrefix = $buildRoot.TrimEnd(
+            [IO.Path]::DirectorySeparatorChar,
+            [IO.Path]::AltDirectorySeparatorChar
+          ) + [IO.Path]::DirectorySeparatorChar
+          if (-not $milesBuild.StartsWith($allowedPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Refusing to clear a Miles build directory outside '$buildRoot': '$milesBuild'."
+          }
+          if (Test-Path -LiteralPath $milesBuild) {
+            $resolvedMilesBuild = (Resolve-Path -LiteralPath $milesBuild).Path
+            if (-not $resolvedMilesBuild.StartsWith($allowedPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+              throw "Resolved Miles build directory escaped '$buildRoot': '$resolvedMilesBuild'."
+            }
+            Remove-Item -LiteralPath $resolvedMilesBuild -Recurse -Force
+          }
+
       - name: Download VC6 Portable from itsmattkc repo
         if: ${{ startsWith(inputs.preset, 'vc6') && steps.cache-vc6.outputs.cache-hit != 'true' }}
         env:

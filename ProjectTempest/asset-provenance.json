@@ -13,7 +13,7 @@
       "source_record": "ThirdParty/MilesStub/SOURCE.txt",
       "fetch_definition": "../cmake/miles.cmake",
       "build_target": "milesstub",
-      "build_context": "parent Project Tempest MSVC Win32 Release build",
+      "build_context": "parent MSVC Win32 Release build through cmake/miles.cmake (Generals and GeneralsMD contexts)",
       "toolchain_family": "Microsoft Visual C++ 2022 x86",
       "ci_runner": "GitHub Actions windows-2022",
       "ci_environment_action": "ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756",
