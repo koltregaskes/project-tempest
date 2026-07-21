@@ -16,8 +16,17 @@ add_executable(project_tempest_demo WIN32
 target_compile_features(project_tempest_demo PRIVATE cxx_std_20)
 if(MSVC)
     # The governed package compares independently linked Release executables.
-    # Remove the PE timestamp and other nondeterministic linker fields.
-    target_link_options(project_tempest_demo PRIVATE "$<$<CONFIG:Release>:/Brepro>")
+    # Remove PE timestamps and build-root-specific PDB paths.
+    target_link_options(project_tempest_demo PRIVATE
+        "$<$<CONFIG:Release>:/Brepro>"
+        "$<$<CONFIG:Release>:/PDBALTPATH:%_PDB%>"
+    )
+    if(TARGET milesstub)
+        target_link_options(milesstub PRIVATE
+            "$<$<CONFIG:Release>:/Brepro>"
+            "$<$<CONFIG:Release>:/PDBALTPATH:%_PDB%>"
+        )
+    endif()
 endif()
 target_compile_definitions(project_tempest_demo PRIVATE
     NOMINMAX

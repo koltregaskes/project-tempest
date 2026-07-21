@@ -3,4 +3,4 @@ https://github.com/TheSuperHackers/miles-sdk-stub
 
 Pinned commit: 6e32700d7ba4b4713a03bf1f5ffc3b0ac8d17264
 Licence: GPL-3.0 (see GPL-3.0-LICENSE.md in the private demo package)
-Expected mss32.dll SHA-256: af74496052f07027368cc28a24ad775c0deeb1814760b432f82dc98778c5be5f
+Expected mss32.dll SHA-256: eab12552ef840e7b1b1eaa4a1626d64e3ce3a41c8aec1fd9e4adfa7ee4d645da
