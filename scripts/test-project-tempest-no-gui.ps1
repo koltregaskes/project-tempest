@@ -129,7 +129,7 @@ function Get-UnattendedScriptPolicyViolation {
         )
         $isSafePackageTool = (
             $RelativePath -ieq 'scripts/test-project-tempest-package.ps1' -and
-            $firstElement -ieq '$packageScript'
+            $firstElement -in @('$packageScript', '$packageVerifier')
         )
         if (-not $isSafeBlender -and -not $isSafeBuildTool -and -not $isSafePackageTool) {
             $violations.Add("unapproved dynamic invocation '$firstElement'")
@@ -178,7 +178,8 @@ foreach ($fixture in $adversarialFixtures) {
 $safeFixtures = @(
     @{ Content = '& $BlenderPath --background --factory-startup --python $pythonScript'; Path = 'scripts/create-fixture.ps1' },
     @{ Content = '& $cmake --preset $Preset'; Path = 'scripts/build-windows.ps1' },
-    @{ Content = '& $packageScript -RuntimeDirectory $runtime'; Path = 'scripts/test-project-tempest-package.ps1' }
+    @{ Content = '& $packageScript -RuntimeDirectory $runtime'; Path = 'scripts/test-project-tempest-package.ps1' },
+    @{ Content = '& $packageVerifier -PackagePath $archive'; Path = 'scripts/test-project-tempest-package.ps1' }
 )
 foreach ($fixture in $safeFixtures) {
     $fixtureViolations = @(Get-UnattendedScriptPolicyViolation -Content $fixture.Content -RelativePath $fixture.Path)
