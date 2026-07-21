@@ -377,7 +377,7 @@ jobs:
                 Where-Object {
                   $_.Name -ne $privatePackageName -and (
                     $_.Name -in $governedTempestNames -or
-                    $_.Name -match '^(?i:ProjectTempestDemo|project_tempest_).+\.(exe|dll|pdb)$'
+                    $_.Name -match '^(?i:ProjectTempestDemo.*|project_tempest_.+)\.(exe|dll|pdb)$'
                   )
                 }
             )

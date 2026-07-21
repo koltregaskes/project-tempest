@@ -20,6 +20,47 @@ $provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.jso
 $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
 $executableEntry = @($contract.runtime_files | Where-Object { $_.name -eq "ProjectTempestDemo.exe" })
 $milesEntry = @($contract.runtime_files | Where-Object { $_.name -eq "mss32.dll" })
+$privatePackageName = "ProjectTempestDemo-private.zip"
+$looseTempestNamePattern = '^(?i:ProjectTempestDemo.*|project_tempest_.+)\.(exe|dll|pdb)$'
+$governedTempestNames = @(
+    $contract.runtime_files |
+        ForEach-Object { [string]$_.name } |
+        Where-Object { $_ -ne "mss32.dll" }
+)
+$artifactNameFixtures = @(
+    "ProjectTempestDemo.exe",
+    "ProjectTempestDemo.pdb",
+    "ProjectTempestDemo-helper.dll",
+    "project_tempest_headless_acceptance.exe",
+    "project_tempest_headless_acceptance.pdb",
+    "project_tempest_runtime.dll",
+    "courier.w3d",
+    $privatePackageName,
+    "generalsv.exe",
+    "generalsv.pdb",
+    "mss32.dll"
+)
+$rejectedArtifactFixtures = @(
+    $artifactNameFixtures |
+        Where-Object {
+            $_ -ne $privatePackageName -and (
+                $_ -in $governedTempestNames -or
+                $_ -match $looseTempestNamePattern
+            )
+        }
+)
+$expectedRejectedArtifactFixtures = @(
+    "ProjectTempestDemo.exe",
+    "ProjectTempestDemo.pdb",
+    "ProjectTempestDemo-helper.dll",
+    "project_tempest_headless_acceptance.exe",
+    "project_tempest_headless_acceptance.pdb",
+    "project_tempest_runtime.dll",
+    "courier.w3d"
+)
+if (@(Compare-Object $rejectedArtifactFixtures $expectedRejectedArtifactFixtures).Count -ne 0) {
+    throw "The outer-artifact regression fixtures do not reject exactly the loose Project Tempest payloads."
+}
 if ($contract.schema_version -ne 3 -or
     $executableEntry.Count -ne 1 -or
     [string]$executableEntry[0].hash_verification -ne "two_isolated_integrated_release_builds_byte_identical" -or
@@ -118,7 +159,7 @@ if ($executableComparisonIndex -lt 0 -or
     $artifactUploadIndex -le $artifactLooseGateIndex -or
     $workflowText -notmatch 'Get-Content -LiteralPath "ProjectTempest/package-contract\.json" -Raw' -or
     $workflowText -notmatch 'Loose Project Tempest payloads escaped the governed private ZIP' -or
-    $workflowText -notmatch '\^\(\?i:ProjectTempestDemo\|project_tempest_\)' -or
+    $workflowText -notmatch [regex]::Escape($looseTempestNamePattern) -or
     $workflowText -notmatch 'expectedPrivatePackageCount') {
     throw "CI must safely isolate its build roots and compare two integrated executables and Miles DLLs before both packages consume the proven hashes."
 }
