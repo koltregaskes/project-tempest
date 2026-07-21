@@ -151,6 +151,8 @@ foreach ($metadataName in @("package-manifest.json", "SHA256SUMS.txt")) {
         throw "Package metadata name collides with the governed contract: '$metadataName'."
     }
 }
+[string[]]$orderedArchiveNames = @($expectedArchiveNames)
+[Array]::Sort($orderedArchiveNames, [StringComparer]::Ordinal)
 
 function Get-BytesSha256 {
     param(
@@ -444,7 +446,7 @@ $installCreated = $false
 try {
     New-Item -ItemType Directory -Path $installFullPath -ErrorAction Stop | Out-Null
     $installCreated = $true
-    foreach ($name in @($expectedArchiveNames | Sort-Object)) {
+    foreach ($name in $orderedArchiveNames) {
         [IO.File]::WriteAllBytes((Join-Path $installFullPath $name), $entryBytes[$name])
     }
 
@@ -486,8 +488,7 @@ try {
         renderer_execution = "not_performed"
         manual_playthrough_claimed = $false
         files = @(
-            $expectedArchiveNames |
-                Sort-Object |
+            $orderedArchiveNames |
                 ForEach-Object {
                     [ordered]@{
                         name = $_
