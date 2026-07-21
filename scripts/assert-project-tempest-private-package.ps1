@@ -278,6 +278,40 @@ function ConvertTo-DeterministicJson {
 
 $contractHash = Get-CanonicalTextFileSha256 -Path $contractPath
 $provenanceHash = Get-CanonicalTextFileSha256 -Path $provenancePath
+$projectTempestRoot = (Resolve-Path -LiteralPath (Split-Path -Parent $provenancePath)).Path
+$projectTempestPrefix = $projectTempestRoot.TrimEnd(
+    [IO.Path]::DirectorySeparatorChar,
+    [IO.Path]::AltDirectorySeparatorChar
+) + [IO.Path]::DirectorySeparatorChar
+$reviewedProvenanceByLeaf = [Collections.Generic.Dictionary[string, object]]::new(
+    [StringComparer]::OrdinalIgnoreCase
+)
+foreach ($asset in @($provenance.assets)) {
+    $relativePath = [string]$asset.path
+    $assetId = [string]$asset.asset_id
+    $expectedHash = [string]$asset.sha256
+    if ([string]::IsNullOrWhiteSpace($relativePath) -or
+        $assetId -notmatch '^PT-[A-Z0-9-]+$' -or
+        $expectedHash -notmatch '^[0-9a-f]{64}$' -or
+        [IO.Path]::IsPathRooted($relativePath)) {
+        throw "Asset provenance contains an incomplete or unsafe reviewed asset record."
+    }
+    $reviewedAssetPath = [IO.Path]::GetFullPath((Join-Path $projectTempestRoot $relativePath))
+    if (-not $reviewedAssetPath.StartsWith($projectTempestPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+        -not (Test-Path -LiteralPath $reviewedAssetPath -PathType Leaf)) {
+        throw "Reviewed provenance asset '$assetId' does not resolve to a repository file."
+    }
+    $reviewedAssetItem = Get-Item -LiteralPath $reviewedAssetPath -Force
+    if (($reviewedAssetItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+        (Get-FileHash -LiteralPath $reviewedAssetPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedHash) {
+        throw "Reviewed provenance asset '$assetId' does not match the reviewed checkout hash."
+    }
+    $leaf = [IO.Path]::GetFileName($relativePath)
+    if ([string]::IsNullOrWhiteSpace($leaf) -or $reviewedProvenanceByLeaf.ContainsKey($leaf)) {
+        throw "Asset provenance contains a duplicate runtime leaf name '$leaf'."
+    }
+    $reviewedProvenanceByLeaf.Add($leaf, $asset)
+}
 
 function Get-ZipEntryBytes {
     param(
@@ -462,6 +496,17 @@ foreach ($file in $manifestFiles) {
     if ([string]$file.sha256 -ne $actualHash -or [long]$file.length -ne $bytes.LongLength) {
         throw "Project Tempest package manifest verification failed for '$name'."
     }
+    if ($contractKinds[$name] -eq "asset") {
+        if (-not $reviewedProvenanceByLeaf.ContainsKey($name)) {
+            throw "Project Tempest package asset '$name' has no reviewed provenance record."
+        }
+        $reviewedAsset = $reviewedProvenanceByLeaf[$name]
+        if ([string]$reviewedAsset.distribution -ne "internal_development_only" -or
+            [string]$reviewedAsset.sha256 -ne $actualHash -or
+            [string]$file.provenance_asset_id -ne [string]$reviewedAsset.asset_id) {
+            throw "Project Tempest package asset '$name' does not match reviewed asset provenance."
+        }
+    }
 }
 
 $sumText = $strictUtf8.GetString($entryBytes["SHA256SUMS.txt"])
@@ -578,6 +623,8 @@ try {
         reviewed_contract_canonical_sha256 = $contractHash
         reviewed_provenance_canonical_sha256 = $provenanceHash
         binary_hash_source = "governing_two_build_job_outputs"
+        asset_hash_source = "reviewed_checkout_and_canonical_provenance"
+        verified_asset_count = @($contract.runtime_files | Where-Object { $_.kind -eq "asset" }).Count
         executable_sha256 = $executableHash
         miles_sha256 = $milesHash
         installed_file_count = $expectedArchiveNames.Count

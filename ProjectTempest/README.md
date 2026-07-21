@@ -315,7 +315,8 @@ It starts from a fresh checkout and runner workspace, downloads `Generals-win32+
 boundary, and passes its single private ZIP to `assert-project-tempest-private-package.ps1`. The verifier checks the
 ZIP layout and bounded sizes, rejects traversal, nested, duplicate, case-colliding, link/reparse, unexpected, and
 forbidden entries, verifies the reviewed contract and provenance, verifies every manifest and `SHA256SUMS.txt` hash,
-binds the executable and Miles DLL to hashes emitted independently by the governing two-build job, validates the
+binds every governed asset to both the canonical provenance record and its reviewed checkout file hash, binds the
+executable and Miles DLL to hashes emitted independently by the governing two-build job, validates the
 deterministic acceptance report, then stages
 the exact governed files into a previously unused directory. It writes a deterministic receipt outside that directory
 and rehashes the staged tree. Receipt ordering and JSON encoding are invariant across Windows PowerShell 5.1 and

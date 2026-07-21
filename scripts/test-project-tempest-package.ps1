@@ -378,6 +378,105 @@ function New-CoherentlyForgedExecutablePackage {
     }
 }
 
+function New-CoherentlyForgedAssetPackage {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourcePath,
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationPath,
+        [Parameter(Mandatory = $true)]
+        [string]$AssetName,
+        [Parameter(Mandatory = $true)]
+        [byte[]]$ForgedAssetBytes
+    )
+
+    if ($AssetName -notmatch '^[^/\\:]+$') {
+        throw "Coherent asset-forgery fixture requires one flat governed asset name."
+    }
+    $prefix = "$($contract.package_directory)/"
+    $assetEntryName = "$prefix$AssetName"
+    $manifestName = "${prefix}package-manifest.json"
+    $sumsName = "${prefix}SHA256SUMS.txt"
+    $utf8 = [Text.UTF8Encoding]::new($false, $true)
+    $source = [IO.Compression.ZipFile]::OpenRead($SourcePath)
+    $destination = $null
+    try {
+        $manifest = $utf8.GetString((Get-ZipEntryBytes -Archive $source -Name $manifestName)) |
+            ConvertFrom-Json
+        $manifestAsset = @($manifest.files | Where-Object { $_.name -eq $AssetName })
+        if ($manifestAsset.Count -ne 1 -or [string]$manifestAsset[0].kind -ne "asset") {
+            throw "Coherent asset-forgery fixture could not find governed asset '$AssetName'."
+        }
+        $forgedAssetHash = Get-TestBytesSha256 -Bytes $ForgedAssetBytes
+        $manifestAsset[0].sha256 = $forgedAssetHash
+        $manifestAsset[0].length = $ForgedAssetBytes.LongLength
+        $manifestBytes = $utf8.GetBytes(
+            (($manifest | ConvertTo-Json -Depth 8) -replace "`r`n", "`n") + "`n"
+        )
+        $manifestHash = Get-TestBytesSha256 -Bytes $manifestBytes
+
+        $sumText = $utf8.GetString((Get-ZipEntryBytes -Archive $source -Name $sumsName))
+        $escapedAssetName = [regex]::Escape($AssetName)
+        $rewrittenSumLines = @(
+            $sumText.TrimEnd("`n") -split "`n" |
+                ForEach-Object {
+                    if ($_ -match "^[0-9a-f]{64}  $escapedAssetName$") {
+                        "$forgedAssetHash  $AssetName"
+                    }
+                    elseif ($_ -match '^[0-9a-f]{64}  package-manifest\.json$') {
+                        "$manifestHash  package-manifest.json"
+                    }
+                    else {
+                        $_
+                    }
+                }
+        )
+        if (@($rewrittenSumLines | Where-Object { $_ -eq "$forgedAssetHash  $AssetName" }).Count -ne 1 -or
+            @($rewrittenSumLines | Where-Object { $_ -eq "$manifestHash  package-manifest.json" }).Count -ne 1) {
+            throw "Coherent asset-forgery fixture could not rewrite both governed hash records."
+        }
+        $sumBytes = $utf8.GetBytes(($rewrittenSumLines -join "`n") + "`n")
+
+        $destination = [IO.Compression.ZipFile]::Open(
+            $DestinationPath,
+            [IO.Compression.ZipArchiveMode]::Create
+        )
+        foreach ($sourceEntry in $source.Entries) {
+            $destinationEntry = $destination.CreateEntry(
+                $sourceEntry.FullName,
+                [IO.Compression.CompressionLevel]::Optimal
+            )
+            $destinationEntry.LastWriteTime = $sourceEntry.LastWriteTime
+            $destinationEntry.ExternalAttributes = $sourceEntry.ExternalAttributes
+            $bytes = if ($sourceEntry.FullName -eq $assetEntryName) {
+                $ForgedAssetBytes
+            }
+            elseif ($sourceEntry.FullName -eq $manifestName) {
+                $manifestBytes
+            }
+            elseif ($sourceEntry.FullName -eq $sumsName) {
+                $sumBytes
+            }
+            else {
+                Get-ZipEntryBytes -Archive $source -Name $sourceEntry.FullName
+            }
+            $outputStream = $destinationEntry.Open()
+            try {
+                $outputStream.Write($bytes, 0, $bytes.Length)
+            }
+            finally {
+                $outputStream.Dispose()
+            }
+        }
+    }
+    finally {
+        if ($null -ne $destination) {
+            $destination.Dispose()
+        }
+        $source.Dispose()
+    }
+}
+
 function Assert-PackageVerifierRejects {
     param(
         [Parameter(Mandatory = $true)]
@@ -904,6 +1003,8 @@ try {
         [string]$consumerReceipt.distribution -ne "test_fixture" -or
         [string]$consumerReceipt.executable_sha256 -ne $fixtureExecutableHash.ToLowerInvariant() -or
         [string]$consumerReceipt.miles_sha256 -ne $fixtureDependencyHash.ToLowerInvariant() -or
+        [string]$consumerReceipt.asset_hash_source -ne "reviewed_checkout_and_canonical_provenance" -or
+        $consumerReceipt.verified_asset_count -ne 22 -or
         [string]$consumerReceipt.renderer_execution -ne "not_performed" -or
         $consumerReceipt.manual_playthrough_claimed -ne $false -or
         $consumerReceipt.installed_file_count -ne 35 -or
@@ -988,6 +1089,20 @@ try {
         -PackagePath $coherentlyForgedArchive `
         -Name "coherently-forged-executable" `
         -MessagePattern "do not match the externally proven two-build hashes" `
+        -Revision $revision `
+        -ExecutableSha256 $fixtureExecutableHash `
+        -MilesSha256 $fixtureDependencyHash
+
+    $coherentlyForgedAssetArchive = Join-Path $mutatedRoot "coherently-forged-asset.zip"
+    New-CoherentlyForgedAssetPackage `
+        -SourcePath $firstArchive `
+        -DestinationPath $coherentlyForgedAssetArchive `
+        -AssetName "courier.w3d" `
+        -ForgedAssetBytes ([Text.Encoding]::UTF8.GetBytes("coherently forged courier asset"))
+    Assert-PackageVerifierRejects `
+        -PackagePath $coherentlyForgedAssetArchive `
+        -Name "coherently-forged-asset" `
+        -MessagePattern "does not match reviewed asset provenance" `
         -Revision $revision `
         -ExecutableSha256 $fixtureExecutableHash `
         -MilesSha256 $fixtureDependencyHash
