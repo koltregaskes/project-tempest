@@ -79,6 +79,12 @@ if ($packageReparseEntries.Count -gt 0) {
 
 $checks = [Collections.Generic.List[object]]::new()
 $inventory = [Collections.Generic.List[object]]::new()
+$requiredScreenshotPaths = [Collections.Generic.HashSet[string]]::new(
+    $(if ($pathComparison -eq [StringComparison]::OrdinalIgnoreCase) {
+        [StringComparer]::OrdinalIgnoreCase
+    } else {
+        [StringComparer]::Ordinal
+    }))
 
 function Add-Check {
     param(
@@ -130,11 +136,15 @@ function Add-RequiredEvidenceFile {
         default { @() }
     }
     $formatAllowed = $allowedExtensions.Count -eq 0 -or $extension -in $allowedExtensions
-    $passed = $exists -and $nonempty -and $formatAllowed
+    $uniqueRequiredScreenshot = $true
+    if ($Role -in @("resolution_screenshot", "accessibility_screenshot", "settings_screenshot")) {
+        $uniqueRequiredScreenshot = $contained -and $requiredScreenshotPaths.Add($candidate)
+    }
+    $passed = $exists -and $nonempty -and $formatAllowed -and $uniqueRequiredScreenshot
     $evidenceText = if ($passed) {
         "$candidate length=$((Get-Item -LiteralPath $candidate -Force).Length)"
     } else {
-        "Missing, empty, unsafe, or unsupported evidence path '$RelativePath'."
+        "Missing, empty, unsafe, unsupported, or reused evidence path '$RelativePath'."
     }
     Add-Check -Id $CheckId -Passed $passed -Evidence $evidenceText
     if ($passed) {
@@ -312,6 +322,9 @@ foreach ($window in $traceWindows) {
     if ($windowEndMs -le $windowStartMs) {
         $traceWindowsWellFormed = $false
         continue
+    }
+    if ($windowEndMs -gt [uint64]$summary.duration_ms) {
+        $traceWindowsWellFormed = $false
     }
     $windowDurationMs = $windowEndMs - $windowStartMs
     $traceCoveredWindowMs += $windowDurationMs

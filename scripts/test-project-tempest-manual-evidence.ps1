@@ -252,6 +252,31 @@ try {
     $invalidSummary.working_set_bytes.peak = 140000000
     $invalidSummary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
 
+    $shiftedTraceLines = @($traceLines | ForEach-Object {
+        $record = $_ | ConvertFrom-Json
+        if ([string]$record.type -eq "frame_window") {
+            $record.start_ms = [uint64]$record.start_ms + 1800000
+            $record.end_ms = [uint64]$record.end_ms + 1800000
+        }
+        $record | ConvertTo-Json -Compress -Depth 5
+    })
+    $shiftedTraceLines | Set-Content -LiteralPath (Join-Path $evidenceRoot $traceName) -Encoding UTF8
+    $shiftedTraceRejected = $false
+    Push-Location $repositoryRoot
+    try {
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
+            -EvidenceDirectory $evidenceRoot `
+            -PackageDirectory $packageRoot
+    }
+    catch {
+        $shiftedTraceRejected = $_.Exception.Message -match "trace.window_continuity"
+    }
+    finally {
+        Pop-Location
+    }
+    Expect $shiftedTraceRejected "trace windows outside the recorded session were not rejected"
+    $traceLines | Set-Content -LiteralPath (Join-Path $evidenceRoot $traceName) -Encoding UTF8
+
     $forgedObservations = Get-Content -LiteralPath $observationsPath -Raw | ConvertFrom-Json
     $forgedObservations.source_revision = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     $forgedObservations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
@@ -312,6 +337,25 @@ try {
         Pop-Location
     }
     Expect $outsideEvidenceRejected "evidence path outside the governed root was not rejected"
+
+    $observations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
+    $duplicateObservations = Get-Content -LiteralPath $observationsPath -Raw | ConvertFrom-Json
+    $duplicateObservations.accessibility_checks[0].screenshot = $duplicateObservations.resolution_checks[0].screenshot
+    $duplicateObservations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
+    $duplicateScreenshotRejected = $false
+    Push-Location $repositoryRoot
+    try {
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
+            -EvidenceDirectory $evidenceRoot `
+            -PackageDirectory $packageRoot
+    }
+    catch {
+        $duplicateScreenshotRejected = $_.Exception.Message -match "artifact.accessibility.off"
+    }
+    finally {
+        Pop-Location
+    }
+    Expect $duplicateScreenshotRejected "one screenshot was allowed to satisfy multiple required views"
 }
 finally {
     if (Test-Path -LiteralPath $sessionRoot) {
