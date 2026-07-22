@@ -63,6 +63,12 @@ void Recorder::RecordEvent(std::uint64_t elapsedMs, const std::string &name, con
     if (!m_enabled) {
         return;
     }
+    constexpr std::uint64_t maximumStoredEvents = 10000;
+    if (m_eventCount >= maximumStoredEvents) {
+        ++m_eventEntriesDropped;
+        return;
+    }
+    ++m_eventCount;
     std::ostringstream line;
     line << "{\"schema_version\":1,\"type\":\"event\",\"elapsed_ms\":" << elapsedMs
          << ",\"name\":\"" << EscapeJson(name) << "\"";
@@ -92,7 +98,12 @@ void Recorder::RecordResolution(std::uint64_t elapsedMs, int width, int height)
     }
     const std::pair<int, int> resolution { width, height };
     if (std::find(m_resolutions.begin(), m_resolutions.end(), resolution) == m_resolutions.end()) {
-        m_resolutions.push_back(resolution);
+        constexpr std::size_t maximumStoredResolutions = 64;
+        if (m_resolutions.size() < maximumStoredResolutions) {
+            m_resolutions.push_back(resolution);
+        } else {
+            ++m_resolutionEntriesDropped;
+        }
     }
     RecordEvent(elapsedMs, "resolution", std::to_string(width) + "x" + std::to_string(height));
 }
@@ -111,7 +122,12 @@ void Recorder::RecordOutcome(std::uint64_t elapsedMs, const std::string &outcome
     if (!m_enabled) {
         return;
     }
-    m_outcomes.push_back(outcome);
+    constexpr std::size_t maximumStoredOutcomes = 64;
+    if (m_outcomes.size() < maximumStoredOutcomes) {
+        m_outcomes.push_back(outcome);
+    } else {
+        ++m_outcomeEntriesDropped;
+    }
     RecordEvent(elapsedMs, "outcome", outcome);
 }
 
@@ -225,6 +241,8 @@ bool Recorder::Finish(std::uint64_t elapsedMs, int exitCode, bool cleanShutdown)
             << ", \"max\": " << maximum << "},\n"
             << "  \"working_set_bytes\": {\"start\": " << m_workingSetStartBytes
             << ", \"end\": " << m_workingSetEndBytes << ", \"peak\": " << m_workingSetPeakBytes << "},\n"
+            << "  \"events\": " << m_eventCount << ",\n"
+            << "  \"event_entries_dropped\": " << m_eventEntriesDropped << ",\n"
             << "  \"focus_losses\": " << m_focusLosses << ",\n"
             << "  \"restarts\": " << m_restarts << ",\n"
             << "  \"resolutions\": [";
@@ -234,14 +252,16 @@ bool Recorder::Finish(std::uint64_t elapsedMs, int exitCode, bool cleanShutdown)
         }
         summary << "\"" << m_resolutions[index].first << "x" << m_resolutions[index].second << "\"";
     }
-    summary << "],\n  \"outcomes\": [";
+    summary << "],\n  \"resolution_entries_dropped\": " << m_resolutionEntriesDropped
+            << ",\n  \"outcomes\": [";
     for (std::size_t index = 0; index < m_outcomes.size(); ++index) {
         if (index != 0) {
             summary << ", ";
         }
         summary << "\"" << EscapeJson(m_outcomes[index]) << "\"";
     }
-    summary << "],\n  \"trace_file\": \"" << EscapeJson(m_tracePath.filename().string()) << "\"\n}\n";
+    summary << "],\n  \"outcome_entries_dropped\": " << m_outcomeEntriesDropped
+            << ",\n  \"trace_file\": \"" << EscapeJson(m_tracePath.filename().string()) << "\"\n}\n";
     summary.close();
     if (!summary) {
         m_enabled = false;

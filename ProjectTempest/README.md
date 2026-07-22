@@ -361,7 +361,8 @@ Each opted-in session uses a fixed-size frame-time histogram plus bounded one-se
 measurement or creating recorder-driven memory growth. It writes a JSONL frame-window/event trace plus a summary JSON
 during normal shutdown. The trace caps stored windows at two hours and reports any dropped windows. The summary records average, p50, p95, p99,
 and maximum frame time; sampled initial/end/peak working set; tested resolutions; focus-loss count; restart count;
-terminal outcomes; exit code; and whether the normal shutdown path completed. `manual_playthrough_claimed` remains false:
+terminal outcomes; exit code; and whether the normal shutdown path completed. Frame windows, lifecycle events,
+resolution entries, and outcome summary lists are capped and disclose overflow counts. `manual_playthrough_claimed` remains false:
 the files are machine measurements that must be paired with the user's checklist, screenshots, capture, and observations.
 
 Build with a modern Generals preset, for example:

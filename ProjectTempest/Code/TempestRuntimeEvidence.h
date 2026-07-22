@@ -89,10 +89,14 @@ private:
     std::uint64_t m_workingSetStartBytes = 0;
     std::uint64_t m_workingSetPeakBytes = 0;
     std::uint64_t m_workingSetEndBytes = 0;
+    std::uint64_t m_eventCount = 0;
+    std::uint64_t m_eventEntriesDropped = 0;
     std::uint64_t m_focusLosses = 0;
     std::uint64_t m_restarts = 0;
     std::vector<std::pair<int, int>> m_resolutions;
+    std::uint64_t m_resolutionEntriesDropped = 0;
     std::vector<std::string> m_outcomes;
+    std::uint64_t m_outcomeEntriesDropped = 0;
 };
 
 } // namespace Tempest::Evidence

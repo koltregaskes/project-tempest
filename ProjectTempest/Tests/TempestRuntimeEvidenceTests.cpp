@@ -49,6 +49,10 @@ int main()
     recorder.RecordFocus(3, true);
     recorder.RecordRestart(4);
     recorder.RecordOutcome(5, "victory");
+    for (int index = 0; index < 70; ++index) {
+        recorder.RecordResolution(6, 1000 + index, 700 + index);
+        recorder.RecordOutcome(7, "bounded-outcome-" + std::to_string(index));
+    }
     recorder.RecordFrame(10, 10.0, 1, 1920, 1080, true, 100);
     recorder.RecordFrame(20, 20.0, 2, 1920, 1080, true, 120);
     recorder.RecordFrame(30, 30.0, 3, 1920, 1080, true, 110);
@@ -74,6 +78,10 @@ int main()
     Expect(summary.find("\"peak\": 120") != std::string::npos, "summary records peak working set");
     Expect(summary.find("\"1920x1080\"") != std::string::npos, "summary records tested resolution");
     Expect(summary.find("\"victory\"") != std::string::npos, "summary records terminal outcome");
+    Expect(summary.find("\"resolution_entries_dropped\": 7") != std::string::npos,
+        "summary proves the unique-resolution list is capped");
+    Expect(summary.find("\"outcome_entries_dropped\": 7") != std::string::npos,
+        "summary proves the outcome list is capped");
 
     std::filesystem::remove_all(root, error);
     std::cout << "PASS: Project Tempest runtime evidence contract\n";
