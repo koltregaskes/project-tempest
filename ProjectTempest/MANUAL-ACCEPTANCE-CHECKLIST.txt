@@ -42,7 +42,8 @@ One-pass test order
 6. Alt-tab away and back once, change resolution at least once, and restart at
    least twice. Record any device, focus, audio, or settings-persistence issue.
 7. Complete a full Chorus defeat path so both terminal result flows are tested.
-8. Keep the measured session open for at least 30 minutes in total. Capture a
+8. Keep the measured session open for 30 to 90 minutes in total and exit before
+   two hours, which is the recorder's explicit bounded-capture limit. Capture a
    short video showing normal play, readable UI, and audible feedback. Save the
    relevant runtime log if one is available.
 9. Exit normally. Do not kill the process unless documenting a real fault.

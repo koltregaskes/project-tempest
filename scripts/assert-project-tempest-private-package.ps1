@@ -448,6 +448,7 @@ finally {
 
 $utf8 = [Text.UTF8Encoding]::new($false)
 $manifest = $strictUtf8.GetString($entryBytes["package-manifest.json"]) | ConvertFrom-Json
+$packagedManifestHash = Get-BytesSha256 -Bytes $entryBytes["package-manifest.json"]
 $packagedContractHash = Get-BytesSha256 -Bytes $entryBytes["package-contract.json"]
 $packagedProvenanceHash = Get-BytesSha256 -Bytes $entryBytes["asset-provenance.json"]
 if ((Get-CanonicalTextBytesSha256 -Bytes $entryBytes["package-contract.json"]) -ne $contractHash -or
@@ -658,6 +659,7 @@ try {
         source_tree = $ExpectedSourceTree
         distribution = $ExpectedDistribution
         source_date_epoch = [long]$manifest.source_date_epoch
+        package_manifest_sha256 = $packagedManifestHash
         package_contract_sha256 = $packagedContractHash
         asset_provenance_sha256 = $packagedProvenanceHash
         reviewed_contract_canonical_sha256 = $contractHash

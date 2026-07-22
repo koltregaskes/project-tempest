@@ -435,6 +435,23 @@ try {
     $invalidSummary.duration_ms = 1800000
     $invalidSummary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
 
+    $invalidSummary.duration_ms = 7200000
+    $invalidSummary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
+    $overlongSessionRejected = $false
+    Push-Location $repositoryRoot
+    try {
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
+    }
+    catch {
+        $overlongSessionRejected = $_.Exception.Message -match "runtime.maximum_under_2_hours"
+    }
+    finally {
+        Pop-Location
+    }
+    Expect $overlongSessionRejected "session at the recorder cap was not rejected explicitly"
+    $invalidSummary.duration_ms = 1800000
+    $invalidSummary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
+
     $sparseTraceLines = @($traceLines | Where-Object {
         $record = $_ | ConvertFrom-Json
         [string]$record.type -ne "frame_window" -or

@@ -194,6 +194,8 @@ jobs:
           EXPECTED_REVIEWED_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
           EXPECTED_TEMPEST_EXECUTABLE_SHA256: ${{ needs.build-generals.outputs.tempest_executable_sha256 }}
           EXPECTED_TEMPEST_MILES_SHA256: ${{ needs.build-generals.outputs.tempest_miles_sha256 }}
+          EXPECTED_TEMPEST_PACKAGE_CONTRACT_SHA256: ${{ needs.build-generals.outputs.tempest_package_contract_sha256 }}
+          EXPECTED_TEMPEST_PACKAGE_MANIFEST_SHA256: ${{ needs.build-generals.outputs.tempest_package_manifest_sha256 }}
         run: |
           $outerArtifact = Join-Path $env:RUNNER_TEMP "project-tempest-outer-artifact"
           ./scripts/assert-project-tempest-artifact-boundary.ps1 `
@@ -218,9 +220,13 @@ jobs:
           }
           $expectedExecutableSha256 = ([string]$env:EXPECTED_TEMPEST_EXECUTABLE_SHA256).Trim().ToLowerInvariant()
           $expectedMilesSha256 = ([string]$env:EXPECTED_TEMPEST_MILES_SHA256).Trim().ToLowerInvariant()
+          $expectedContractSha256 = ([string]$env:EXPECTED_TEMPEST_PACKAGE_CONTRACT_SHA256).Trim().ToLowerInvariant()
+          $expectedManifestSha256 = ([string]$env:EXPECTED_TEMPEST_PACKAGE_MANIFEST_SHA256).Trim().ToLowerInvariant()
           if ($expectedExecutableSha256 -notmatch '^[0-9a-f]{64}$' -or
-              $expectedMilesSha256 -notmatch '^[0-9a-f]{64}$') {
-            throw "Fresh consumer did not receive the governing job's two-build binary hashes."
+              $expectedMilesSha256 -notmatch '^[0-9a-f]{64}$' -or
+              $expectedContractSha256 -notmatch '^[0-9a-f]{64}$' -or
+              $expectedManifestSha256 -notmatch '^[0-9a-f]{64}$') {
+            throw "Fresh consumer did not receive the governing job's binary and package-metadata hashes."
           }
 
           $installDirectory = Join-Path $env:RUNNER_TEMP "project-tempest-clean-install"
@@ -238,6 +244,8 @@ jobs:
           $contract = Get-Content -LiteralPath "./ProjectTempest/package-contract.json" -Raw | ConvertFrom-Json
           $expectedInstalledFileCount = @($contract.runtime_files).Count + @($contract.repository_files).Count + 2
           if ([string]$receipt.verification -ne "verified_without_execution" -or
+              [string]$receipt.package_contract_sha256 -ne $expectedContractSha256 -or
+              [string]$receipt.package_manifest_sha256 -ne $expectedManifestSha256 -or
               [string]$receipt.renderer_execution -ne "not_performed" -or
               $receipt.manual_playthrough_claimed -ne $false -or
               $receipt.installed_file_count -ne $expectedInstalledFileCount) {

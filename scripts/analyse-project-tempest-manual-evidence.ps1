@@ -397,6 +397,8 @@ Add-Check "runtime.no_automatic_playthrough_claim" ($summary.manual_playthrough_
 Add-Check "runtime.clean_shutdown" ($summary.clean_shutdown -eq $true -and $summary.exit_code -eq 0) `
     "clean_shutdown=$($summary.clean_shutdown) exit_code=$($summary.exit_code)"
 Add-Check "runtime.minimum_30_minutes" ($summary.duration_ms -ge 1800000) "duration_ms=$($summary.duration_ms)"
+Add-Check "runtime.maximum_under_2_hours" ($summary.duration_ms -lt 7200000) `
+    "duration_ms=$($summary.duration_ms) bounded_capture_limit_ms=7200000"
 Add-Check "runtime.frames_recorded" ($summary.frames -gt 0 -and $summary.frame_windows -gt 0) `
     "frames=$($summary.frames) windows=$($summary.frame_windows)"
 Add-Check "runtime.bounded_capture" (

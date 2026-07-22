@@ -1005,11 +1005,16 @@ try {
     $consumerReceiptBObject = Get-Content -LiteralPath $consumerReceiptB -Raw | ConvertFrom-Json
     $consumerInstalledFiles = @(Get-ChildItem -LiteralPath $consumerInstallA -File -Force)
     $consumerReceiptHash = (Get-FileHash -LiteralPath $consumerReceiptA -Algorithm SHA256).Hash.ToLowerInvariant()
+    $expectedInstalledManifestHash = (
+        Get-FileHash -LiteralPath (Join-Path $consumerInstallA "package-manifest.json") -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
     $expectedVerifiedAssetCount = @($contract.runtime_files | Where-Object { $_.kind -eq "asset" }).Count
     $expectedInstalledFileCount = @($contract.runtime_files).Count + @($contract.repository_files).Count + 2
     if ($consumerReceipt.schema_version -ne 1 -or
         [string]$consumerReceipt.verification -ne "verified_without_execution" -or
         [string]$consumerReceipt.archive_sha256 -ne $firstHash -or
+        [string]$consumerReceipt.package_manifest_sha256 -ne $expectedInstalledManifestHash -or
+        [string]$consumerReceipt.package_contract_sha256 -notmatch '^[0-9a-f]{64}$' -or
         [string]$consumerReceipt.source_revision -ne $revision -or
         [string]$consumerReceipt.reviewed_source_revision -ne $revision -or
         [string]$consumerReceipt.source_tree -ne "fixture" -or
