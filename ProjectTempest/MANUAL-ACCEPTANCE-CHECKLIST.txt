@@ -59,15 +59,17 @@ After the session
 
 Example user-run analysis command
 
-Use the exact reviewed package-contract SHA-256 from the final Codex/CI evidence
-packet. Do not copy this value from the unpacked package being analysed.
+Use the exact reviewed package-contract and package-manifest SHA-256 values from
+the final Codex/CI evidence packet. Do not copy either value from the unpacked
+package being analysed.
 
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\ANALYSE-MANUAL-EVIDENCE.ps1 `
     -EvidenceDirectory "C:\absolute\path\to\project-tempest-evidence" `
     -ExpectedReviewedSourceRevision "<40-character reviewed revision>" `
     -ExpectedExecutableSha256 "<64-character executable SHA-256>" `
     -ExpectedMilesSha256 "<64-character Miles SHA-256>" `
-    -ExpectedPackageContractSha256 "<64-character reviewed package-contract SHA-256>"
+    -ExpectedPackageContractSha256 "<64-character reviewed package-contract SHA-256>" `
+    -ExpectedPackageManifestSha256 "<64-character reviewed package-manifest SHA-256>"
 
 Passing the analyser does not silently approve subjective quality. Its report
 preserves the user's observations, measured frame/memory data, evidence hashes,

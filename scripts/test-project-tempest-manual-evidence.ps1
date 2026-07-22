@@ -88,6 +88,7 @@ try {
         ExpectedMilesSha256 = $milesHash
         ExpectedPackageContractSha256 = (
             Get-FileHash -LiteralPath $contractPackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        ExpectedPackageManifestSha256 = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     }
     $fixtureManifestFiles = @(
         @($fixtureContract.runtime_files) + @($fixtureContract.repository_files) |
@@ -130,6 +131,9 @@ try {
     }
     Write-Utf8NoBomJson -Path (Join-Path $packageRoot "package-manifest.json") -Value $fixtureManifest
     Write-FixtureHashManifest -PackageRoot $packageRoot
+    $analysisArguments.ExpectedPackageManifestSha256 = (
+        Get-FileHash -LiteralPath (Join-Path $packageRoot "package-manifest.json") -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
 
     $traceName = "project-tempest-runtime-fixture.jsonl"
     $summaryName = "project-tempest-runtime-fixture-summary.json"
@@ -322,6 +326,34 @@ try {
     [IO.File]::WriteAllBytes((Join-Path $packageRoot "SHA256SUMS.txt"), $originalSumsBytes)
 
     $originalManifestPackageBytes = [IO.File]::ReadAllBytes((Join-Path $packageRoot "package-manifest.json"))
+    $coherentlyForgedAnalyserBytes = [Text.Encoding]::UTF8.GetBytes(
+        "Write-Output 'coherently forged analyser'`n")
+    [IO.File]::WriteAllBytes($analyserPackagePath, $coherentlyForgedAnalyserBytes)
+    $coherentlyForgedFileManifest = [Text.UTF8Encoding]::new($false, $true).GetString(
+        $originalManifestPackageBytes) | ConvertFrom-Json
+    $forgedAnalyserRecord = @(
+        $coherentlyForgedFileManifest.files |
+            Where-Object { [string]$_.name -eq "ANALYSE-MANUAL-EVIDENCE.ps1" }
+    )
+    Expect ($forgedAnalyserRecord.Count -eq 1) "fixture manifest lacks the governed analyser record"
+    $forgedAnalyserRecord[0].length = $coherentlyForgedAnalyserBytes.Length
+    $forgedAnalyserRecord[0].sha256 = (
+        Get-FileHash -LiteralPath $analyserPackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Write-Utf8NoBomJson `
+        -Path (Join-Path $packageRoot "package-manifest.json") `
+        -Value $coherentlyForgedFileManifest
+    Write-FixtureHashManifest -PackageRoot $packageRoot
+    $coherentRepositoryRewriteRejected = $false
+    Push-Location $repositoryRoot
+    try { .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments }
+    catch { $coherentRepositoryRewriteRejected = $_.Exception.Message -match "source.package_metadata_hashes" }
+    finally { Pop-Location }
+    Expect $coherentRepositoryRewriteRejected `
+        "coherent repository-file/manifest/checksum rewrite bypassed the external manifest hash"
+    [IO.File]::WriteAllBytes($analyserPackagePath, $originalAnalyserPackageBytes)
+    [IO.File]::WriteAllBytes((Join-Path $packageRoot "package-manifest.json"), $originalManifestPackageBytes)
+    Write-FixtureHashManifest -PackageRoot $packageRoot
+
     $coherentlyForgedContract = [Text.UTF8Encoding]::new($false, $true).GetString(
         $originalContractPackageBytes) | ConvertFrom-Json
     $coherentlyForgedContract.repository_files = @(
@@ -556,6 +588,8 @@ try {
     $mergeManifest.executable_verification.source_revision = $mergeRevision
     Write-Utf8NoBomJson -Path $mergeManifestPath -Value $mergeManifest
     Write-FixtureHashManifest -PackageRoot $packageRoot
+    $analysisArguments.ExpectedPackageManifestSha256 = (
+        Get-FileHash -LiteralPath $mergeManifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
     Push-Location $repositoryRoot
     try {
         .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments

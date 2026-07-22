@@ -23,6 +23,10 @@ param(
     [ValidatePattern('^[0-9A-Fa-f]{64}$')]
     [string]$ExpectedPackageContractSha256,
 
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9A-Fa-f]{64}$')]
+    [string]$ExpectedPackageManifestSha256,
+
     [string]$ReportPath
 )
 
@@ -245,6 +249,7 @@ $expectedReviewedRevision = $ExpectedReviewedSourceRevision.ToLowerInvariant()
 $expectedExecutableHash = $ExpectedExecutableSha256.ToLowerInvariant()
 $expectedMilesHash = $ExpectedMilesSha256.ToLowerInvariant()
 $expectedPackageContractHash = $ExpectedPackageContractSha256.ToLowerInvariant()
+$expectedPackageManifestHash = $ExpectedPackageManifestSha256.ToLowerInvariant()
 $expectedGovernedNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 $expectedPackageNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 $contractKinds = [Collections.Generic.Dictionary[string, string]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -325,8 +330,10 @@ foreach ($name in $expectedPackageNames) {
 }
 
 $actualContractHash = Get-Sha256 -Path $contractPath
+$actualManifestHash = Get-Sha256 -Path $manifestPath
 $contractHashValid = ([string]$manifest.package_contract_sha256).ToLowerInvariant() -eq $actualContractHash -and
     $actualContractHash -eq $expectedPackageContractHash
+$manifestHashValid = $actualManifestHash -eq $expectedPackageManifestHash
 $provenanceHashValid = $expectedGovernedNames.Contains("asset-provenance.json") -and
     (Test-Path -LiteralPath (Join-Path $packageRoot "asset-provenance.json") -PathType Leaf) -and
     ([string]$manifest.asset_provenance_sha256).ToLowerInvariant() -eq
@@ -337,8 +344,8 @@ Add-Check "source.package_manifest_files" $manifestFilesValid `
     "manifest_files=$(@($manifest.files).Count)/$($expectedGovernedNames.Count)"
 Add-Check "source.package_hash_manifest" $hashManifestValid `
     "hash_records=$($sumNames.Count)/$($expectedPackageNames.Count - 1)"
-Add-Check "source.package_metadata_hashes" ($contractHashValid -and $provenanceHashValid) `
-    "contract=$actualContractHash expected_contract=$expectedPackageContractHash provenance=$provenanceHashValid"
+Add-Check "source.package_metadata_hashes" ($manifestHashValid -and $contractHashValid -and $provenanceHashValid) `
+    "manifest=$actualManifestHash expected_manifest=$expectedPackageManifestHash contract=$actualContractHash expected_contract=$expectedPackageContractHash provenance=$provenanceHashValid"
 foreach ($name in $expectedGovernedNames) {
     $governedPath = Join-Path $packageRoot $name
     if (Test-Path -LiteralPath $governedPath -PathType Leaf) {

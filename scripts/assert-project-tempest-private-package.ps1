@@ -481,11 +481,11 @@ foreach ($repositoryEntry in @($contract.repository_files)) {
         if ($LASTEXITCODE -ne 0 -or $packagedBlobObject -notmatch '^[0-9a-f]{40}$') {
             throw "Could not hash packaged reviewed file '$packageName' as a Git blob."
         }
-        $reviewedSpec = "$ExpectedReviewedSourceRevision`:$($relativePath.Replace('\\', '/'))"
-        $reviewedBlobObject = (& git -C $repositoryRoot rev-parse $reviewedSpec).Trim()
-        if ($LASTEXITCODE -ne 0 -or $reviewedBlobObject -notmatch '^[0-9a-f]{40}$' -or
-            $packagedBlobObject -ne $reviewedBlobObject) {
-            throw "Packaged repository file '$packageName' does not match reviewed revision '$ExpectedReviewedSourceRevision'."
+        $buildSpec = "$ExpectedBuildSourceRevision`:$($relativePath.Replace('\\', '/'))"
+        $buildBlobObject = (& git -C $repositoryRoot rev-parse $buildSpec).Trim()
+        if ($LASTEXITCODE -ne 0 -or $buildBlobObject -notmatch '^[0-9a-f]{40}$' -or
+            $packagedBlobObject -ne $buildBlobObject) {
+            throw "Packaged repository file '$packageName' does not match build source revision '$ExpectedBuildSourceRevision'."
         }
     }
     finally {
