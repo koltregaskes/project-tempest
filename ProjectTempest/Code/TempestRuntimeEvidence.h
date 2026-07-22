@@ -76,6 +76,7 @@ private:
     double m_minimumFrameMs = 0.0;
     double m_maximumFrameMs = 0.0;
     std::vector<std::uint64_t> m_frameHistogram;
+    std::uint64_t m_histogramSaturatedFrames = 0;
     std::vector<double> m_currentWindowFrameTimes;
     std::uint64_t m_currentWindowStartMs = 0;
     std::uint64_t m_currentWindowEndMs = 0;

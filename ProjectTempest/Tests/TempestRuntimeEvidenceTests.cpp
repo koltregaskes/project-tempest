@@ -83,6 +83,19 @@ int main()
     Expect(summary.find("\"outcome_entries_dropped\": 7") != std::string::npos,
         "summary proves the outcome list is capped");
 
+    Tempest::Evidence::Recorder saturationRecorder;
+    Expect(saturationRecorder.Begin(root, "saturation-fixture", 5678),
+        "a second evidence recorder starts in the fixture directory");
+    saturationRecorder.RecordFrame(1500, 1500.0, 1, 1920, 1080, true, 100);
+    Expect(saturationRecorder.Finish(1600, 0, true), "long-stall evidence writes a clean summary");
+    const std::string saturationSummary = ReadAll(saturationRecorder.SummaryPath());
+    Expect(saturationSummary.find("\"histogram_saturated_frames_ge_1000ms\": 1") != std::string::npos,
+        "summary discloses frame intervals clamped into the final histogram bucket");
+    Expect(saturationSummary.find("\"p95\": 1000.0000") != std::string::npos,
+        "histogram percentile is visibly clamped while the saturation count remains available");
+    Expect(saturationSummary.find("\"max\": 1500.0000") != std::string::npos,
+        "summary retains the exact maximum even when the histogram tail saturates");
+
     std::filesystem::remove_all(root, error);
     std::cout << "PASS: Project Tempest runtime evidence contract\n";
     return 0;

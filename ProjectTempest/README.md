@@ -362,7 +362,8 @@ measurement or creating recorder-driven memory growth. It writes a JSONL frame-w
 during normal shutdown. The trace caps stored windows at two hours and reports any dropped windows. The summary records average, p50, p95, p99,
 and maximum frame time; sampled initial/end/peak working set; tested resolutions; focus-loss count; restart count;
 terminal outcomes; exit code; and whether the normal shutdown path completed. Frame windows, lifecycle events,
-resolution entries, and outcome summary lists are capped and disclose overflow counts. `manual_playthrough_claimed` remains false:
+resolution entries, and outcome summary lists are capped and disclose overflow counts. Histogram samples at or above
+1000 ms are explicitly counted as saturated while the exact maximum remains available. `manual_playthrough_claimed` remains false:
 the files are machine measurements that must be paired with the user's checklist, screenshots, capture, and observations.
 
 Build with a modern Generals preset, for example:

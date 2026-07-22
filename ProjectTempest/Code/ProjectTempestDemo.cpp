@@ -139,11 +139,16 @@ void InitialiseRuntimeEvidence()
         return;
     }
     directory.resize(written);
+    const std::filesystem::path evidenceDirectory(directory);
+    if (!evidenceDirectory.is_absolute()) {
+        OutputDebugStringA("Project Tempest runtime evidence requires an absolute directory; evidence capture is disabled.\n");
+        return;
+    }
 
     const auto unixMs = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count());
     const std::string sessionId = std::to_string(unixMs) + "-" + std::to_string(GetCurrentProcessId());
-    if (!g_runtimeEvidence.Begin(std::filesystem::path(directory), sessionId, unixMs)) {
+    if (!g_runtimeEvidence.Begin(evidenceDirectory, sessionId, unixMs)) {
         OutputDebugStringA("Project Tempest could not create the requested runtime evidence files.\n");
     }
 }

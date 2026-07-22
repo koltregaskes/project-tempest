@@ -160,9 +160,12 @@ void Recorder::RecordFrame(
         m_minimumFrameMs = std::min(m_minimumFrameMs, frameMs);
         m_maximumFrameMs = std::max(m_maximumFrameMs, frameMs);
     }
-    const std::size_t histogramIndex = std::min(
-        static_cast<std::size_t>(std::floor(frameMs * 10.0)),
-        m_frameHistogram.size() - 1);
+    const std::size_t histogramIndex = frameMs >= 1000.0
+        ? m_frameHistogram.size() - 1
+        : static_cast<std::size_t>(std::floor(frameMs * 10.0));
+    if (histogramIndex == m_frameHistogram.size() - 1 && frameMs >= 1000.0) {
+        ++m_histogramSaturatedFrames;
+    }
     ++m_frameHistogram[histogramIndex];
     m_currentWindowFrameTimes.push_back(frameMs);
     m_currentWindowEndMs = elapsedMs;
@@ -236,6 +239,7 @@ bool Recorder::Finish(std::uint64_t elapsedMs, int exitCode, bool cleanShutdown)
             << "  \"frame_windows\": " << m_frameWindows.size() << ",\n"
             << "  \"frame_windows_dropped\": " << m_frameWindowsDropped << ",\n"
             << "  \"percentile_resolution_ms\": 0.1,\n"
+            << "  \"histogram_saturated_frames_ge_1000ms\": " << m_histogramSaturatedFrames << ",\n"
             << "  \"frame_ms\": {\"min\": " << minimum << ", \"average\": " << average
             << ", \"p50\": " << p50 << ", \"p95\": " << p95 << ", \"p99\": " << p99
             << ", \"max\": " << maximum << "},\n"
