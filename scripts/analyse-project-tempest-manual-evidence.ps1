@@ -301,7 +301,7 @@ $runtimeResolutionPass = @($requiredResolutions | Where-Object { $_ -notin $reco
     @(@("3440x1440", "2560x1080") | Where-Object { $_ -in $recordedResolutions }).Count -gt 0
 Add-Check "runtime.target_resolutions" $runtimeResolutionPass "recorded=$($recordedResolutions -join ',')"
 Add-Check "runtime.alt_tab" ($summary.focus_losses -ge 1) "focus_losses=$($summary.focus_losses)"
-Add-Check "runtime.restart" ($summary.restarts -ge 1) "restarts=$($summary.restarts)"
+Add-Check "runtime.repeated_restart" ($summary.restarts -ge 2) "restarts=$($summary.restarts)"
 $runtimeOutcomes = @($summary.outcomes | ForEach-Object { ([string]$_).ToLowerInvariant() })
 Add-Check "runtime.two_outcomes" (
     $runtimeOutcomes.Count -ge 2 -and "victory" -in $runtimeOutcomes -and "defeat" -in $runtimeOutcomes

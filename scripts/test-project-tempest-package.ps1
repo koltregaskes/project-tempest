@@ -22,6 +22,10 @@ if ($packageVerifierText -notmatch '\[Array\]::Sort\(\$orderedArchiveNames, \[St
     $packageVerifierText -match '\$receipt\s*\|\s*ConvertTo-Json') {
     throw "The private-package consumer receipt must use one ordinal order and a PowerShell-version-independent serializer."
 }
+if ($packageVerifierText -notmatch '\$reviewedSpec\s*=\s*"\$ExpectedReviewedSourceRevision' -or
+    $packageVerifierText -notmatch 'git -C \$repositoryRoot rev-parse \$reviewedSpec') {
+    throw "Packaged repository files must be bound to the exact reviewed Git revision."
+}
 $contract = Get-Content -LiteralPath $contractPath -Raw | ConvertFrom-Json
 $provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json"
 $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json

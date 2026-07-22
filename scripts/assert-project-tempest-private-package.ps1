@@ -454,10 +454,6 @@ if ((Get-CanonicalTextBytesSha256 -Bytes $entryBytes["package-contract.json"]) -
     (Get-CanonicalTextBytesSha256 -Bytes $entryBytes["asset-provenance.json"]) -ne $provenanceHash) {
     throw "Packaged contract or provenance does not match the canonical reviewed source input."
 }
-$repositoryPrefix = $repositoryRoot.TrimEnd(
-    [IO.Path]::DirectorySeparatorChar,
-    [IO.Path]::AltDirectorySeparatorChar
-) + [IO.Path]::DirectorySeparatorChar
 foreach ($repositoryEntry in @($contract.repository_files)) {
     $relativePath = [string]$repositoryEntry.path
     $packageName = [string]$repositoryEntry.name
@@ -467,16 +463,37 @@ foreach ($repositoryEntry in @($contract.repository_files)) {
         -not $entryBytes.ContainsKey($packageName)) {
         throw "Package contract contains an unsafe or incomplete reviewed repository file entry."
     }
-    $reviewedPath = [IO.Path]::GetFullPath((Join-Path $repositoryRoot $relativePath))
-    if (-not $reviewedPath.StartsWith($repositoryPrefix, [StringComparison]::OrdinalIgnoreCase) -or
-        -not (Test-Path -LiteralPath $reviewedPath -PathType Leaf)) {
-        throw "Reviewed repository file '$relativePath' does not resolve inside the checkout."
+    if ($ExpectedDistribution -eq "test_fixture") {
+        $reviewedPath = [IO.Path]::GetFullPath((Join-Path $repositoryRoot $relativePath))
+        if (-not (Test-Path -LiteralPath $reviewedPath -PathType Leaf) -or
+            (Get-CanonicalTextBytesSha256 -Bytes $entryBytes[$packageName]) -ne
+                (Get-CanonicalTextFileSha256 -Path $reviewedPath)) {
+            throw "Packaged repository file '$packageName' does not match the reviewed checkout bytes."
+        }
+        continue
     }
-    $reviewedItem = Get-Item -LiteralPath $reviewedPath -Force
-    if (($reviewedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
-        (Get-FileHash -LiteralPath $reviewedPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne
-            (Get-BytesSha256 -Bytes $entryBytes[$packageName])) {
-        throw "Packaged repository file '$packageName' does not match the reviewed checkout bytes."
+
+    $canonicalPackagePath = Join-Path $resolvedReceiptParent (
+        ".project-tempest-reviewed-" + [guid]::NewGuid().ToString("N") + ".tmp")
+    try {
+        $canonicalPackageText = $strictUtf8.GetString($entryBytes[$packageName]) `
+            -replace "`r`n", "`n" -replace "`r", "`n"
+        [IO.File]::WriteAllBytes($canonicalPackagePath, $strictUtf8.GetBytes($canonicalPackageText))
+        $packagedBlobObject = (& git -C $repositoryRoot hash-object -- $canonicalPackagePath).Trim()
+        if ($LASTEXITCODE -ne 0 -or $packagedBlobObject -notmatch '^[0-9a-f]{40}$') {
+            throw "Could not hash packaged reviewed file '$packageName' as a Git blob."
+        }
+        $reviewedSpec = "$ExpectedReviewedSourceRevision`:$($relativePath.Replace('\\', '/'))"
+        $reviewedBlobObject = (& git -C $repositoryRoot rev-parse $reviewedSpec).Trim()
+        if ($LASTEXITCODE -ne 0 -or $reviewedBlobObject -notmatch '^[0-9a-f]{40}$' -or
+            $packagedBlobObject -ne $reviewedBlobObject) {
+            throw "Packaged repository file '$packageName' does not match reviewed revision '$ExpectedReviewedSourceRevision'."
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $canonicalPackagePath) {
+            Remove-Item -LiteralPath $canonicalPackagePath -Force
+        }
     }
 }
 $expectedRuntimeInputPolicy = if ($ExpectedDistribution -eq "test_fixture") {

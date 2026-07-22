@@ -69,6 +69,7 @@ try {
         @{ elapsed_ms = 2000; name = "focus_lost"; detail = "" },
         @{ elapsed_ms = 3000; name = "focus_gained"; detail = "" },
         @{ elapsed_ms = 4000; name = "restart"; detail = "" },
+        @{ elapsed_ms = 4500; name = "restart"; detail = "" },
         @{ elapsed_ms = 5000; name = "resolution"; detail = "2560x1440" },
         @{ elapsed_ms = 6000; name = "resolution"; detail = "3840x2160" },
         @{ elapsed_ms = 7000; name = "resolution"; detail = "3440x1440" },
@@ -115,10 +116,10 @@ try {
         histogram_saturated_frames_ge_1000ms = 0
         frame_ms = [ordered]@{ min = 10.0; average = 16.0; p50 = 16.0; p95 = 16.6; p99 = 16.8; max = 16.8 }
         working_set_bytes = [ordered]@{ start = 100000000; end = 110000000; peak = 140000000 }
-        events = 9
+        events = 10
         event_entries_dropped = 0
         focus_losses = 1
-        restarts = 1
+        restarts = 2
         resolutions = @("1920x1080", "2560x1440", "3840x2160", "3440x1440")
         resolution_entries_dropped = 0
         outcomes = @("victory", "defeat")
@@ -201,6 +202,32 @@ try {
 
     $summaryPath = Join-Path $evidenceRoot $summaryName
     $invalidSummary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
+
+    $oneRestartTraceLines = @($traceLines | Where-Object {
+        $record = $_ | ConvertFrom-Json
+        -not ([string]$record.type -eq "event" -and
+            [string]$record.name -eq "restart" -and [uint64]$record.elapsed_ms -eq 4500)
+    })
+    $oneRestartTraceLines | Set-Content -LiteralPath (Join-Path $evidenceRoot $traceName) -Encoding UTF8
+    $invalidSummary.events = 9
+    $invalidSummary.restarts = 1
+    $invalidSummary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
+    $singleRestartRejected = $false
+    Push-Location $repositoryRoot
+    try {
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
+    }
+    catch {
+        $singleRestartRejected = $_.Exception.Message -match "runtime.repeated_restart"
+    }
+    finally {
+        Pop-Location
+    }
+    Expect $singleRestartRejected "single-restart evidence passed the repeated-restart gate"
+    $traceLines | Set-Content -LiteralPath (Join-Path $evidenceRoot $traceName) -Encoding UTF8
+    $invalidSummary.events = 10
+    $invalidSummary.restarts = 2
+
     $invalidSummary.duration_ms = 1799999
     $invalidSummary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
     $rejected = $false
