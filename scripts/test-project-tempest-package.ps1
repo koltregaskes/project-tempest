@@ -22,7 +22,24 @@ if ($packageVerifierText -notmatch '\[Array\]::Sort\(\$orderedArchiveNames, \[St
     $packageVerifierText -match '\$receipt\s*\|\s*ConvertTo-Json') {
     throw "The private-package consumer receipt must use one ordinal order and a PowerShell-version-independent serializer."
 }
+if ($packageVerifierText -notmatch '\$buildSpec\s*=\s*"\$ExpectedBuildSourceRevision' -or
+    $packageVerifierText -notmatch 'git -C \$repositoryRoot rev-parse \$buildSpec' -or
+    $packageVerifierText -notmatch '\[IO\.File\]::WriteAllBytes\(\$packagedBlobPath, \$entryBytes\[\$packageName\]\)' -or
+    $packageVerifierText -match '\$canonicalPackageText') {
+    throw "Packaged repository files must be byte-exact Git blobs from the build source revision."
+}
 $contract = Get-Content -LiteralPath $contractPath -Raw | ConvertFrom-Json
+$attributesPath = Join-Path $repositoryRoot ".gitattributes"
+if (-not (Test-Path -LiteralPath $attributesPath -PathType Leaf)) {
+    throw "Governed repository payloads require a root .gitattributes policy."
+}
+foreach ($repositoryEntry in @($contract.repository_files)) {
+    $repositoryPath = ([string]$repositoryEntry.path).Replace('\\', '/')
+    $eolAttribute = (& git -C $repositoryRoot check-attr eol -- $repositoryPath).Trim()
+    if ($LASTEXITCODE -ne 0 -or $eolAttribute -notmatch ': eol: lf$') {
+        throw "Governed repository payload '$repositoryPath' must be pinned to LF checkout bytes."
+    }
+}
 $provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json"
 $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
 $executableEntry = @($contract.runtime_files | Where-Object { $_.name -eq "ProjectTempestDemo.exe" })
@@ -94,7 +111,12 @@ $workflowSurfacePathFilters = [regex]::Matches(
     $ciWorkflowText,
     "(?m)^\s+- '\.github/workflows/(?:ci|build-toolchain)\.yml'\s*$"
 ).Count
+$attributesPathFilters = [regex]::Matches(
+    $ciWorkflowText,
+    "(?m)^\s+- '\.gitattributes'\s*$"
+).Count
 $tempestFilterIndex = $ciWorkflowText.IndexOf("            tempest:", [StringComparison]::Ordinal)
+$attributesPathFilterIndex = $ciWorkflowText.IndexOf("              - '.gitattributes'", [StringComparison]::Ordinal)
 $ciWorkflowPathFilterIndex = $ciWorkflowText.IndexOf("              - '.github/workflows/ci.yml'", [StringComparison]::Ordinal)
 $buildWorkflowPathFilterIndex = $ciWorkflowText.IndexOf("              - '.github/workflows/build-toolchain.yml'", [StringComparison]::Ordinal)
 $artifactGatePathFilterIndex = $ciWorkflowText.IndexOf("              - 'scripts/assert-project-tempest-artifact-boundary.ps1'", [StringComparison]::Ordinal)
@@ -111,8 +133,10 @@ $externalMilesOutputWrites = [regex]::Matches(
 if ($artifactGatePathFilters -ne 1 -or
     $privatePackageVerifierPathFilters -ne 1 -or
     $workflowSurfacePathFilters -ne 2 -or
+    $attributesPathFilters -ne 1 -or
     $tempestFilterIndex -lt 0 -or
-    $ciWorkflowPathFilterIndex -le $tempestFilterIndex -or
+    $attributesPathFilterIndex -le $tempestFilterIndex -or
+    $ciWorkflowPathFilterIndex -le $attributesPathFilterIndex -or
     $buildWorkflowPathFilterIndex -le $ciWorkflowPathFilterIndex -or
     $artifactGatePathFilterIndex -le $tempestFilterIndex -or
     $privatePackageVerifierPathFilterIndex -le $artifactGatePathFilterIndex -or
@@ -381,23 +405,25 @@ function New-CoherentlyForgedExecutablePackage {
     }
 }
 
-function New-CoherentlyForgedAssetPackage {
+function New-CoherentlyForgedGovernedFilePackage {
     param(
         [Parameter(Mandatory = $true)]
         [string]$SourcePath,
         [Parameter(Mandatory = $true)]
         [string]$DestinationPath,
         [Parameter(Mandatory = $true)]
-        [string]$AssetName,
+        [string]$FileName,
         [Parameter(Mandatory = $true)]
-        [byte[]]$ForgedAssetBytes
+        [string]$ExpectedKind,
+        [Parameter(Mandatory = $true)]
+        [byte[]]$ForgedFileBytes
     )
 
-    if ($AssetName -notmatch '^[^/\\:]+$') {
-        throw "Coherent asset-forgery fixture requires one flat governed asset name."
+    if ($FileName -notmatch '^[^/\\:]+$') {
+        throw "Coherent file-forgery fixture requires one flat governed package name."
     }
     $prefix = "$($contract.package_directory)/"
-    $assetEntryName = "$prefix$AssetName"
+    $fileEntryName = "$prefix$FileName"
     $manifestName = "${prefix}package-manifest.json"
     $sumsName = "${prefix}SHA256SUMS.txt"
     $utf8 = [Text.UTF8Encoding]::new($false, $true)
@@ -406,25 +432,25 @@ function New-CoherentlyForgedAssetPackage {
     try {
         $manifest = $utf8.GetString((Get-ZipEntryBytes -Archive $source -Name $manifestName)) |
             ConvertFrom-Json
-        $manifestAsset = @($manifest.files | Where-Object { $_.name -eq $AssetName })
-        if ($manifestAsset.Count -ne 1 -or [string]$manifestAsset[0].kind -ne "asset") {
-            throw "Coherent asset-forgery fixture could not find governed asset '$AssetName'."
+        $manifestFile = @($manifest.files | Where-Object { $_.name -eq $FileName })
+        if ($manifestFile.Count -ne 1 -or [string]$manifestFile[0].kind -ne $ExpectedKind) {
+            throw "Coherent file-forgery fixture could not find governed '$ExpectedKind' file '$FileName'."
         }
-        $forgedAssetHash = Get-TestBytesSha256 -Bytes $ForgedAssetBytes
-        $manifestAsset[0].sha256 = $forgedAssetHash
-        $manifestAsset[0].length = $ForgedAssetBytes.LongLength
+        $forgedFileHash = Get-TestBytesSha256 -Bytes $ForgedFileBytes
+        $manifestFile[0].sha256 = $forgedFileHash
+        $manifestFile[0].length = $ForgedFileBytes.LongLength
         $manifestBytes = $utf8.GetBytes(
             (($manifest | ConvertTo-Json -Depth 8) -replace "`r`n", "`n") + "`n"
         )
         $manifestHash = Get-TestBytesSha256 -Bytes $manifestBytes
 
         $sumText = $utf8.GetString((Get-ZipEntryBytes -Archive $source -Name $sumsName))
-        $escapedAssetName = [regex]::Escape($AssetName)
+        $escapedFileName = [regex]::Escape($FileName)
         $rewrittenSumLines = @(
             $sumText.TrimEnd("`n") -split "`n" |
                 ForEach-Object {
-                    if ($_ -match "^[0-9a-f]{64}  $escapedAssetName$") {
-                        "$forgedAssetHash  $AssetName"
+                    if ($_ -match "^[0-9a-f]{64}  $escapedFileName$") {
+                        "$forgedFileHash  $FileName"
                     }
                     elseif ($_ -match '^[0-9a-f]{64}  package-manifest\.json$') {
                         "$manifestHash  package-manifest.json"
@@ -434,7 +460,7 @@ function New-CoherentlyForgedAssetPackage {
                     }
                 }
         )
-        if (@($rewrittenSumLines | Where-Object { $_ -eq "$forgedAssetHash  $AssetName" }).Count -ne 1 -or
+        if (@($rewrittenSumLines | Where-Object { $_ -eq "$forgedFileHash  $FileName" }).Count -ne 1 -or
             @($rewrittenSumLines | Where-Object { $_ -eq "$manifestHash  package-manifest.json" }).Count -ne 1) {
             throw "Coherent asset-forgery fixture could not rewrite both governed hash records."
         }
@@ -451,8 +477,8 @@ function New-CoherentlyForgedAssetPackage {
             )
             $destinationEntry.LastWriteTime = $sourceEntry.LastWriteTime
             $destinationEntry.ExternalAttributes = $sourceEntry.ExternalAttributes
-            $bytes = if ($sourceEntry.FullName -eq $assetEntryName) {
-                $ForgedAssetBytes
+            $bytes = if ($sourceEntry.FullName -eq $fileEntryName) {
+                $ForgedFileBytes
             }
             elseif ($sourceEntry.FullName -eq $manifestName) {
                 $manifestBytes
@@ -997,11 +1023,16 @@ try {
     $consumerReceiptBObject = Get-Content -LiteralPath $consumerReceiptB -Raw | ConvertFrom-Json
     $consumerInstalledFiles = @(Get-ChildItem -LiteralPath $consumerInstallA -File -Force)
     $consumerReceiptHash = (Get-FileHash -LiteralPath $consumerReceiptA -Algorithm SHA256).Hash.ToLowerInvariant()
+    $expectedInstalledManifestHash = (
+        Get-FileHash -LiteralPath (Join-Path $consumerInstallA "package-manifest.json") -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
     $expectedVerifiedAssetCount = @($contract.runtime_files | Where-Object { $_.kind -eq "asset" }).Count
     $expectedInstalledFileCount = @($contract.runtime_files).Count + @($contract.repository_files).Count + 2
     if ($consumerReceipt.schema_version -ne 1 -or
         [string]$consumerReceipt.verification -ne "verified_without_execution" -or
         [string]$consumerReceipt.archive_sha256 -ne $firstHash -or
+        [string]$consumerReceipt.package_manifest_sha256 -ne $expectedInstalledManifestHash -or
+        [string]$consumerReceipt.package_contract_sha256 -notmatch '^[0-9a-f]{64}$' -or
         [string]$consumerReceipt.source_revision -ne $revision -or
         [string]$consumerReceipt.reviewed_source_revision -ne $revision -or
         [string]$consumerReceipt.source_tree -ne "fixture" -or
@@ -1099,15 +1130,59 @@ try {
         -MilesSha256 $fixtureDependencyHash
 
     $coherentlyForgedAssetArchive = Join-Path $mutatedRoot "coherently-forged-asset.zip"
-    New-CoherentlyForgedAssetPackage `
+    New-CoherentlyForgedGovernedFilePackage `
         -SourcePath $firstArchive `
         -DestinationPath $coherentlyForgedAssetArchive `
-        -AssetName "courier.w3d" `
-        -ForgedAssetBytes ([Text.Encoding]::UTF8.GetBytes("coherently forged courier asset"))
+        -FileName "courier.w3d" `
+        -ExpectedKind "asset" `
+        -ForgedFileBytes ([Text.Encoding]::UTF8.GetBytes("coherently forged courier asset"))
     Assert-PackageVerifierRejects `
         -PackagePath $coherentlyForgedAssetArchive `
         -Name "coherently-forged-asset" `
         -MessagePattern "does not match reviewed asset provenance" `
+        -Revision $revision `
+        -ExecutableSha256 $fixtureExecutableHash `
+        -MilesSha256 $fixtureDependencyHash
+
+    $coherentlyForgedAnalyserArchive = Join-Path $mutatedRoot "coherently-forged-analyser.zip"
+    New-CoherentlyForgedGovernedFilePackage `
+        -SourcePath $firstArchive `
+        -DestinationPath $coherentlyForgedAnalyserArchive `
+        -FileName "ANALYSE-MANUAL-EVIDENCE.ps1" `
+        -ExpectedKind "manual_evidence_analyser" `
+        -ForgedFileBytes ([Text.Encoding]::UTF8.GetBytes("Write-Output 'forged analyser'"))
+    Assert-PackageVerifierRejects `
+        -PackagePath $coherentlyForgedAnalyserArchive `
+        -Name "coherently-forged-analyser" `
+        -MessagePattern "does not match the reviewed checkout bytes" `
+        -Revision $revision `
+        -ExecutableSha256 $fixtureExecutableHash `
+        -MilesSha256 $fixtureDependencyHash
+
+    $reviewedAnalyserPath = Join-Path $repositoryRoot "scripts/analyse-project-tempest-manual-evidence.ps1"
+    $reviewedAnalyserText = [IO.File]::ReadAllText($reviewedAnalyserPath, [Text.UTF8Encoding]::new($false, $true))
+    $lineEndingForgedAnalyserText = if ($reviewedAnalyserText.Contains("`r`n")) {
+        $reviewedAnalyserText.Replace("`r`n", "`n")
+    }
+    else {
+        $reviewedAnalyserText.Replace("`n", "`r`n")
+    }
+    $lineEndingForgedAnalyserBytes = [Text.UTF8Encoding]::new($false).GetBytes($lineEndingForgedAnalyserText)
+    if ((Get-TestBytesSha256 -Bytes $lineEndingForgedAnalyserBytes) -eq
+        (Get-FileHash -LiteralPath $reviewedAnalyserPath -Algorithm SHA256).Hash.ToLowerInvariant()) {
+        throw "Line-ending forgery fixture did not change the reviewed analyser bytes."
+    }
+    $lineEndingForgedAnalyserArchive = Join-Path $mutatedRoot "line-ending-forged-analyser.zip"
+    New-CoherentlyForgedGovernedFilePackage `
+        -SourcePath $firstArchive `
+        -DestinationPath $lineEndingForgedAnalyserArchive `
+        -FileName "ANALYSE-MANUAL-EVIDENCE.ps1" `
+        -ExpectedKind "manual_evidence_analyser" `
+        -ForgedFileBytes $lineEndingForgedAnalyserBytes
+    Assert-PackageVerifierRejects `
+        -PackagePath $lineEndingForgedAnalyserArchive `
+        -Name "line-ending-forged-analyser" `
+        -MessagePattern "does not match the reviewed checkout bytes" `
         -Revision $revision `
         -ExecutableSha256 $fixtureExecutableHash `
         -MilesSha256 $fixtureDependencyHash

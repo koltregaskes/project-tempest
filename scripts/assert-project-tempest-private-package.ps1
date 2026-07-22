@@ -448,11 +448,52 @@ finally {
 
 $utf8 = [Text.UTF8Encoding]::new($false)
 $manifest = $strictUtf8.GetString($entryBytes["package-manifest.json"]) | ConvertFrom-Json
+$packagedManifestHash = Get-BytesSha256 -Bytes $entryBytes["package-manifest.json"]
 $packagedContractHash = Get-BytesSha256 -Bytes $entryBytes["package-contract.json"]
 $packagedProvenanceHash = Get-BytesSha256 -Bytes $entryBytes["asset-provenance.json"]
 if ((Get-CanonicalTextBytesSha256 -Bytes $entryBytes["package-contract.json"]) -ne $contractHash -or
     (Get-CanonicalTextBytesSha256 -Bytes $entryBytes["asset-provenance.json"]) -ne $provenanceHash) {
     throw "Packaged contract or provenance does not match the canonical reviewed source input."
+}
+foreach ($repositoryEntry in @($contract.repository_files)) {
+    $relativePath = [string]$repositoryEntry.path
+    $packageName = [string]$repositoryEntry.name
+    if ([string]::IsNullOrWhiteSpace($relativePath) -or
+        [IO.Path]::IsPathRooted($relativePath) -or
+        [string]::IsNullOrWhiteSpace($packageName) -or
+        -not $entryBytes.ContainsKey($packageName)) {
+        throw "Package contract contains an unsafe or incomplete reviewed repository file entry."
+    }
+    if ($ExpectedDistribution -eq "test_fixture") {
+        $reviewedPath = [IO.Path]::GetFullPath((Join-Path $repositoryRoot $relativePath))
+        if (-not (Test-Path -LiteralPath $reviewedPath -PathType Leaf) -or
+            (Get-BytesSha256 -Bytes $entryBytes[$packageName]) -ne
+                (Get-FileHash -LiteralPath $reviewedPath -Algorithm SHA256).Hash.ToLowerInvariant()) {
+            throw "Packaged repository file '$packageName' does not match the reviewed checkout bytes."
+        }
+        continue
+    }
+
+    $packagedBlobPath = Join-Path $resolvedReceiptParent (
+        ".project-tempest-reviewed-" + [guid]::NewGuid().ToString("N") + ".tmp")
+    try {
+        [IO.File]::WriteAllBytes($packagedBlobPath, $entryBytes[$packageName])
+        $packagedBlobObject = (& git -C $repositoryRoot hash-object -- $packagedBlobPath).Trim()
+        if ($LASTEXITCODE -ne 0 -or $packagedBlobObject -notmatch '^[0-9a-f]{40}$') {
+            throw "Could not hash packaged reviewed file '$packageName' as a Git blob."
+        }
+        $buildSpec = "$ExpectedBuildSourceRevision`:$($relativePath.Replace('\\', '/'))"
+        $buildBlobObject = (& git -C $repositoryRoot rev-parse $buildSpec).Trim()
+        if ($LASTEXITCODE -ne 0 -or $buildBlobObject -notmatch '^[0-9a-f]{40}$' -or
+            $packagedBlobObject -ne $buildBlobObject) {
+            throw "Packaged repository file '$packageName' does not match build source revision '$ExpectedBuildSourceRevision'."
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $packagedBlobPath) {
+            Remove-Item -LiteralPath $packagedBlobPath -Force
+        }
+    }
 }
 $expectedRuntimeInputPolicy = if ($ExpectedDistribution -eq "test_fixture") {
     "restricted_test_fixture"
@@ -618,6 +659,7 @@ try {
         source_tree = $ExpectedSourceTree
         distribution = $ExpectedDistribution
         source_date_epoch = [long]$manifest.source_date_epoch
+        package_manifest_sha256 = $packagedManifestHash
         package_contract_sha256 = $packagedContractHash
         asset_provenance_sha256 = $packagedProvenanceHash
         reviewed_contract_canonical_sha256 = $contractHash

@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "source_revision": "REPLACE_WITH_EXACT_40_CHARACTER_REVIEWED_REVISION",
+  "tester_attestation": {
+    "user_started_demo": false,
+    "non_rdp_desktop": false,
+    "automatic_retry_disabled": true,
+    "observations_are_truthful": false
+  },
+  "playthroughs": [
+    {
+      "id": "playthrough-1",
+      "outcome": "victory",
+      "full_match": false,
+      "objective_understood": false,
+      "resource_identified": false,
+      "first_command_issued": false,
+      "territory_captured": false,
+      "structure_built": false,
+      "unit_produced": false,
+      "faction_ability_used": false,
+      "result_understood": false,
+      "notes": "Replace with truthful observations."
+    },
+    {
+      "id": "playthrough-2",
+      "outcome": "defeat",
+      "full_match": false,
+      "objective_understood": false,
+      "resource_identified": false,
+      "first_command_issued": false,
+      "territory_captured": false,
+      "structure_built": false,
+      "unit_produced": false,
+      "faction_ability_used": false,
+      "result_understood": false,
+      "notes": "Replace with truthful observations."
+    }
+  ],
+  "resolution_checks": [
+    { "resolution": "1920x1080", "no_clipping": false, "controls_readable": false, "screenshot": "screenshots/1920x1080-off.png" },
+    { "resolution": "2560x1440", "no_clipping": false, "controls_readable": false, "screenshot": "screenshots/2560x1440-off.png" },
+    { "resolution": "3840x2160", "no_clipping": false, "controls_readable": false, "screenshot": "screenshots/3840x2160-off.png" },
+    { "resolution": "3440x1440", "no_clipping": false, "controls_readable": false, "screenshot": "screenshots/3440x1440-off.png" }
+  ],
+  "accessibility_checks": [
+    { "mode": "off", "strength_percent": 0, "world_readable": false, "ui_readable": false, "distinct_from_off": true, "screenshot": "screenshots/accessibility-off.png" },
+    { "mode": "protanopia", "strength_percent": 100, "world_readable": false, "ui_readable": false, "distinct_from_off": false, "screenshot": "screenshots/accessibility-protanopia.png" },
+    { "mode": "deuteranopia", "strength_percent": 100, "world_readable": false, "ui_readable": false, "distinct_from_off": false, "screenshot": "screenshots/accessibility-deuteranopia.png" },
+    { "mode": "tritanopia", "strength_percent": 100, "world_readable": false, "ui_readable": false, "distinct_from_off": false, "screenshot": "screenshots/accessibility-tritanopia.png" },
+    { "mode": "partial", "strength_percent": 50, "world_readable": false, "ui_readable": false, "distinct_from_off": false, "screenshot": "screenshots/accessibility-partial.png" }
+  ],
+  "controls_and_usability": {
+    "mouse_remap_persisted": false,
+    "keyboard_remap_persisted": false,
+    "edge_scroll_can_be_disabled": false,
+    "camera_speed_works": false,
+    "ui_scale_works": false,
+    "pause_works": false,
+    "reduced_flashes_and_shake_works": false,
+    "ownership_readable_without_colour": false,
+    "unit_silhouettes_readable": false,
+    "threats_readable_during_combat": false,
+    "visible_command_feedback_immediate": false
+  },
+  "audio": {
+    "music_audible_and_balanced": false,
+    "effects_audible_and_balanced": false,
+    "command_feedback_immediate": false,
+    "alerts_distinct": false,
+    "volume_controls_work": false,
+    "no_clipping_or_obvious_loop_fault": false
+  },
+  "stability": {
+    "alt_tab_returned_cleanly": false,
+    "resolution_change_returned_cleanly": false,
+    "restart_returned_cleanly": false,
+    "clean_shutdown_observed": false,
+    "no_crash_or_assert": false,
+    "no_observed_unbounded_growth": false
+  },
+  "evidence_capture": {
+    "short_capture": "capture/project-tempest-acceptance.mp4",
+    "runtime_log": "logs/project-tempest-runtime.log",
+    "settings_screenshot": "screenshots/settings-and-remapping.png"
+  },
+  "known_issues": []
+}

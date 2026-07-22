@@ -8,6 +8,7 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $fixedUnattendedSurfaces = @(
     ".github/workflows/build-toolchain.yml",
     "scripts/build-windows.ps1",
+    "scripts/analyse-project-tempest-manual-evidence.ps1",
     "scripts/package-project-tempest-demo.ps1",
     "scripts/test-w3d-pipeline.ps1",
     "scripts/prepare-w3dview-compat.ps1"
@@ -24,6 +25,9 @@ $scriptSurfaces = Get-ChildItem -LiteralPath (Join-Path $repositoryRoot "scripts
 
 if ("scripts/assert-project-tempest-artifact-boundary.ps1" -notin $scriptSurfaces) {
     throw "Project Tempest no-GUI discovery omitted the shared artifact-boundary assertion."
+}
+if ("scripts/analyse-project-tempest-manual-evidence.ps1" -notin $fixedUnattendedSurfaces) {
+    throw "Project Tempest no-GUI policy omitted the production manual evidence analyser."
 }
 
 # A workflow that names Project Tempest is part of the unattended surface even when it
@@ -219,7 +223,8 @@ foreach ($requiredPolicy in @(
     "No agent, automation, CI job, or scheduled task may perform these manual checks",
     "no unattended wrapper may invoke them or retry them",
     "PROJECT_TEMPEST_EVIDENCE_DIR",
-    "It does not launch the game"
+    "It does not launch the game",
+    "It never starts or retries the demo"
 )) {
     if ($runbook -notmatch [regex]::Escape($requiredPolicy)) {
         throw "Project Tempest runbook is missing required no-GUI policy text: '$requiredPolicy'."
@@ -242,6 +247,18 @@ foreach ($evidenceContract in @(
 )) {
     if (($runtimeEvidenceSource + $demoSource) -notmatch [regex]::Escape($evidenceContract)) {
         throw "Project Tempest runtime evidence is missing governed contract '$evidenceContract'."
+    }
+}
+
+$manualEvidenceAnalyser = Get-Content -LiteralPath (
+    Join-Path $repositoryRoot "scripts/analyse-project-tempest-manual-evidence.ps1") -Raw
+foreach ($requiredAnalyserPolicy in @(
+    "renderer_execution_by_analyser",
+    "not_performed",
+    "automatic_retry"
+)) {
+    if ($manualEvidenceAnalyser -notmatch [regex]::Escape($requiredAnalyserPolicy)) {
+        throw "Manual evidence analyser is missing no-GUI evidence '$requiredAnalyserPolicy'."
     }
 }
 

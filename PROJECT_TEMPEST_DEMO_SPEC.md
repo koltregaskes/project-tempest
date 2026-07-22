@@ -161,14 +161,17 @@ runtime submixes. Audible balance/device behavior, normal-zoom readability, targ
 proof of audio, persistence, and remapping remain open user-only gates. Version-four settings now also persist
 disabled-by-default protanopia, deuteranopia, and tritanopia modes plus bounded strength, brightness, and contrast.
 The isolated Apache-2.0 EA-derived colour transform has pinned deterministic vectors and packaged attribution; connecting
-it exactly once to the final world-and-UI presentation surface, then capturing target-resolution/performance evidence,
-remains open rather than being inferred from the portable tests.
+it exactly once to the final world-and-UI presentation surface is complete. Target-resolution, human-readability, and
+measured performance evidence remain open rather than being inferred from the portable tests.
 
 A disabled-by-default runtime evidence recorder now supports the single user-operated M5/M6 acceptance phase. When the
 user explicitly supplies an evidence directory, it records a fixed-size frame-time histogram, bounded one-second
 frame-time windows, sampled working set, focus and resolution events, restarts, outcomes, and clean shutdown into JSONL
 plus a summary. It never launches the executable, captures
 screens/audio/video, synthesises input, or claims a manual playthrough; those observations remain user-owned evidence.
+The governed private package now also contains one manual checklist, a truthful-observation template, and a read-only
+analyser. They consolidate the remaining two-playthrough, 30-minute soak, resolution, alt-tab, remapping, audio,
+accessibility, capture, log, and usability work into one explicit user-run non-RDP phase and one later headless report.
 
 Current content-model boundary (2026-07-21): the deterministic rules layer names all four Freegrid units, four Freegrid
 structures, both governed abilities, three Chorus units, and three Chorus structures through data-backed definitions.
@@ -251,10 +254,10 @@ has not been exercised, so the review score is intentionally `null`.
 
 | Need | Primary route | Current verdict and constraint |
 |---|---|---|
-| Source, PRs, CI | GitHub, `gh`, existing Actions workflows | Ready; exact-head CI, Codex review, and local review are required. CodeRabbit is supplementary and time-bounded so an unavailable external service cannot create a solo-maintainer deadlock. |
+| Source, PRs, CI | GitHub, `gh`, existing Actions workflows | Ready; exact-head CI, a fresh exact-head Codex/local correctness-regression-security-provenance-scope review, and zero unresolved actionable threads are required. Hosted Codex and CodeRabbit reviews are supplementary and time-bounded so an unavailable external service cannot create a solo-maintainer deadlock. |
 | Planning/evidence | Codex goal/plan plus Linear | Ready; goal owns outcome, Linear owns durable issue/evidence state. |
-| Native build | VS Build Tools 2022, bundled CMake/Ninja/MSBuild, vcpkg | Installed; not all tools are on `PATH`. Prove a scripted developer-shell/bootstrap command. |
-| Engine/code | Codex CLI, code-review graph, clang-tidy, tests/replays | Strong for source work; local build and standalone runtime evidence remain unproven. |
+| Native build | VS Build Tools 2022, bundled CMake/Ninja/MSBuild, vcpkg | Ready; scripted discovery, clean hosted Windows builds, two-build reproducibility, and a clean-consumer install are proven without an interactive developer prompt or global `PATH` edit. |
+| Engine/code | Codex CLI, code-review graph, clang-tidy, tests/replays | Strong for source work; exact-head CI, deterministic headless acceptance, package verification, and clean-consumer installation are proven. Player-visible local runtime evidence remains the user-operated gate. |
 | 3D authoring | Blender 5.1 | Ready for modelling, UVs, baking, LODs, collision, animation, and scripted batch export. Engine-format bridge is the principal risk. |
 | Concept/UI/texture | Built-in image generation, then Blender/Adobe/manual cleanup | Useful for reference and controlled source material. Final assets need human-readable cleanup and provenance; generated text/logos are never accepted blindly. |
 | Image-to-3D | Magnific GLB generation | Optional accelerator only. It consumes credits in this environment and requires explicit spend approval; GLB still needs cleanup and an engine bridge. |
@@ -262,8 +265,8 @@ has not been exercised, so the review score is intentionally `null`.
 | Music/voice | music/TTS generation tools plus audio editor | Optional for original prototypes; distribution rights, loudness, looping, accessibility, and provenance must be checked. No cloned or impersonated voice. |
 | Play/visual review | explicit user-run manual session plus captured-frame inspection | Required at playable milestones, but never agent-launched or unattended. When a safe non-RDP manual session is unavailable, record the gate blocked and rely only on headless evidence. |
 
-Highest-value next action: prove the installed Windows build path, then prove the Courier pipeline. More media generation
-before those two facts are known increases rerun cost without reducing the core risk.
+Highest-value next action: complete the single user-operated non-RDP acceptance session, then analyse its measured
+runtime trace, screenshots, short capture, truthful observations, and known issues without launching the demo again.
 
 No paid generation, external publishing, deployment, account/authentication change, or public asset upload is authorised
 by this specification. Each requires explicit approval. Every generated or sourced asset must record source URL/tool,
@@ -276,7 +279,7 @@ model/version, prompt or brief, generation date, edits, local source path, licen
 - This specification is linked from the repository entry points.
 - A durable Codex goal references this file and the Linear project.
 - Work occurs on `codex/` branches through pull requests.
-- CI, Codex review, and a local review are visible on milestone PRs. CodeRabbit evidence is included when the service is available; a recorded rate limit, outage, or unprocessed request is not a hard gate.
+- Exact-head applicable CI, a fresh exact-head Codex/local review, and thread-aware zero-unresolved-actionable-thread evidence are visible on milestone PRs. Hosted Codex and CodeRabbit evidence is included when available; a recorded refusal, rate limit, outage, or unprocessed bounded request is not a hard gate.
 - Main-branch rules require PRs and selected passing checks; required human approval is not enabled until it cannot
   deadlock the sole maintainer.
 
@@ -333,8 +336,8 @@ Every milestone ends in a narrow pull request. Before merge:
 
 1. build and targeted tests pass locally where available;
 2. GitHub Actions completes the applicable matrix;
-3. Codex automated-review findings are read and resolved or answered; CodeRabbit findings are handled the same way when the service returns a written review;
-4. a fresh local review checks correctness, regressions, security, provenance, and scope;
+3. all returned hosted-review findings are read and resolved or answered, without making hosted-service availability a gate;
+4. a fresh exact-head Codex/local review checks correctness, regressions, security, provenance, and scope;
 5. player-visible work includes real launch/play evidence, not only a compile or screenshot of source; and
 6. the Linear milestone/issue receives the PR, commands, results, evidence paths, known risks, and next smallest action.
 
@@ -342,10 +345,11 @@ Do not auto-merge failed, pending, or unreviewed work. Do not weaken tests to ma
 engine fixes should remain separable from Project Tempest identity/content changes.
 
 External review services are advisory and must not halt the goal indefinitely. The enforceable review baseline is an
-exact-head applicable GitHub Actions matrix, a written exact-head Codex review, a fresh local review covering correctness,
-regressions, security, provenance, and scope, plus thread-aware confirmation that no actionable review thread remains.
-CodeRabbit may supplement that baseline. After one no-cost request and either an explicit service refusal/rate limit or a
-15-minute bounded wait without a written review, record the request, timestamps, and service state in Linear and continue.
+exact-head applicable GitHub Actions matrix, a fresh exact-head Codex/local review covering correctness, regressions,
+security, provenance, and scope, plus thread-aware confirmation that no actionable review thread remains. Hosted Codex
+and CodeRabbit may supplement that baseline. After at most one no-cost request per service and either an explicit service
+refusal/rate limit or a 15-minute bounded wait without a written review, record the request, timestamps, and service state
+in Linear and continue.
 Do not repeat requests, enable paid usage, manufacture approval from silence, or ignore any finding that later arrives.
 
 ## Stop, pivot, and blocker policy

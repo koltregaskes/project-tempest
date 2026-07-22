@@ -1,0 +1,79 @@
+PROJECT TEMPEST - ONE-PASS MANUAL ACCEPTANCE CHECKLIST
+
+Purpose
+
+Use one deliberate, user-operated non-RDP desktop session to collect every
+remaining player-visible M5/M6 gate. Agents, CI jobs, scheduled tasks, and
+unattended scripts must never start or retry ProjectTempestDemo.exe.
+
+Before the session
+
+1. Use the governed private package and keep package-manifest.json beside the
+   executable.
+   Keep the reviewed source revision, executable SHA-256, Miles SHA-256,
+   package-contract SHA-256, and package-manifest SHA-256 from the exact-head
+   acceptance packet; the analyser requires all five as external
+   package-identity anchors.
+2. Create one empty evidence directory on a local drive.
+3. Copy manual-acceptance-observations.example.json into that directory as
+   manual-acceptance-observations.json.
+4. In the same interactive desktop session, set PROJECT_TEMPEST_EVIDENCE_DIR
+   to the absolute evidence-directory path.
+5. Start ProjectTempestDemo.exe yourself. Do not use RDP and do not configure
+   an automatic retry.
+
+One-pass test order
+
+1. Complete a full Freegrid victory. Confirm that a novice can identify the
+   objective and resource, issue the first command, capture territory, build a
+   structure, produce a unit, use faction abilities, and understand the result.
+2. Verify selection, movement, combat, repair, damage states, threats, and
+   immediate visible and audible command feedback.
+3. Exercise pause, settings, UI scale, camera speed, disabled edge scroll,
+   reduced flashes/shake, master/music/effects volume, and at least one mouse
+   and keyboard remap. Confirm the remaps persist after restart.
+4. Capture readable screenshots at 1920x1080, 2560x1440, 3840x2160, and either
+   3440x1440 or 2560x1080. Check for clipping, microscopic controls, and lost
+   selection/objective information.
+5. Capture accessibility screenshots for Off, Protanopia, Deuteranopia,
+   Tritanopia, and one partial-strength mode. Confirm the world and UI remain
+   readable, modes are visibly distinct, and ownership is understandable
+   without colour alone.
+6. Alt-tab away and back once, change resolution at least once, and restart at
+   least twice. Record any device, focus, audio, or settings-persistence issue.
+7. Complete a full Chorus defeat path so both terminal result flows are tested.
+8. Keep the measured session open for 30 to 90 minutes in total and exit before
+   two hours, which is the recorder's explicit bounded-capture limit. Capture a
+   short video showing normal play, readable UI, and audible feedback. Save the
+   relevant runtime log if one is available.
+9. Exit normally. Do not kill the process unless documenting a real fault.
+
+After the session
+
+1. Put screenshots and the short capture beneath the evidence directory using
+   the relative paths in manual-acceptance-observations.json. If a separate
+   runtime log is available, put it there too; otherwise leave runtime_log blank.
+2. Replace the source revision and every observation in that JSON with truthful
+   results. Do not mark a check true merely to make the validator pass; record
+   failures in known_issues.
+3. Run ANALYSE-MANUAL-EVIDENCE.ps1 yourself, or return the complete evidence
+   directory to Codex for headless analysis. The analyser reads files and
+   hashes only; it never starts the demo or another GUI.
+
+Example user-run analysis command
+
+Use the exact reviewed package-contract and package-manifest SHA-256 values from
+the final Codex/CI evidence packet. Do not copy either value from the unpacked
+package being analysed.
+
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\ANALYSE-MANUAL-EVIDENCE.ps1 `
+    -EvidenceDirectory "C:\absolute\path\to\project-tempest-evidence" `
+    -ExpectedReviewedSourceRevision "<40-character reviewed revision>" `
+    -ExpectedExecutableSha256 "<64-character executable SHA-256>" `
+    -ExpectedMilesSha256 "<64-character Miles SHA-256>" `
+    -ExpectedPackageContractSha256 "<64-character reviewed package-contract SHA-256>" `
+    -ExpectedPackageManifestSha256 "<64-character reviewed package-manifest SHA-256>"
+
+Passing the analyser does not silently approve subjective quality. Its report
+preserves the user's observations, measured frame/memory data, evidence hashes,
+known issues, and every failed criterion for final review.

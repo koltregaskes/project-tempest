@@ -366,6 +366,12 @@ resolution entries, and outcome summary lists are capped and disclose overflow c
 1000 ms are explicitly counted as saturated while the exact maximum remains available. `manual_playthrough_claimed` remains false:
 the files are machine measurements that must be paired with the user's checklist, screenshots, capture, and observations.
 
+The governed private package includes `MANUAL-ACCEPTANCE-CHECKLIST.txt`, a truthful-observation JSON template, and
+`ANALYSE-MANUAL-EVIDENCE.ps1`. Together they consolidate the remaining player-visible work into one explicit user-run
+non-RDP session. The analyser verifies the exact packaged executable/dependency hashes and reviewed source revision,
+cross-checks the runtime summary against its JSONL trace, enforces the 30-minute/two-playthrough/resolution/restart/alt-tab
+evidence contract, hashes every referenced screenshot/capture/log, and emits a criterion-by-criterion report. It never starts or retries the demo, invokes a GUI, takes a screenshot, records audio/video, or changes the user's observations.
+
 Build with a modern Generals preset, for example:
 
 ```powershell

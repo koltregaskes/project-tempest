@@ -32,6 +32,12 @@ on:
       tempest_miles_sha256:
         description: "Two-build-proven Project Tempest Miles runtime SHA-256"
         value: ${{ jobs.build.outputs.tempest_miles_sha256 }}
+      tempest_package_contract_sha256:
+        description: "Reviewed Project Tempest package contract SHA-256"
+        value: ${{ jobs.build.outputs.tempest_package_contract_sha256 }}
+      tempest_package_manifest_sha256:
+        description: "Two-package-proven Project Tempest package manifest SHA-256"
+        value: ${{ jobs.build.outputs.tempest_package_manifest_sha256 }}
 
 jobs:
   build:
@@ -41,6 +47,8 @@ jobs:
     outputs:
       tempest_executable_sha256: ${{ steps.tempest-package.outputs.tempest_executable_sha256 }}
       tempest_miles_sha256: ${{ steps.tempest-package.outputs.tempest_miles_sha256 }}
+      tempest_package_contract_sha256: ${{ steps.tempest-package.outputs.tempest_package_contract_sha256 }}
+      tempest_package_manifest_sha256: ${{ steps.tempest-package.outputs.tempest_package_manifest_sha256 }}
 
     env:
       VCPKG_FILE_CACHE: ${{ github.workspace }}\vcpkg-bincache
@@ -326,9 +334,22 @@ jobs:
           if ($primaryHash -ne $repeatHash) {
             throw "Independent Release-build packages are not byte-identical: primary=$primaryHash repeat=$repeatHash."
           }
+          $primaryStage = Join-Path $primaryPackage "ProjectTempestDemo-private"
+          $repeatStage = Join-Path $repeatPackage "ProjectTempestDemo-private"
+          $primaryContractHash = (Get-FileHash -LiteralPath (Join-Path $primaryStage "package-contract.json") -Algorithm SHA256).Hash.ToLowerInvariant()
+          $repeatContractHash = (Get-FileHash -LiteralPath (Join-Path $repeatStage "package-contract.json") -Algorithm SHA256).Hash.ToLowerInvariant()
+          $primaryManifestHash = (Get-FileHash -LiteralPath (Join-Path $primaryStage "package-manifest.json") -Algorithm SHA256).Hash.ToLowerInvariant()
+          $repeatManifestHash = (Get-FileHash -LiteralPath (Join-Path $repeatStage "package-manifest.json") -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($primaryContractHash -ne $repeatContractHash -or $primaryManifestHash -ne $repeatManifestHash) {
+            throw "Independent packages disagree on externally anchored metadata hashes."
+          }
           Write-Host "PASS: Independent Release-build package reproducibility SHA256=$primaryHash"
+          Write-Host "PASS: Reviewed package contract SHA256=$primaryContractHash"
+          Write-Host "PASS: Reproducible package manifest SHA256=$primaryManifestHash"
           "tempest_executable_sha256=$primaryExecutableHash" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "tempest_miles_sha256=$primaryMilesHash" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "tempest_package_contract_sha256=$primaryContractHash" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "tempest_package_manifest_sha256=$primaryManifestHash" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Save vcpkg binary cache
         # Only one job should save to avoid "Unable to reserve cache" conflicts.

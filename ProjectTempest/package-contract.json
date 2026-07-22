@@ -65,6 +65,9 @@
     { "path": "ProjectTempest/package-contract.json", "name": "package-contract.json", "kind": "package_contract" },
     { "path": "ProjectTempest/asset-provenance.json", "name": "asset-provenance.json", "kind": "provenance" },
     { "path": "ProjectTempest/PRIVATE-DEMO-README.txt", "name": "README.txt", "kind": "documentation" },
+    { "path": "ProjectTempest/MANUAL-ACCEPTANCE-CHECKLIST.txt", "name": "MANUAL-ACCEPTANCE-CHECKLIST.txt", "kind": "documentation" },
+    { "path": "ProjectTempest/manual-acceptance-observations.example.json", "name": "manual-acceptance-observations.example.json", "kind": "manual_evidence_template" },
+    { "path": "scripts/analyse-project-tempest-manual-evidence.ps1", "name": "ANALYSE-MANUAL-EVIDENCE.ps1", "kind": "manual_evidence_analyser" },
     { "path": "ProjectTempest/ThirdParty/MilesStub/SOURCE.txt", "name": "MILES-STUB-SOURCE.txt", "kind": "third_party_notice" }
   ],
   "forbidden_patterns": [

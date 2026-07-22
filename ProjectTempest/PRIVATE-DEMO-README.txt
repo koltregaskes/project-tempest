@@ -41,3 +41,14 @@ recorder is disabled when the variable is absent. It does not take screenshots,
 capture audio/video, automate input, launch the game, or turn measurements into
 a playthrough claim. Agents and unattended automation must never start or retry
 the executable.
+
+ONE-PASS MANUAL ACCEPTANCE
+
+MANUAL-ACCEPTANCE-CHECKLIST.txt and
+manual-acceptance-observations.example.json cover the remaining player-visible
+M5/M6 checks in one user-operated non-RDP session. After that session,
+ANALYSE-MANUAL-EVIDENCE.ps1 validates the runtime trace, package/source binding,
+two playthrough observations, target-resolution and accessibility screenshots,
+audio/usability/stability answers, capture/log files, performance, and evidence
+hashes. The analyser reads files only. It never starts the demo, invokes another
+GUI, captures media, retries a process, or manufactures a passing observation.
