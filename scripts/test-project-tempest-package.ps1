@@ -29,6 +29,17 @@ if ($packageVerifierText -notmatch '\$buildSpec\s*=\s*"\$ExpectedBuildSourceRevi
     throw "Packaged repository files must be byte-exact Git blobs from the build source revision."
 }
 $contract = Get-Content -LiteralPath $contractPath -Raw | ConvertFrom-Json
+$attributesPath = Join-Path $repositoryRoot ".gitattributes"
+if (-not (Test-Path -LiteralPath $attributesPath -PathType Leaf)) {
+    throw "Governed repository payloads require a root .gitattributes policy."
+}
+foreach ($repositoryEntry in @($contract.repository_files)) {
+    $repositoryPath = ([string]$repositoryEntry.path).Replace('\\', '/')
+    $eolAttribute = (& git -C $repositoryRoot check-attr eol -- $repositoryPath).Trim()
+    if ($LASTEXITCODE -ne 0 -or $eolAttribute -notmatch ': eol: lf$') {
+        throw "Governed repository payload '$repositoryPath' must be pinned to LF checkout bytes."
+    }
+}
 $provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json"
 $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
 $executableEntry = @($contract.runtime_files | Where-Object { $_.name -eq "ProjectTempestDemo.exe" })
@@ -100,7 +111,12 @@ $workflowSurfacePathFilters = [regex]::Matches(
     $ciWorkflowText,
     "(?m)^\s+- '\.github/workflows/(?:ci|build-toolchain)\.yml'\s*$"
 ).Count
+$attributesPathFilters = [regex]::Matches(
+    $ciWorkflowText,
+    "(?m)^\s+- '\.gitattributes'\s*$"
+).Count
 $tempestFilterIndex = $ciWorkflowText.IndexOf("            tempest:", [StringComparison]::Ordinal)
+$attributesPathFilterIndex = $ciWorkflowText.IndexOf("              - '.gitattributes'", [StringComparison]::Ordinal)
 $ciWorkflowPathFilterIndex = $ciWorkflowText.IndexOf("              - '.github/workflows/ci.yml'", [StringComparison]::Ordinal)
 $buildWorkflowPathFilterIndex = $ciWorkflowText.IndexOf("              - '.github/workflows/build-toolchain.yml'", [StringComparison]::Ordinal)
 $artifactGatePathFilterIndex = $ciWorkflowText.IndexOf("              - 'scripts/assert-project-tempest-artifact-boundary.ps1'", [StringComparison]::Ordinal)
@@ -117,8 +133,10 @@ $externalMilesOutputWrites = [regex]::Matches(
 if ($artifactGatePathFilters -ne 1 -or
     $privatePackageVerifierPathFilters -ne 1 -or
     $workflowSurfacePathFilters -ne 2 -or
+    $attributesPathFilters -ne 1 -or
     $tempestFilterIndex -lt 0 -or
-    $ciWorkflowPathFilterIndex -le $tempestFilterIndex -or
+    $attributesPathFilterIndex -le $tempestFilterIndex -or
+    $ciWorkflowPathFilterIndex -le $attributesPathFilterIndex -or
     $buildWorkflowPathFilterIndex -le $ciWorkflowPathFilterIndex -or
     $artifactGatePathFilterIndex -le $tempestFilterIndex -or
     $privatePackageVerifierPathFilterIndex -le $artifactGatePathFilterIndex -or

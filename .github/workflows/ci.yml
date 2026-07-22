@@ -49,6 +49,7 @@ jobs:
               - 'Core/**'
               - 'Dependencies/**'
             tempest:
+              - '.gitattributes'
               - '.github/workflows/ci.yml'
               - '.github/workflows/build-toolchain.yml'
               - 'ProjectTempest/**'

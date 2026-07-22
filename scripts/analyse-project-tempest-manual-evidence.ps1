@@ -652,8 +652,15 @@ Add-Check "manual.stability" $stabilityPass "required=$($stabilityFields -join '
 
 Add-RequiredEvidenceFile ([string]$observations.evidence_capture.short_capture) `
     "short_capture" "artifact.short_capture"
-Add-RequiredEvidenceFile ([string]$observations.evidence_capture.runtime_log) `
-    "runtime_log" "artifact.runtime_log"
+$runtimeLogProperty = $observations.evidence_capture.PSObject.Properties["runtime_log"]
+$runtimeLogPath = if ($null -eq $runtimeLogProperty) { "" } else { [string]$runtimeLogProperty.Value }
+if ([string]::IsNullOrWhiteSpace($runtimeLogPath)) {
+    Add-Check "artifact.runtime_log" $true `
+        "Optional application runtime log not supplied; the governed runtime trace remains required."
+}
+else {
+    Add-RequiredEvidenceFile $runtimeLogPath "runtime_log" "artifact.runtime_log"
+}
 Add-RequiredEvidenceFile ([string]$observations.evidence_capture.settings_screenshot) `
     "settings_screenshot" "artifact.settings_screenshot"
 

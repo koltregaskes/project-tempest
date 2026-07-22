@@ -1,0 +1,11 @@
+# Governed Project Tempest repository payloads are compared byte-for-byte with
+# their Git blobs by the private-package consumer. Keep their checkout bytes
+# stable on Windows and Unix hosts.
+LICENSE.md text eol=lf
+ProjectTempest/package-contract.json text eol=lf
+ProjectTempest/asset-provenance.json text eol=lf
+ProjectTempest/PRIVATE-DEMO-README.txt text eol=lf
+ProjectTempest/MANUAL-ACCEPTANCE-CHECKLIST.txt text eol=lf
+ProjectTempest/manual-acceptance-observations.example.json text eol=lf
+ProjectTempest/ThirdParty/MilesStub/SOURCE.txt text eol=lf
+scripts/analyse-project-tempest-manual-evidence.ps1 text eol=lf

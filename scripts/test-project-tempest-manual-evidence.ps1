@@ -275,6 +275,29 @@ try {
     Expect (@($report.evidence_inventory).Count -ge 18) "complete fixture did not hash the governed evidence set"
     Expect ($report.renderer_execution_by_analyser -eq "not_performed") "analyser did not preserve the no-execution claim"
 
+    $runtimeLogRelativePath = [string]$observations.evidence_capture.runtime_log
+    $runtimeLogFixturePath = Join-Path $evidenceRoot $runtimeLogRelativePath
+    Remove-Item -LiteralPath $runtimeLogFixturePath -Force
+    $observations.evidence_capture.runtime_log = ""
+    $observations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
+    Push-Location $repositoryRoot
+    try {
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
+    }
+    finally {
+        Pop-Location
+    }
+    $optionalLogReport = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+    $optionalLogCheck = @($optionalLogReport.checks | Where-Object { $_.id -eq "artifact.runtime_log" })
+    Expect ($optionalLogReport.result -eq "pass") "optional runtime log was treated as mandatory"
+    Expect ($optionalLogCheck.Count -eq 1 -and $optionalLogCheck[0].passed -eq $true) `
+        "optional runtime log did not produce one explicit passing check"
+    $observations.evidence_capture.runtime_log = $runtimeLogRelativePath
+    $observations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
+    [IO.File]::WriteAllBytes(
+        $runtimeLogFixturePath,
+        [Text.Encoding]::UTF8.GetBytes("fixture:$runtimeLogRelativePath"))
+
     $originalAnalyserPackageBytes = [IO.File]::ReadAllBytes($analyserPackagePath)
     $originalContractPackageBytes = [IO.File]::ReadAllBytes($contractPackagePath)
     $originalSumsBytes = [IO.File]::ReadAllBytes((Join-Path $packageRoot "SHA256SUMS.txt"))

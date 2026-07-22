@@ -50,8 +50,9 @@ One-pass test order
 
 After the session
 
-1. Put screenshots, the short capture, and the runtime log beneath the evidence
-   directory using the relative paths in manual-acceptance-observations.json.
+1. Put screenshots and the short capture beneath the evidence directory using
+   the relative paths in manual-acceptance-observations.json. If a separate
+   runtime log is available, put it there too; otherwise leave runtime_log blank.
 2. Replace the source revision and every observation in that JSON with truthful
    results. Do not mark a check true merely to make the validator pass; record
    failures in known_issues.
