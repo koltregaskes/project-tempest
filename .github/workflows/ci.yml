@@ -114,6 +114,12 @@ jobs:
             -o "$RUNNER_TEMP/project-tempest-headless-acceptance"
           "$RUNNER_TEMP/project-tempest-headless-acceptance" \
             --output "$RUNNER_TEMP/project-tempest-headless-acceptance.json"
+          g++ -std=c++20 -Wall -Wextra -Werror -pedantic \
+            ProjectTempest/Code/TempestRuntimeEvidence.cpp \
+            ProjectTempest/Tests/TempestRuntimeEvidenceTests.cpp \
+            -IProjectTempest/Code \
+            -o "$RUNNER_TEMP/project-tempest-runtime-evidence-tests"
+          "$RUNNER_TEMP/project-tempest-runtime-evidence-tests"
 
   build-generals:
     name: Build Generals${{ matrix.preset && '' }}

@@ -30,3 +30,14 @@ SHA256SUMS.txt contains hashes for every payload file plus the package manifest.
 The manifest records the source revision, fixed package timestamp, file sizes,
 and asset provenance IDs. This evidence does not claim manual visual, audio,
 performance, soak, or accessibility verification.
+
+OPTIONAL USER-INITIATED RUNTIME EVIDENCE
+
+Before starting the demo yourself, you may set PROJECT_TEMPEST_EVIDENCE_DIR to
+an empty absolute directory. The demo will write a JSONL frame/event trace and
+a summary JSON covering frame-time percentiles, sampled working set, focus
+losses, resolutions, restarts, outcomes, exit code, and clean shutdown. This
+recorder is disabled when the variable is absent. It does not take screenshots,
+capture audio/video, automate input, launch the game, or turn measurements into
+a playthrough claim. Agents and unattended automation must never start or retry
+the executable.

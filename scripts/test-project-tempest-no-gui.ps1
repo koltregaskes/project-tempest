@@ -217,10 +217,31 @@ foreach ($requiredPolicy in @(
     "manual-only",
     "do not retry a visible GUI",
     "No agent, automation, CI job, or scheduled task may perform these manual checks",
-    "no unattended wrapper may invoke them or retry them"
+    "no unattended wrapper may invoke them or retry them",
+    "PROJECT_TEMPEST_EVIDENCE_DIR",
+    "It does not launch the game"
 )) {
     if ($runbook -notmatch [regex]::Escape($requiredPolicy)) {
         throw "Project Tempest runbook is missing required no-GUI policy text: '$requiredPolicy'."
+    }
+}
+
+$runtimeEvidenceSource = Get-Content -LiteralPath (
+    Join-Path $repositoryRoot "ProjectTempest/Code/TempestRuntimeEvidence.cpp") -Raw
+$demoSource = Get-Content -LiteralPath (
+    Join-Path $repositoryRoot "ProjectTempest/Code/ProjectTempestDemo.cpp") -Raw
+foreach ($evidenceContract in @(
+    "manual_playthrough_claimed",
+    "clean_shutdown",
+    "focus_losses",
+    "working_set_bytes",
+    "PROJECT_TEMPEST_EVIDENCE_DIR",
+    "RecordFrame",
+    "RecordFocus",
+    "RecordResolution"
+)) {
+    if (($runtimeEvidenceSource + $demoSource) -notmatch [regex]::Escape($evidenceContract)) {
+        throw "Project Tempest runtime evidence is missing governed contract '$evidenceContract'."
     }
 }
 
