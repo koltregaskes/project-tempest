@@ -466,20 +466,18 @@ foreach ($repositoryEntry in @($contract.repository_files)) {
     if ($ExpectedDistribution -eq "test_fixture") {
         $reviewedPath = [IO.Path]::GetFullPath((Join-Path $repositoryRoot $relativePath))
         if (-not (Test-Path -LiteralPath $reviewedPath -PathType Leaf) -or
-            (Get-CanonicalTextBytesSha256 -Bytes $entryBytes[$packageName]) -ne
-                (Get-CanonicalTextFileSha256 -Path $reviewedPath)) {
+            (Get-BytesSha256 -Bytes $entryBytes[$packageName]) -ne
+                (Get-FileHash -LiteralPath $reviewedPath -Algorithm SHA256).Hash.ToLowerInvariant()) {
             throw "Packaged repository file '$packageName' does not match the reviewed checkout bytes."
         }
         continue
     }
 
-    $canonicalPackagePath = Join-Path $resolvedReceiptParent (
+    $packagedBlobPath = Join-Path $resolvedReceiptParent (
         ".project-tempest-reviewed-" + [guid]::NewGuid().ToString("N") + ".tmp")
     try {
-        $canonicalPackageText = $strictUtf8.GetString($entryBytes[$packageName]) `
-            -replace "`r`n", "`n" -replace "`r", "`n"
-        [IO.File]::WriteAllBytes($canonicalPackagePath, $strictUtf8.GetBytes($canonicalPackageText))
-        $packagedBlobObject = (& git -C $repositoryRoot hash-object -- $canonicalPackagePath).Trim()
+        [IO.File]::WriteAllBytes($packagedBlobPath, $entryBytes[$packageName])
+        $packagedBlobObject = (& git -C $repositoryRoot hash-object -- $packagedBlobPath).Trim()
         if ($LASTEXITCODE -ne 0 -or $packagedBlobObject -notmatch '^[0-9a-f]{40}$') {
             throw "Could not hash packaged reviewed file '$packageName' as a Git blob."
         }
@@ -491,8 +489,8 @@ foreach ($repositoryEntry in @($contract.repository_files)) {
         }
     }
     finally {
-        if (Test-Path -LiteralPath $canonicalPackagePath) {
-            Remove-Item -LiteralPath $canonicalPackagePath -Force
+        if (Test-Path -LiteralPath $packagedBlobPath) {
+            Remove-Item -LiteralPath $packagedBlobPath -Force
         }
     }
 }

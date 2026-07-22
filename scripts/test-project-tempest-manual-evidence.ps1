@@ -14,6 +14,31 @@ function Expect {
     }
 }
 
+function Write-Utf8NoBomJson {
+    param(
+        [Parameter(Mandatory = $true)]$Value,
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+    $json = (($Value | ConvertTo-Json -Depth 20) -replace "`r`n", "`n") + "`n"
+    [IO.File]::WriteAllText($Path, $json, [Text.UTF8Encoding]::new($false))
+}
+
+function Write-FixtureHashManifest {
+    param([Parameter(Mandatory = $true)][string]$PackageRoot)
+    $lines = @(
+        Get-ChildItem -LiteralPath $PackageRoot -File -Force |
+            Where-Object { $_.Name -ne "SHA256SUMS.txt" } |
+            Sort-Object Name |
+            ForEach-Object {
+                "$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)"
+            }
+    )
+    [IO.File]::WriteAllText(
+        (Join-Path $PackageRoot "SHA256SUMS.txt"),
+        ($lines -join "`n") + "`n",
+        [Text.UTF8Encoding]::new($false))
+}
+
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $buildRoot = Join-Path $repositoryRoot "build"
 $sessionRoot = Join-Path $buildRoot ("manual-acceptance-test/" + [guid]::NewGuid().ToString("N"))
@@ -25,8 +50,34 @@ New-Item -ItemType Directory -Path $packageRoot, $evidenceRoot | Out-Null
 try {
     $executablePath = Join-Path $packageRoot "ProjectTempestDemo.exe"
     $milesPath = Join-Path $packageRoot "mss32.dll"
+    $analyserPackagePath = Join-Path $packageRoot "ANALYSE-MANUAL-EVIDENCE.ps1"
+    $provenancePackagePath = Join-Path $packageRoot "asset-provenance.json"
+    $contractPackagePath = Join-Path $packageRoot "package-contract.json"
     [IO.File]::WriteAllBytes($executablePath, [byte[]](77, 90, 1, 2, 3, 4))
     [IO.File]::WriteAllBytes($milesPath, [byte[]](77, 90, 5, 6, 7, 8))
+    [IO.File]::WriteAllText(
+        $analyserPackagePath,
+        "Write-Output 'governed fixture analyser'`n",
+        [Text.UTF8Encoding]::new($false))
+    Write-Utf8NoBomJson -Path $provenancePackagePath -Value ([ordered]@{
+        schema_version = 1
+        assets = @()
+    })
+    $fixtureContract = [ordered]@{
+        schema_version = 3
+        package_directory = "ProjectTempestDemo-private"
+        archive_name = "ProjectTempestDemo-private.zip"
+        runtime_files = @(
+            [ordered]@{ name = "ProjectTempestDemo.exe"; kind = "executable" },
+            [ordered]@{ name = "mss32.dll"; kind = "runtime_dependency" }
+        )
+        repository_files = @(
+            [ordered]@{ path = "ProjectTempest/package-contract.json"; name = "package-contract.json"; kind = "package_contract" },
+            [ordered]@{ path = "ProjectTempest/asset-provenance.json"; name = "asset-provenance.json"; kind = "provenance" },
+            [ordered]@{ path = "scripts/analyse-project-tempest-manual-evidence.ps1"; name = "ANALYSE-MANUAL-EVIDENCE.ps1"; kind = "manual_evidence_analyser" }
+        )
+    }
+    Write-Utf8NoBomJson -Path $contractPackagePath -Value $fixtureContract
     $executableHash = (Get-FileHash -LiteralPath $executablePath -Algorithm SHA256).Hash.ToLowerInvariant()
     $milesHash = (Get-FileHash -LiteralPath $milesPath -Algorithm SHA256).Hash.ToLowerInvariant()
     $analysisArguments = @{
@@ -36,12 +87,27 @@ try {
         ExpectedExecutableSha256 = $executableHash
         ExpectedMilesSha256 = $milesHash
     }
-    [ordered]@{
+    $fixtureManifestFiles = @(
+        @($fixtureContract.runtime_files) + @($fixtureContract.repository_files) |
+            ForEach-Object {
+                $path = Join-Path $packageRoot ([string]$_.name)
+                [ordered]@{
+                    name = [string]$_.name
+                    kind = [string]$_.kind
+                    length = (Get-Item -LiteralPath $path -Force).Length
+                    sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+                }
+            }
+    )
+    $fixtureManifest = [ordered]@{
         schema_version = 2
+        package = "ProjectTempestDemo-private"
         distribution = "private_internal_demo"
         source_revision = $revision
         reviewed_source_revision = $revision
         source_tree = "clean"
+        package_contract_sha256 = (Get-FileHash -LiteralPath $contractPackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        asset_provenance_sha256 = (Get-FileHash -LiteralPath $provenancePackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
         executable_verification = [ordered]@{
             name = "ProjectTempestDemo.exe"
             sha256 = $executableHash
@@ -58,7 +124,10 @@ try {
         }
         renderer_execution = "not_performed"
         manual_playthrough_claimed = $false
-    } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $packageRoot "package-manifest.json") -Encoding UTF8
+        files = $fixtureManifestFiles
+    }
+    Write-Utf8NoBomJson -Path (Join-Path $packageRoot "package-manifest.json") -Value $fixtureManifest
+    Write-FixtureHashManifest -PackageRoot $packageRoot
 
     $traceName = "project-tempest-runtime-fixture.jsonl"
     $summaryName = "project-tempest-runtime-fixture-summary.json"
@@ -199,6 +268,56 @@ try {
     Expect ($report.checks_failed -eq 0) "complete fixture retained failed checks"
     Expect (@($report.evidence_inventory).Count -ge 18) "complete fixture did not hash the governed evidence set"
     Expect ($report.renderer_execution_by_analyser -eq "not_performed") "analyser did not preserve the no-execution claim"
+
+    $originalAnalyserPackageBytes = [IO.File]::ReadAllBytes($analyserPackagePath)
+    $originalContractPackageBytes = [IO.File]::ReadAllBytes($contractPackagePath)
+    $originalSumsBytes = [IO.File]::ReadAllBytes((Join-Path $packageRoot "SHA256SUMS.txt"))
+
+    [IO.File]::WriteAllText(
+        $analyserPackagePath,
+        "Write-Output 'tampered after install'`n",
+        [Text.UTF8Encoding]::new($false))
+    $governedFileTamperRejected = $false
+    Push-Location $repositoryRoot
+    try { .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments }
+    catch { $governedFileTamperRejected = $_.Exception.Message -match "source.package_manifest_files" }
+    finally { Pop-Location }
+    Expect $governedFileTamperRejected "modified governed analyser passed unpacked-package integrity checks"
+    [IO.File]::WriteAllBytes($analyserPackagePath, $originalAnalyserPackageBytes)
+
+    Remove-Item -LiteralPath $analyserPackagePath -Force
+    $governedFileRemovalRejected = $false
+    Push-Location $repositoryRoot
+    try { .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments }
+    catch { $governedFileRemovalRejected = $_.Exception.Message -match "source.package_tree" }
+    finally { Pop-Location }
+    Expect $governedFileRemovalRejected "removed governed analyser passed unpacked-package integrity checks"
+    [IO.File]::WriteAllBytes($analyserPackagePath, $originalAnalyserPackageBytes)
+
+    [IO.File]::WriteAllBytes(
+        $contractPackagePath,
+        $originalContractPackageBytes + [Text.Encoding]::UTF8.GetBytes("`n"))
+    $contractTamperRejected = $false
+    Push-Location $repositoryRoot
+    try { .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments }
+    catch { $contractTamperRejected = $_.Exception.Message -match "source.package_metadata_hashes" }
+    finally { Pop-Location }
+    Expect $contractTamperRejected "modified package contract passed unpacked-package integrity checks"
+    [IO.File]::WriteAllBytes($contractPackagePath, $originalContractPackageBytes)
+
+    $forgedSumsText = [Text.UTF8Encoding]::new($false, $true).GetString($originalSumsBytes)
+    $forgedSumsText = "0" + $forgedSumsText.Substring(1)
+    [IO.File]::WriteAllText(
+        (Join-Path $packageRoot "SHA256SUMS.txt"),
+        $forgedSumsText,
+        [Text.UTF8Encoding]::new($false))
+    $sumsTamperRejected = $false
+    Push-Location $repositoryRoot
+    try { .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments }
+    catch { $sumsTamperRejected = $_.Exception.Message -match "source.package_hash_manifest" }
+    finally { Pop-Location }
+    Expect $sumsTamperRejected "modified SHA256SUMS passed unpacked-package integrity checks"
+    [IO.File]::WriteAllBytes((Join-Path $packageRoot "SHA256SUMS.txt"), $originalSumsBytes)
 
     $summaryPath = Join-Path $evidenceRoot $summaryName
     $invalidSummary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
@@ -372,6 +491,7 @@ try {
     Expect $relabelledPackageRejected "self-consistent package relabelling bypassed the external reviewed revision"
 
     [IO.File]::WriteAllText($manifestFixturePath, $originalManifestText, [Text.UTF8Encoding]::new($false))
+    Write-FixtureHashManifest -PackageRoot $packageRoot
     $forgedObservations.source_revision = $revision
     $forgedObservations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
     $originalExecutableBytes = [IO.File]::ReadAllBytes($executablePath)
@@ -394,13 +514,15 @@ try {
     Expect $rehashedBinaryRejected "rehashed replacement executable bypassed the external binary identity"
     [IO.File]::WriteAllBytes($executablePath, $originalExecutableBytes)
     [IO.File]::WriteAllText($manifestFixturePath, $originalManifestText, [Text.UTF8Encoding]::new($false))
+    Write-FixtureHashManifest -PackageRoot $packageRoot
 
     $mergeRevision = "cccccccccccccccccccccccccccccccccccccccc"
     $mergeManifestPath = Join-Path $packageRoot "package-manifest.json"
     $mergeManifest = Get-Content -LiteralPath $mergeManifestPath -Raw | ConvertFrom-Json
     $mergeManifest.source_revision = $mergeRevision
     $mergeManifest.executable_verification.source_revision = $mergeRevision
-    $mergeManifest | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $mergeManifestPath -Encoding UTF8
+    Write-Utf8NoBomJson -Path $mergeManifestPath -Value $mergeManifest
+    Write-FixtureHashManifest -PackageRoot $packageRoot
     Push-Location $repositoryRoot
     try {
         .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments

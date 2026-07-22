@@ -82,7 +82,7 @@ if ($reparseEntries.Count -gt 0) {
 $packageReparseEntries = @(
     @(
         Get-Item -LiteralPath $packageRoot -Force
-        Get-ChildItem -LiteralPath $packageRoot -Force
+        Get-ChildItem -LiteralPath $packageRoot -Recurse -Force
     ) | Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 }
 )
 if ($packageReparseEntries.Count -gt 0) {
@@ -171,7 +171,10 @@ function Add-RequiredEvidenceFile {
     }
 }
 
-foreach ($requiredPackageFile in @("package-manifest.json", "ProjectTempestDemo.exe", "mss32.dll")) {
+foreach ($requiredPackageFile in @(
+    "package-manifest.json", "package-contract.json", "SHA256SUMS.txt",
+    "ProjectTempestDemo.exe", "mss32.dll"
+)) {
     $path = Join-Path $packageRoot $requiredPackageFile
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Governed package file is unavailable: '$path'."
@@ -188,8 +191,12 @@ if ($summaryFiles.Count -ne 1) {
     throw "Expected exactly one runtime summary in the evidence root; found $($summaryFiles.Count)."
 }
 
+$strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
 $manifestPath = Join-Path $packageRoot "package-manifest.json"
-$manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+$contractPath = Join-Path $packageRoot "package-contract.json"
+$sumsPath = Join-Path $packageRoot "SHA256SUMS.txt"
+$manifest = [IO.File]::ReadAllText($manifestPath, $strictUtf8) | ConvertFrom-Json
+$contract = [IO.File]::ReadAllText($contractPath, $strictUtf8) | ConvertFrom-Json
 $summaryPath = $summaryFiles[0].FullName
 $summary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
 $observations = Get-Content -LiteralPath $ObservationsPath -Raw | ConvertFrom-Json
@@ -216,6 +223,8 @@ if ($traceRecords.Count -lt 2) {
 
 foreach ($coreFile in @(
     @{ Path = $manifestPath; Role = "package_manifest" },
+    @{ Path = $contractPath; Role = "package_contract" },
+    @{ Path = $sumsPath; Role = "package_hash_manifest" },
     @{ Path = (Join-Path $packageRoot "ProjectTempestDemo.exe"); Role = "governed_executable" },
     @{ Path = (Join-Path $packageRoot "mss32.dll"); Role = "governed_runtime_dependency" },
     @{ Path = $summaryPath; Role = "runtime_summary" },
@@ -231,8 +240,108 @@ $reviewedRevision = ([string]$manifest.reviewed_source_revision).ToLowerInvarian
 $expectedReviewedRevision = $ExpectedReviewedSourceRevision.ToLowerInvariant()
 $expectedExecutableHash = $ExpectedExecutableSha256.ToLowerInvariant()
 $expectedMilesHash = $ExpectedMilesSha256.ToLowerInvariant()
+$expectedGovernedNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+$expectedPackageNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+$contractKinds = [Collections.Generic.Dictionary[string, string]]::new([StringComparer]::OrdinalIgnoreCase)
+$contractShapeValid = $contract.schema_version -eq 3 -and
+    [string]$contract.package_directory -eq [string]$manifest.package -and
+    [string]$contract.archive_name -eq "ProjectTempestDemo-private.zip"
+foreach ($entry in @($contract.runtime_files) + @($contract.repository_files)) {
+    $name = [string]$entry.name
+    $safeAndUnique = $name -match '^[^/\\:]+$' -and $expectedGovernedNames.Add($name)
+    if (-not $safeAndUnique) {
+        $contractShapeValid = $false
+        continue
+    }
+    $null = $expectedPackageNames.Add($name)
+    $contractKinds[$name] = [string]$entry.kind
+}
+$null = $expectedPackageNames.Add("package-manifest.json")
+$null = $expectedPackageNames.Add("SHA256SUMS.txt")
+
+$packageItems = @(Get-ChildItem -LiteralPath $packageRoot -Force)
+$packageFiles = @($packageItems | Where-Object { -not $_.PSIsContainer })
+$actualPackageNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+$packageTreeValid = @($packageItems | Where-Object { $_.PSIsContainer }).Count -eq 0 -and
+    $packageFiles.Count -eq $expectedPackageNames.Count
+foreach ($file in $packageFiles) {
+    if (-not $actualPackageNames.Add($file.Name) -or -not $expectedPackageNames.Contains($file.Name)) {
+        $packageTreeValid = $false
+    }
+}
+foreach ($name in $expectedPackageNames) {
+    if (-not $actualPackageNames.Contains($name)) {
+        $packageTreeValid = $false
+    }
+}
+
+$manifestNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+$manifestFilesValid = @($manifest.files).Count -eq $expectedGovernedNames.Count
+foreach ($fileRecord in @($manifest.files)) {
+    $name = [string]$fileRecord.name
+    $path = Join-Path $packageRoot $name
+    if (-not $expectedGovernedNames.Contains($name) -or -not $manifestNames.Add($name) -or
+        -not (Test-Path -LiteralPath $path -PathType Leaf) -or
+        [string]$fileRecord.kind -ne $contractKinds[$name] -or
+        ([string]$fileRecord.sha256).ToLowerInvariant() -ne (Get-Sha256 -Path $path) -or
+        [long]$fileRecord.length -ne (Get-Item -LiteralPath $path -Force).Length) {
+        $manifestFilesValid = $false
+    }
+}
+foreach ($name in $expectedGovernedNames) {
+    if (-not $manifestNames.Contains($name)) {
+        $manifestFilesValid = $false
+    }
+}
+
+$sumNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+$hashManifestValid = $true
+$sumLines = @(
+    [IO.File]::ReadAllText($sumsPath, $strictUtf8).TrimEnd("`r", "`n") -split "`r?`n" |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+)
+foreach ($line in $sumLines) {
+    if ($line -notmatch '^(?<hash>[0-9a-f]{64})  (?<name>[^/\\:]+)$') {
+        $hashManifestValid = $false
+        continue
+    }
+    $name = [string]$Matches.name
+    $path = Join-Path $packageRoot $name
+    if ($name -eq "SHA256SUMS.txt" -or -not $expectedPackageNames.Contains($name) -or
+        -not $sumNames.Add($name) -or -not (Test-Path -LiteralPath $path -PathType Leaf) -or
+        [string]$Matches.hash -ne (Get-Sha256 -Path $path)) {
+        $hashManifestValid = $false
+    }
+}
+foreach ($name in $expectedPackageNames) {
+    if ($name -ne "SHA256SUMS.txt" -and -not $sumNames.Contains($name)) {
+        $hashManifestValid = $false
+    }
+}
+
+$contractHashValid = ([string]$manifest.package_contract_sha256).ToLowerInvariant() -eq
+    (Get-Sha256 -Path $contractPath)
+$provenanceHashValid = $expectedGovernedNames.Contains("asset-provenance.json") -and
+    (Test-Path -LiteralPath (Join-Path $packageRoot "asset-provenance.json") -PathType Leaf) -and
+    ([string]$manifest.asset_provenance_sha256).ToLowerInvariant() -eq
+        (Get-Sha256 -Path (Join-Path $packageRoot "asset-provenance.json"))
+Add-Check "source.package_tree" ($contractShapeValid -and $packageTreeValid) `
+    "contract_schema=$($contract.schema_version) files=$($packageFiles.Count)/$($expectedPackageNames.Count)"
+Add-Check "source.package_manifest_files" $manifestFilesValid `
+    "manifest_files=$(@($manifest.files).Count)/$($expectedGovernedNames.Count)"
+Add-Check "source.package_hash_manifest" $hashManifestValid `
+    "hash_records=$($sumNames.Count)/$($expectedPackageNames.Count - 1)"
+Add-Check "source.package_metadata_hashes" ($contractHashValid -and $provenanceHashValid) `
+    "contract=$contractHashValid provenance=$provenanceHashValid"
+foreach ($name in $expectedGovernedNames) {
+    $governedPath = Join-Path $packageRoot $name
+    if (Test-Path -LiteralPath $governedPath -PathType Leaf) {
+        Add-InventoryFile -Path $governedPath -Role "governed_package_file"
+    }
+}
 Add-Check "source.package_contract" (
     $manifest.schema_version -eq 2 -and
+    [string]$manifest.package -eq [string]$contract.package_directory -and
     [string]$manifest.distribution -eq "private_internal_demo" -and
     [string]$manifest.renderer_execution -eq "not_performed" -and
     $manifest.manual_playthrough_claimed -eq $false

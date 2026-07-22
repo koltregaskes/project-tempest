@@ -23,8 +23,10 @@ if ($packageVerifierText -notmatch '\[Array\]::Sort\(\$orderedArchiveNames, \[St
     throw "The private-package consumer receipt must use one ordinal order and a PowerShell-version-independent serializer."
 }
 if ($packageVerifierText -notmatch '\$reviewedSpec\s*=\s*"\$ExpectedReviewedSourceRevision' -or
-    $packageVerifierText -notmatch 'git -C \$repositoryRoot rev-parse \$reviewedSpec') {
-    throw "Packaged repository files must be bound to the exact reviewed Git revision."
+    $packageVerifierText -notmatch 'git -C \$repositoryRoot rev-parse \$reviewedSpec' -or
+    $packageVerifierText -notmatch '\[IO\.File\]::WriteAllBytes\(\$packagedBlobPath, \$entryBytes\[\$packageName\]\)' -or
+    $packageVerifierText -match '\$canonicalPackageText') {
+    throw "Packaged repository files must be byte-exact Git blobs from the reviewed revision."
 }
 $contract = Get-Content -LiteralPath $contractPath -Raw | ConvertFrom-Json
 $provenancePath = Join-Path $repositoryRoot "ProjectTempest/asset-provenance.json"
@@ -1129,6 +1131,34 @@ try {
     Assert-PackageVerifierRejects `
         -PackagePath $coherentlyForgedAnalyserArchive `
         -Name "coherently-forged-analyser" `
+        -MessagePattern "does not match the reviewed checkout bytes" `
+        -Revision $revision `
+        -ExecutableSha256 $fixtureExecutableHash `
+        -MilesSha256 $fixtureDependencyHash
+
+    $reviewedAnalyserPath = Join-Path $repositoryRoot "scripts/analyse-project-tempest-manual-evidence.ps1"
+    $reviewedAnalyserText = [IO.File]::ReadAllText($reviewedAnalyserPath, [Text.UTF8Encoding]::new($false, $true))
+    $lineEndingForgedAnalyserText = if ($reviewedAnalyserText.Contains("`r`n")) {
+        $reviewedAnalyserText.Replace("`r`n", "`n")
+    }
+    else {
+        $reviewedAnalyserText.Replace("`n", "`r`n")
+    }
+    $lineEndingForgedAnalyserBytes = [Text.UTF8Encoding]::new($false).GetBytes($lineEndingForgedAnalyserText)
+    if ((Get-TestBytesSha256 -Bytes $lineEndingForgedAnalyserBytes) -eq
+        (Get-FileHash -LiteralPath $reviewedAnalyserPath -Algorithm SHA256).Hash.ToLowerInvariant()) {
+        throw "Line-ending forgery fixture did not change the reviewed analyser bytes."
+    }
+    $lineEndingForgedAnalyserArchive = Join-Path $mutatedRoot "line-ending-forged-analyser.zip"
+    New-CoherentlyForgedGovernedFilePackage `
+        -SourcePath $firstArchive `
+        -DestinationPath $lineEndingForgedAnalyserArchive `
+        -FileName "ANALYSE-MANUAL-EVIDENCE.ps1" `
+        -ExpectedKind "manual_evidence_analyser" `
+        -ForgedFileBytes $lineEndingForgedAnalyserBytes
+    Assert-PackageVerifierRejects `
+        -PackagePath $lineEndingForgedAnalyserArchive `
+        -Name "line-ending-forged-analyser" `
         -MessagePattern "does not match the reviewed checkout bytes" `
         -Revision $revision `
         -ExecutableSha256 $fixtureExecutableHash `
