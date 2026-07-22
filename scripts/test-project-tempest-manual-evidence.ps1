@@ -276,6 +276,33 @@ try {
     Expect $shiftedTraceRejected "trace windows outside the recorded session were not rejected"
     $traceLines | Set-Content -LiteralPath (Join-Path $evidenceRoot $traceName) -Encoding UTF8
 
+    $lowDensityTraceLines = @($traceLines | ForEach-Object {
+        $record = $_ | ConvertFrom-Json
+        if ([string]$record.type -eq "frame_window") {
+            $record.frames = 1
+            $record.active_frames = 1
+        }
+        $record | ConvertTo-Json -Compress -Depth 5
+    })
+    $lowDensityTraceLines | Set-Content -LiteralPath (Join-Path $evidenceRoot $traceName) -Encoding UTF8
+    $invalidSummary.frames = 1800
+    $invalidSummary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
+    $lowDensityRejected = $false
+    Push-Location $repositoryRoot
+    try {
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
+    }
+    catch {
+        $lowDensityRejected = $_.Exception.Message -match "performance.trace_1080p_60fps_target"
+    }
+    finally {
+        Pop-Location
+    }
+    Expect $lowDensityRejected "one-frame-per-second trace passed the 1080p 60fps evidence gate"
+    $traceLines | Set-Content -LiteralPath (Join-Path $evidenceRoot $traceName) -Encoding UTF8
+    $invalidSummary.frames = 108000
+    $invalidSummary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
+
     $forgedObservations = Get-Content -LiteralPath $observationsPath -Raw | ConvertFrom-Json
     $forgedObservations.source_revision = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     $forgedObservations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8

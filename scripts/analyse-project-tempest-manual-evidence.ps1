@@ -351,6 +351,9 @@ foreach ($window in $traceWindows) {
     if ($windowEndMs -gt [uint64]$summary.duration_ms) {
         $traceWindowsWellFormed = $false
     }
+    if ([uint64]$window.frames -eq 0 -or [uint64]$window.active_frames -gt [uint64]$window.frames) {
+        $traceWindowsWellFormed = $false
+    }
     $windowDurationMs = $windowEndMs - $windowStartMs
     $traceCoveredWindowMs += $windowDurationMs
     $traceLargestWindowMs = [Math]::Max($traceLargestWindowMs, $windowDurationMs)
@@ -364,10 +367,26 @@ foreach ($window in $traceWindows) {
     $previousWindowEndMs = $windowEndMs
 }
 $minimumTraceWindowCount = [uint64][Math]::Floor([double]$summary.duration_ms / 2000.0)
-$activeTraceWindows = @($traceWindows | Where-Object { [uint64]$_.active_frames -gt 0 })
-$targetTraceWindows = @($activeTraceWindows | Where-Object { [double]$_.frame_ms.p95 -le 17.0 })
-$targetTraceWindowRatio = if ($activeTraceWindows.Count -gt 0) {
-    [double]$targetTraceWindows.Count / [double]$activeTraceWindows.Count
+$active1080pTraceWindows = @($traceWindows | Where-Object {
+    [uint64]$_.active_frames -gt 0 -and [int]$_.width -eq 1920 -and [int]$_.height -eq 1080
+})
+$target1080pTraceWindows = @($active1080pTraceWindows | Where-Object { [double]$_.frame_ms.p95 -le 17.0 })
+$target1080pTraceWindowRatio = if ($active1080pTraceWindows.Count -gt 0) {
+    [double]$target1080pTraceWindows.Count / [double]$active1080pTraceWindows.Count
+} else { 0.0 }
+$trace1080pCoveredMs = [uint64](($active1080pTraceWindows | ForEach-Object {
+    [uint64]$_.end_ms - [uint64]$_.start_ms
+} | Measure-Object -Sum).Sum)
+$trace1080pActiveFrames = [uint64](($active1080pTraceWindows | Measure-Object -Property active_frames -Sum).Sum)
+$trace1080pFrameRate = if ($trace1080pCoveredMs -gt 0) {
+    [double]$trace1080pActiveFrames * 1000.0 / [double]$trace1080pCoveredMs
+} else { 0.0 }
+$trace1080pWeightedFrameMs = 0.0
+foreach ($window in $active1080pTraceWindows) {
+    $trace1080pWeightedFrameMs += [double]$window.frame_ms.average * [double]$window.active_frames
+}
+$trace1080pAverageFrameMs = if ($trace1080pActiveFrames -gt 0) {
+    $trace1080pWeightedFrameMs / [double]$trace1080pActiveFrames
 } else { 0.0 }
 
 $traceResolutions = [Collections.Generic.List[string]]::new()
@@ -417,8 +436,11 @@ Add-Check "trace.window_continuity" (
     $traceWindowGapMs -le [uint64]([double]$summary.duration_ms * 0.05)
 ) "covered_ms=$traceCoveredWindowMs gaps_ms=$traceWindowGapMs largest_window_ms=$traceLargestWindowMs windows=$($traceWindows.Count)/$minimumTraceWindowCount duration_ms=$($summary.duration_ms)"
 Add-Check "performance.trace_1080p_60fps_target" (
-    $traceAverageFrameMs -le 17.0 -and $targetTraceWindowRatio -ge 0.95
-) "weighted_average_ms=$traceAverageFrameMs target_windows=$($targetTraceWindows.Count)/$($activeTraceWindows.Count) ratio=$targetTraceWindowRatio"
+    $trace1080pCoveredMs -ge 60000 -and
+    $trace1080pFrameRate -ge 58.0 -and
+    $trace1080pAverageFrameMs -le 17.0 -and
+    $target1080pTraceWindowRatio -ge 0.95
+) "1080p_covered_ms=$trace1080pCoveredMs active_frames=$trace1080pActiveFrames fps=$trace1080pFrameRate weighted_average_ms=$trace1080pAverageFrameMs target_windows=$($target1080pTraceWindows.Count)/$($active1080pTraceWindows.Count) ratio=$target1080pTraceWindowRatio"
 
 $attestationFields = @("user_started_demo", "non_rdp_desktop", "automatic_retry_disabled", "observations_are_truthful")
 $attestationPass = @($attestationFields | Where-Object {

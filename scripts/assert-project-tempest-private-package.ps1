@@ -454,6 +454,31 @@ if ((Get-CanonicalTextBytesSha256 -Bytes $entryBytes["package-contract.json"]) -
     (Get-CanonicalTextBytesSha256 -Bytes $entryBytes["asset-provenance.json"]) -ne $provenanceHash) {
     throw "Packaged contract or provenance does not match the canonical reviewed source input."
 }
+$repositoryPrefix = $repositoryRoot.TrimEnd(
+    [IO.Path]::DirectorySeparatorChar,
+    [IO.Path]::AltDirectorySeparatorChar
+) + [IO.Path]::DirectorySeparatorChar
+foreach ($repositoryEntry in @($contract.repository_files)) {
+    $relativePath = [string]$repositoryEntry.path
+    $packageName = [string]$repositoryEntry.name
+    if ([string]::IsNullOrWhiteSpace($relativePath) -or
+        [IO.Path]::IsPathRooted($relativePath) -or
+        [string]::IsNullOrWhiteSpace($packageName) -or
+        -not $entryBytes.ContainsKey($packageName)) {
+        throw "Package contract contains an unsafe or incomplete reviewed repository file entry."
+    }
+    $reviewedPath = [IO.Path]::GetFullPath((Join-Path $repositoryRoot $relativePath))
+    if (-not $reviewedPath.StartsWith($repositoryPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+        -not (Test-Path -LiteralPath $reviewedPath -PathType Leaf)) {
+        throw "Reviewed repository file '$relativePath' does not resolve inside the checkout."
+    }
+    $reviewedItem = Get-Item -LiteralPath $reviewedPath -Force
+    if (($reviewedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+        (Get-FileHash -LiteralPath $reviewedPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne
+            (Get-BytesSha256 -Bytes $entryBytes[$packageName])) {
+        throw "Packaged repository file '$packageName' does not match the reviewed checkout bytes."
+    }
+}
 $expectedRuntimeInputPolicy = if ($ExpectedDistribution -eq "test_fixture") {
     "restricted_test_fixture"
 }

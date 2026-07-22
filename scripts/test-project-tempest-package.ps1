@@ -381,23 +381,25 @@ function New-CoherentlyForgedExecutablePackage {
     }
 }
 
-function New-CoherentlyForgedAssetPackage {
+function New-CoherentlyForgedGovernedFilePackage {
     param(
         [Parameter(Mandatory = $true)]
         [string]$SourcePath,
         [Parameter(Mandatory = $true)]
         [string]$DestinationPath,
         [Parameter(Mandatory = $true)]
-        [string]$AssetName,
+        [string]$FileName,
         [Parameter(Mandatory = $true)]
-        [byte[]]$ForgedAssetBytes
+        [string]$ExpectedKind,
+        [Parameter(Mandatory = $true)]
+        [byte[]]$ForgedFileBytes
     )
 
-    if ($AssetName -notmatch '^[^/\\:]+$') {
-        throw "Coherent asset-forgery fixture requires one flat governed asset name."
+    if ($FileName -notmatch '^[^/\\:]+$') {
+        throw "Coherent file-forgery fixture requires one flat governed package name."
     }
     $prefix = "$($contract.package_directory)/"
-    $assetEntryName = "$prefix$AssetName"
+    $fileEntryName = "$prefix$FileName"
     $manifestName = "${prefix}package-manifest.json"
     $sumsName = "${prefix}SHA256SUMS.txt"
     $utf8 = [Text.UTF8Encoding]::new($false, $true)
@@ -406,25 +408,25 @@ function New-CoherentlyForgedAssetPackage {
     try {
         $manifest = $utf8.GetString((Get-ZipEntryBytes -Archive $source -Name $manifestName)) |
             ConvertFrom-Json
-        $manifestAsset = @($manifest.files | Where-Object { $_.name -eq $AssetName })
-        if ($manifestAsset.Count -ne 1 -or [string]$manifestAsset[0].kind -ne "asset") {
-            throw "Coherent asset-forgery fixture could not find governed asset '$AssetName'."
+        $manifestFile = @($manifest.files | Where-Object { $_.name -eq $FileName })
+        if ($manifestFile.Count -ne 1 -or [string]$manifestFile[0].kind -ne $ExpectedKind) {
+            throw "Coherent file-forgery fixture could not find governed '$ExpectedKind' file '$FileName'."
         }
-        $forgedAssetHash = Get-TestBytesSha256 -Bytes $ForgedAssetBytes
-        $manifestAsset[0].sha256 = $forgedAssetHash
-        $manifestAsset[0].length = $ForgedAssetBytes.LongLength
+        $forgedFileHash = Get-TestBytesSha256 -Bytes $ForgedFileBytes
+        $manifestFile[0].sha256 = $forgedFileHash
+        $manifestFile[0].length = $ForgedFileBytes.LongLength
         $manifestBytes = $utf8.GetBytes(
             (($manifest | ConvertTo-Json -Depth 8) -replace "`r`n", "`n") + "`n"
         )
         $manifestHash = Get-TestBytesSha256 -Bytes $manifestBytes
 
         $sumText = $utf8.GetString((Get-ZipEntryBytes -Archive $source -Name $sumsName))
-        $escapedAssetName = [regex]::Escape($AssetName)
+        $escapedFileName = [regex]::Escape($FileName)
         $rewrittenSumLines = @(
             $sumText.TrimEnd("`n") -split "`n" |
                 ForEach-Object {
-                    if ($_ -match "^[0-9a-f]{64}  $escapedAssetName$") {
-                        "$forgedAssetHash  $AssetName"
+                    if ($_ -match "^[0-9a-f]{64}  $escapedFileName$") {
+                        "$forgedFileHash  $FileName"
                     }
                     elseif ($_ -match '^[0-9a-f]{64}  package-manifest\.json$') {
                         "$manifestHash  package-manifest.json"
@@ -434,7 +436,7 @@ function New-CoherentlyForgedAssetPackage {
                     }
                 }
         )
-        if (@($rewrittenSumLines | Where-Object { $_ -eq "$forgedAssetHash  $AssetName" }).Count -ne 1 -or
+        if (@($rewrittenSumLines | Where-Object { $_ -eq "$forgedFileHash  $FileName" }).Count -ne 1 -or
             @($rewrittenSumLines | Where-Object { $_ -eq "$manifestHash  package-manifest.json" }).Count -ne 1) {
             throw "Coherent asset-forgery fixture could not rewrite both governed hash records."
         }
@@ -451,8 +453,8 @@ function New-CoherentlyForgedAssetPackage {
             )
             $destinationEntry.LastWriteTime = $sourceEntry.LastWriteTime
             $destinationEntry.ExternalAttributes = $sourceEntry.ExternalAttributes
-            $bytes = if ($sourceEntry.FullName -eq $assetEntryName) {
-                $ForgedAssetBytes
+            $bytes = if ($sourceEntry.FullName -eq $fileEntryName) {
+                $ForgedFileBytes
             }
             elseif ($sourceEntry.FullName -eq $manifestName) {
                 $manifestBytes
@@ -1099,15 +1101,31 @@ try {
         -MilesSha256 $fixtureDependencyHash
 
     $coherentlyForgedAssetArchive = Join-Path $mutatedRoot "coherently-forged-asset.zip"
-    New-CoherentlyForgedAssetPackage `
+    New-CoherentlyForgedGovernedFilePackage `
         -SourcePath $firstArchive `
         -DestinationPath $coherentlyForgedAssetArchive `
-        -AssetName "courier.w3d" `
-        -ForgedAssetBytes ([Text.Encoding]::UTF8.GetBytes("coherently forged courier asset"))
+        -FileName "courier.w3d" `
+        -ExpectedKind "asset" `
+        -ForgedFileBytes ([Text.Encoding]::UTF8.GetBytes("coherently forged courier asset"))
     Assert-PackageVerifierRejects `
         -PackagePath $coherentlyForgedAssetArchive `
         -Name "coherently-forged-asset" `
         -MessagePattern "does not match reviewed asset provenance" `
+        -Revision $revision `
+        -ExecutableSha256 $fixtureExecutableHash `
+        -MilesSha256 $fixtureDependencyHash
+
+    $coherentlyForgedAnalyserArchive = Join-Path $mutatedRoot "coherently-forged-analyser.zip"
+    New-CoherentlyForgedGovernedFilePackage `
+        -SourcePath $firstArchive `
+        -DestinationPath $coherentlyForgedAnalyserArchive `
+        -FileName "ANALYSE-MANUAL-EVIDENCE.ps1" `
+        -ExpectedKind "manual_evidence_analyser" `
+        -ForgedFileBytes ([Text.Encoding]::UTF8.GetBytes("Write-Output 'forged analyser'"))
+    Assert-PackageVerifierRejects `
+        -PackagePath $coherentlyForgedAnalyserArchive `
+        -Name "coherently-forged-analyser" `
+        -MessagePattern "does not match the reviewed checkout bytes" `
         -Revision $revision `
         -ExecutableSha256 $fixtureExecutableHash `
         -MilesSha256 $fixtureDependencyHash
