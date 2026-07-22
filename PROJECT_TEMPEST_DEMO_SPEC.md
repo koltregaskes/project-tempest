@@ -161,14 +161,17 @@ runtime submixes. Audible balance/device behavior, normal-zoom readability, targ
 proof of audio, persistence, and remapping remain open user-only gates. Version-four settings now also persist
 disabled-by-default protanopia, deuteranopia, and tritanopia modes plus bounded strength, brightness, and contrast.
 The isolated Apache-2.0 EA-derived colour transform has pinned deterministic vectors and packaged attribution; connecting
-it exactly once to the final world-and-UI presentation surface, then capturing target-resolution/performance evidence,
-remains open rather than being inferred from the portable tests.
+it exactly once to the final world-and-UI presentation surface is complete. Target-resolution, human-readability, and
+measured performance evidence remain open rather than being inferred from the portable tests.
 
 A disabled-by-default runtime evidence recorder now supports the single user-operated M5/M6 acceptance phase. When the
 user explicitly supplies an evidence directory, it records a fixed-size frame-time histogram, bounded one-second
 frame-time windows, sampled working set, focus and resolution events, restarts, outcomes, and clean shutdown into JSONL
 plus a summary. It never launches the executable, captures
 screens/audio/video, synthesises input, or claims a manual playthrough; those observations remain user-owned evidence.
+The governed private package now also contains one manual checklist, a truthful-observation template, and a read-only
+analyser. They consolidate the remaining two-playthrough, 30-minute soak, resolution, alt-tab, remapping, audio,
+accessibility, capture, log, and usability work into one explicit user-run non-RDP phase and one later headless report.
 
 Current content-model boundary (2026-07-21): the deterministic rules layer names all four Freegrid units, four Freegrid
 structures, both governed abilities, three Chorus units, and three Chorus structures through data-backed definitions.

@@ -219,7 +219,8 @@ foreach ($requiredPolicy in @(
     "No agent, automation, CI job, or scheduled task may perform these manual checks",
     "no unattended wrapper may invoke them or retry them",
     "PROJECT_TEMPEST_EVIDENCE_DIR",
-    "It does not launch the game"
+    "It does not launch the game",
+    "It never starts or retries the demo"
 )) {
     if ($runbook -notmatch [regex]::Escape($requiredPolicy)) {
         throw "Project Tempest runbook is missing required no-GUI policy text: '$requiredPolicy'."
@@ -242,6 +243,18 @@ foreach ($evidenceContract in @(
 )) {
     if (($runtimeEvidenceSource + $demoSource) -notmatch [regex]::Escape($evidenceContract)) {
         throw "Project Tempest runtime evidence is missing governed contract '$evidenceContract'."
+    }
+}
+
+$manualEvidenceAnalyser = Get-Content -LiteralPath (
+    Join-Path $repositoryRoot "scripts/analyse-project-tempest-manual-evidence.ps1") -Raw
+foreach ($requiredAnalyserPolicy in @(
+    "renderer_execution_by_analyser",
+    "not_performed",
+    "automatic_retry"
+)) {
+    if ($manualEvidenceAnalyser -notmatch [regex]::Escape($requiredAnalyserPolicy)) {
+        throw "Manual evidence analyser is missing no-GUI evidence '$requiredAnalyserPolicy'."
     }
 }
 
