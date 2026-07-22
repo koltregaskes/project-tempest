@@ -220,6 +220,38 @@ try {
 
     $invalidSummary.duration_ms = 1800000
     $invalidSummary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
+
+    $sparseTraceLines = @($traceLines | Where-Object {
+        $record = $_ | ConvertFrom-Json
+        [string]$record.type -ne "frame_window" -or
+            [uint64]$record.start_ms -eq 0 -or [uint64]$record.start_ms -eq 1799000
+    })
+    $sparseTraceLines | Set-Content -LiteralPath (Join-Path $evidenceRoot $traceName) -Encoding UTF8
+    $invalidSummary.frames = 120
+    $invalidSummary.frame_windows = 2
+    $invalidSummary.working_set_bytes.peak = 110000000
+    $invalidSummary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
+    $sparseTraceRejected = $false
+    Push-Location $repositoryRoot
+    try {
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
+            -EvidenceDirectory $evidenceRoot `
+            -PackageDirectory $packageRoot
+    }
+    catch {
+        $sparseTraceRejected = $_.Exception.Message -match "trace.window_continuity"
+    }
+    finally {
+        Pop-Location
+    }
+    Expect $sparseTraceRejected "sparse 30-minute trace was not rejected by the production analyser"
+
+    $traceLines | Set-Content -LiteralPath (Join-Path $evidenceRoot $traceName) -Encoding UTF8
+    $invalidSummary.frames = 108000
+    $invalidSummary.frame_windows = 1800
+    $invalidSummary.working_set_bytes.peak = 140000000
+    $invalidSummary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
+
     $forgedObservations = Get-Content -LiteralPath $observationsPath -Raw | ConvertFrom-Json
     $forgedObservations.source_revision = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     $forgedObservations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
@@ -257,6 +289,29 @@ try {
     }
     $mergeReport = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
     Expect ($mergeReport.result -eq "pass") "valid merge-build/reviewed-head revision pair was rejected"
+
+    $outsideEvidenceRoot = Join-Path $sessionRoot "evidence-case-escape"
+    $null = New-Item -ItemType Directory -Path $outsideEvidenceRoot
+    [IO.File]::WriteAllBytes(
+        (Join-Path $outsideEvidenceRoot "resolution-1080p.png"),
+        [Text.Encoding]::UTF8.GetBytes("outside evidence fixture"))
+    $escapedObservations = Get-Content -LiteralPath $observationsPath -Raw | ConvertFrom-Json
+    $escapedObservations.resolution_checks[0].screenshot = "../evidence-case-escape/resolution-1080p.png"
+    $escapedObservations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
+    $outsideEvidenceRejected = $false
+    Push-Location $repositoryRoot
+    try {
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
+            -EvidenceDirectory $evidenceRoot `
+            -PackageDirectory $packageRoot
+    }
+    catch {
+        $outsideEvidenceRejected = $_.Exception.Message -match "artifact.resolution.1920x1080"
+    }
+    finally {
+        Pop-Location
+    }
+    Expect $outsideEvidenceRejected "evidence path outside the governed root was not rejected"
 }
 finally {
     if (Test-Path -LiteralPath $sessionRoot) {

@@ -37,19 +37,24 @@ if (-not (Test-Path -LiteralPath $PackageDirectory -PathType Container)) {
 $evidenceRoot = (Resolve-Path -LiteralPath $EvidenceDirectory).Path.TrimEnd('\', '/')
 $packageRoot = (Resolve-Path -LiteralPath $PackageDirectory).Path.TrimEnd('\', '/')
 $evidenceRootPrefix = $evidenceRoot + [IO.Path]::DirectorySeparatorChar
+$pathComparison = if ([IO.Path]::DirectorySeparatorChar -eq '\') {
+    [StringComparison]::OrdinalIgnoreCase
+} else {
+    [StringComparison]::Ordinal
+}
 
 if (-not $ObservationsPath) {
     $ObservationsPath = Join-Path $evidenceRoot "manual-acceptance-observations.json"
 }
 $ObservationsPath = [IO.Path]::GetFullPath($ObservationsPath)
-if (-not $ObservationsPath.StartsWith($evidenceRootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+if (-not $ObservationsPath.StartsWith($evidenceRootPrefix, $pathComparison)) {
     throw "The manual observations file must remain inside the evidence directory."
 }
 if (-not $ReportPath) {
     $ReportPath = Join-Path $evidenceRoot "project-tempest-manual-acceptance-report.json"
 }
 $resolvedReportPath = [IO.Path]::GetFullPath($ReportPath)
-if (-not $resolvedReportPath.StartsWith($evidenceRootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+if (-not $resolvedReportPath.StartsWith($evidenceRootPrefix, $pathComparison)) {
     throw "The acceptance report must remain inside the manual evidence directory."
 }
 
@@ -112,7 +117,7 @@ function Add-RequiredEvidenceFile {
         ""
     }
     $contained = $relativeIsSafe -and
-        $candidate.StartsWith($evidenceRootPrefix, [StringComparison]::OrdinalIgnoreCase)
+        $candidate.StartsWith($evidenceRootPrefix, $pathComparison)
     $exists = $contained -and (Test-Path -LiteralPath $candidate -PathType Leaf)
     $nonempty = $exists -and (Get-Item -LiteralPath $candidate -Force).Length -gt 0
     $extension = if ($exists) { [IO.Path]::GetExtension($candidate).ToLowerInvariant() } else { "" }
@@ -164,7 +169,7 @@ if ([string]::IsNullOrWhiteSpace($traceName) -or [IO.Path]::IsPathRooted($traceN
     throw "Runtime summary contains an unsafe trace path."
 }
 $tracePath = [IO.Path]::GetFullPath((Join-Path $evidenceRoot $traceName))
-if (-not $tracePath.StartsWith($evidenceRootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+if (-not $tracePath.StartsWith($evidenceRootPrefix, $pathComparison)) {
     throw "Runtime summary trace escapes the evidence directory."
 }
 if (-not (Test-Path -LiteralPath $tracePath -PathType Leaf)) {
@@ -296,9 +301,31 @@ $traceWorkingSetEnd = if ($traceWorkingSets.Count -gt 0) { $traceWorkingSets[-1]
 $traceWorkingSetPeak = if ($traceWorkingSets.Count -gt 0) {
     [uint64](($traceWorkingSets | Measure-Object -Maximum).Maximum)
 } else { 0 }
-$traceCoverageMs = if ($traceWindows.Count -gt 0) {
-    [uint64]$traceWindows[-1].end_ms - [uint64]$traceWindows[0].start_ms
-} else { 0 }
+$traceCoveredWindowMs = [uint64]0
+$traceWindowGapMs = [uint64]0
+$traceLargestWindowMs = [uint64]0
+$traceWindowsWellFormed = $traceWindows.Count -gt 0
+$previousWindowEndMs = $null
+foreach ($window in $traceWindows) {
+    $windowStartMs = [uint64]$window.start_ms
+    $windowEndMs = [uint64]$window.end_ms
+    if ($windowEndMs -le $windowStartMs) {
+        $traceWindowsWellFormed = $false
+        continue
+    }
+    $windowDurationMs = $windowEndMs - $windowStartMs
+    $traceCoveredWindowMs += $windowDurationMs
+    $traceLargestWindowMs = [Math]::Max($traceLargestWindowMs, $windowDurationMs)
+    if ($null -ne $previousWindowEndMs) {
+        if ($windowStartMs -lt $previousWindowEndMs) {
+            $traceWindowsWellFormed = $false
+        } else {
+            $traceWindowGapMs += $windowStartMs - $previousWindowEndMs
+        }
+    }
+    $previousWindowEndMs = $windowEndMs
+}
+$minimumTraceWindowCount = [uint64][Math]::Floor([double]$summary.duration_ms / 2000.0)
 $activeTraceWindows = @($traceWindows | Where-Object { [uint64]$_.active_frames -gt 0 })
 $targetTraceWindows = @($activeTraceWindows | Where-Object { [double]$_.frame_ms.p95 -le 17.0 })
 $targetTraceWindowRatio = if ($activeTraceWindows.Count -gt 0) {
@@ -344,9 +371,13 @@ Add-Check "trace.summary_working_set" (
     [Math]::Abs([double]$traceWorkingSetStart - [double]$summary.working_set_bytes.start) -le 67108864.0 -and
     ([double]$summary.working_set_bytes.peak - [double]$traceWorkingSetPeak) -le 67108864.0
 ) "start=$traceWorkingSetStart/$($summary.working_set_bytes.start) end=$traceWorkingSetEnd/$($summary.working_set_bytes.end) peak=$traceWorkingSetPeak/$($summary.working_set_bytes.peak) tolerance=67108864"
-Add-Check "trace.session_coverage" (
-    $traceCoverageMs -ge [uint64]([double]$summary.duration_ms * 0.95)
-) "coverage_ms=$traceCoverageMs duration_ms=$($summary.duration_ms)"
+Add-Check "trace.window_continuity" (
+    $traceWindowsWellFormed -and
+    $traceLargestWindowMs -le 2000 -and
+    $traceWindows.Count -ge $minimumTraceWindowCount -and
+    $traceCoveredWindowMs -ge [uint64]([double]$summary.duration_ms * 0.95) -and
+    $traceWindowGapMs -le [uint64]([double]$summary.duration_ms * 0.05)
+) "covered_ms=$traceCoveredWindowMs gaps_ms=$traceWindowGapMs largest_window_ms=$traceLargestWindowMs windows=$($traceWindows.Count)/$minimumTraceWindowCount duration_ms=$($summary.duration_ms)"
 Add-Check "performance.trace_1080p_60fps_target" (
     $traceAverageFrameMs -le 17.0 -and $targetTraceWindowRatio -ge 0.95
 ) "weighted_average_ms=$traceAverageFrameMs target_windows=$($targetTraceWindows.Count)/$($activeTraceWindows.Count) ratio=$targetTraceWindowRatio"
