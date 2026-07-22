@@ -29,6 +29,13 @@ try {
     [IO.File]::WriteAllBytes($milesPath, [byte[]](77, 90, 5, 6, 7, 8))
     $executableHash = (Get-FileHash -LiteralPath $executablePath -Algorithm SHA256).Hash.ToLowerInvariant()
     $milesHash = (Get-FileHash -LiteralPath $milesPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $analysisArguments = @{
+        EvidenceDirectory = $evidenceRoot
+        PackageDirectory = $packageRoot
+        ExpectedReviewedSourceRevision = $revision
+        ExpectedExecutableSha256 = $executableHash
+        ExpectedMilesSha256 = $milesHash
+    }
     [ordered]@{
         schema_version = 2
         distribution = "private_internal_demo"
@@ -180,9 +187,7 @@ try {
 
     Push-Location $repositoryRoot
     try {
-        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
-            -EvidenceDirectory $evidenceRoot `
-            -PackageDirectory $packageRoot
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
     }
     finally {
         Pop-Location
@@ -201,9 +206,7 @@ try {
     $rejected = $false
     Push-Location $repositoryRoot
     try {
-        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
-            -EvidenceDirectory $evidenceRoot `
-            -PackageDirectory $packageRoot
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
     }
     catch {
         $rejected = $_.Exception.Message -match "runtime.minimum_30_minutes"
@@ -234,9 +237,7 @@ try {
     $sparseTraceRejected = $false
     Push-Location $repositoryRoot
     try {
-        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
-            -EvidenceDirectory $evidenceRoot `
-            -PackageDirectory $packageRoot
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
     }
     catch {
         $sparseTraceRejected = $_.Exception.Message -match "trace.window_continuity"
@@ -264,9 +265,7 @@ try {
     $shiftedTraceRejected = $false
     Push-Location $repositoryRoot
     try {
-        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
-            -EvidenceDirectory $evidenceRoot `
-            -PackageDirectory $packageRoot
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
     }
     catch {
         $shiftedTraceRejected = $_.Exception.Message -match "trace.window_continuity"
@@ -283,9 +282,7 @@ try {
     $forgedSourceRejected = $false
     Push-Location $repositoryRoot
     try {
-        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
-            -EvidenceDirectory $evidenceRoot `
-            -PackageDirectory $packageRoot
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
     }
     catch {
         $forgedSourceRejected = $_.Exception.Message -match "source.reviewed_revision"
@@ -297,6 +294,53 @@ try {
 
     $forgedObservations.source_revision = $revision
     $forgedObservations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
+
+    $manifestFixturePath = Join-Path $packageRoot "package-manifest.json"
+    $originalManifestText = Get-Content -LiteralPath $manifestFixturePath -Raw
+    $relabelledManifest = $originalManifestText | ConvertFrom-Json
+    $relabelledRevision = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    $relabelledManifest.reviewed_source_revision = $relabelledRevision
+    $relabelledManifest.executable_verification.reviewed_source_revision = $relabelledRevision
+    $relabelledManifest | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $manifestFixturePath -Encoding UTF8
+    $forgedObservations.source_revision = $relabelledRevision
+    $forgedObservations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
+    $relabelledPackageRejected = $false
+    Push-Location $repositoryRoot
+    try {
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
+    }
+    catch {
+        $relabelledPackageRejected = $_.Exception.Message -match "source.reviewed_revision"
+    }
+    finally {
+        Pop-Location
+    }
+    Expect $relabelledPackageRejected "self-consistent package relabelling bypassed the external reviewed revision"
+
+    [IO.File]::WriteAllText($manifestFixturePath, $originalManifestText, [Text.UTF8Encoding]::new($false))
+    $forgedObservations.source_revision = $revision
+    $forgedObservations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
+    $originalExecutableBytes = [IO.File]::ReadAllBytes($executablePath)
+    [IO.File]::WriteAllBytes($executablePath, [byte[]](77, 90, 9, 9, 9, 9))
+    $rehashedManifest = $originalManifestText | ConvertFrom-Json
+    $rehashedManifest.executable_verification.sha256 = (
+        Get-FileHash -LiteralPath $executablePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $rehashedManifest | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $manifestFixturePath -Encoding UTF8
+    $rehashedBinaryRejected = $false
+    Push-Location $repositoryRoot
+    try {
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
+    }
+    catch {
+        $rehashedBinaryRejected = $_.Exception.Message -match "source.executable_hash"
+    }
+    finally {
+        Pop-Location
+    }
+    Expect $rehashedBinaryRejected "rehashed replacement executable bypassed the external binary identity"
+    [IO.File]::WriteAllBytes($executablePath, $originalExecutableBytes)
+    [IO.File]::WriteAllText($manifestFixturePath, $originalManifestText, [Text.UTF8Encoding]::new($false))
+
     $mergeRevision = "cccccccccccccccccccccccccccccccccccccccc"
     $mergeManifestPath = Join-Path $packageRoot "package-manifest.json"
     $mergeManifest = Get-Content -LiteralPath $mergeManifestPath -Raw | ConvertFrom-Json
@@ -305,9 +349,7 @@ try {
     $mergeManifest | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $mergeManifestPath -Encoding UTF8
     Push-Location $repositoryRoot
     try {
-        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
-            -EvidenceDirectory $evidenceRoot `
-            -PackageDirectory $packageRoot
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
     }
     finally {
         Pop-Location
@@ -326,9 +368,7 @@ try {
     $outsideEvidenceRejected = $false
     Push-Location $repositoryRoot
     try {
-        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
-            -EvidenceDirectory $evidenceRoot `
-            -PackageDirectory $packageRoot
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
     }
     catch {
         $outsideEvidenceRejected = $_.Exception.Message -match "artifact.resolution.1920x1080"
@@ -339,15 +379,13 @@ try {
     Expect $outsideEvidenceRejected "evidence path outside the governed root was not rejected"
 
     $observations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
-    $duplicateObservations = Get-Content -LiteralPath $observationsPath -Raw | ConvertFrom-Json
-    $duplicateObservations.accessibility_checks[0].screenshot = $duplicateObservations.resolution_checks[0].screenshot
-    $duplicateObservations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
+    $duplicateScreenshotSource = Join-Path $evidenceRoot ([string]$observations.resolution_checks[0].screenshot)
+    $duplicateScreenshotTarget = Join-Path $evidenceRoot ([string]$observations.accessibility_checks[0].screenshot)
+    [IO.File]::WriteAllBytes($duplicateScreenshotTarget, [IO.File]::ReadAllBytes($duplicateScreenshotSource))
     $duplicateScreenshotRejected = $false
     Push-Location $repositoryRoot
     try {
-        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
-            -EvidenceDirectory $evidenceRoot `
-            -PackageDirectory $packageRoot
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments
     }
     catch {
         $duplicateScreenshotRejected = $_.Exception.Message -match "artifact.accessibility.off"
@@ -355,7 +393,7 @@ try {
     finally {
         Pop-Location
     }
-    Expect $duplicateScreenshotRejected "one screenshot was allowed to satisfy multiple required views"
+    Expect $duplicateScreenshotRejected "copied screenshot bytes were allowed to satisfy multiple required views"
 }
 finally {
     if (Test-Path -LiteralPath $sessionRoot) {

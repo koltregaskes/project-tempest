@@ -8,6 +8,7 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $fixedUnattendedSurfaces = @(
     ".github/workflows/build-toolchain.yml",
     "scripts/build-windows.ps1",
+    "scripts/analyse-project-tempest-manual-evidence.ps1",
     "scripts/package-project-tempest-demo.ps1",
     "scripts/test-w3d-pipeline.ps1",
     "scripts/prepare-w3dview-compat.ps1"
@@ -24,6 +25,9 @@ $scriptSurfaces = Get-ChildItem -LiteralPath (Join-Path $repositoryRoot "scripts
 
 if ("scripts/assert-project-tempest-artifact-boundary.ps1" -notin $scriptSurfaces) {
     throw "Project Tempest no-GUI discovery omitted the shared artifact-boundary assertion."
+}
+if ("scripts/analyse-project-tempest-manual-evidence.ps1" -notin $fixedUnattendedSurfaces) {
+    throw "Project Tempest no-GUI policy omitted the production manual evidence analyser."
 }
 
 # A workflow that names Project Tempest is part of the unattended surface even when it

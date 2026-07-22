@@ -7,6 +7,18 @@ param(
 
     [string]$PackageDirectory = $PSScriptRoot,
 
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9A-Fa-f]{40}$')]
+    [string]$ExpectedReviewedSourceRevision,
+
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9A-Fa-f]{64}$')]
+    [string]$ExpectedExecutableSha256,
+
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9A-Fa-f]{64}$')]
+    [string]$ExpectedMilesSha256,
+
     [string]$ReportPath
 )
 
@@ -85,6 +97,7 @@ $requiredScreenshotPaths = [Collections.Generic.HashSet[string]]::new(
     } else {
         [StringComparer]::Ordinal
     }))
+$requiredScreenshotHashes = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 
 function Add-Check {
     param(
@@ -138,7 +151,13 @@ function Add-RequiredEvidenceFile {
     $formatAllowed = $allowedExtensions.Count -eq 0 -or $extension -in $allowedExtensions
     $uniqueRequiredScreenshot = $true
     if ($Role -in @("resolution_screenshot", "accessibility_screenshot", "settings_screenshot")) {
-        $uniqueRequiredScreenshot = $contained -and $requiredScreenshotPaths.Add($candidate)
+        $screenshotHash = if ($exists -and $nonempty -and $formatAllowed) {
+            Get-Sha256 -Path $candidate
+        } else { "" }
+        $uniqueRequiredScreenshot = $contained -and
+            $requiredScreenshotPaths.Add($candidate) -and
+            -not [string]::IsNullOrWhiteSpace($screenshotHash) -and
+            $requiredScreenshotHashes.Add($screenshotHash)
     }
     $passed = $exists -and $nonempty -and $formatAllowed -and $uniqueRequiredScreenshot
     $evidenceText = if ($passed) {
@@ -209,6 +228,9 @@ foreach ($coreFile in @(
 $revisionPattern = '^[0-9a-f]{40}$'
 $buildRevision = ([string]$manifest.source_revision).ToLowerInvariant()
 $reviewedRevision = ([string]$manifest.reviewed_source_revision).ToLowerInvariant()
+$expectedReviewedRevision = $ExpectedReviewedSourceRevision.ToLowerInvariant()
+$expectedExecutableHash = $ExpectedExecutableSha256.ToLowerInvariant()
+$expectedMilesHash = $ExpectedMilesSha256.ToLowerInvariant()
 Add-Check "source.package_contract" (
     $manifest.schema_version -eq 2 -and
     [string]$manifest.distribution -eq "private_internal_demo" -and
@@ -218,8 +240,9 @@ Add-Check "source.package_contract" (
 Add-Check "source.reviewed_revision" (
     $reviewedRevision -match $revisionPattern -and
     $buildRevision -match $revisionPattern -and
+    $reviewedRevision -eq $expectedReviewedRevision -and
     ([string]$observations.source_revision).ToLowerInvariant() -eq $reviewedRevision
-) "build=$buildRevision reviewed=$reviewedRevision observations=$($observations.source_revision)"
+) "build=$buildRevision reviewed=$reviewedRevision expected_reviewed=$expectedReviewedRevision observations=$($observations.source_revision)"
 Add-Check "source.clean_tree" ([string]$manifest.source_tree -eq "clean") "source_tree=$($manifest.source_tree)"
 Add-Check "source.executable_provenance" (
     [string]$manifest.executable_verification.name -eq "ProjectTempestDemo.exe" -and
@@ -231,12 +254,14 @@ Add-Check "source.executable_provenance" (
 ) "policy=$($manifest.executable_verification.policy) source=$($manifest.executable_verification.source_revision)"
 Add-Check "source.executable_hash" (
     (Get-Sha256 (Join-Path $packageRoot "ProjectTempestDemo.exe")) -eq
-        ([string]$manifest.executable_verification.sha256).ToLowerInvariant()
-) "expected=$($manifest.executable_verification.sha256)"
+        ([string]$manifest.executable_verification.sha256).ToLowerInvariant() -and
+    (Get-Sha256 (Join-Path $packageRoot "ProjectTempestDemo.exe")) -eq $expectedExecutableHash
+) "manifest=$($manifest.executable_verification.sha256) external=$expectedExecutableHash"
 Add-Check "source.runtime_dependency_hash" (
     (Get-Sha256 (Join-Path $packageRoot "mss32.dll")) -eq
-        ([string]$manifest.runtime_dependency_verification.sha256).ToLowerInvariant()
-) "expected=$($manifest.runtime_dependency_verification.sha256)"
+        ([string]$manifest.runtime_dependency_verification.sha256).ToLowerInvariant() -and
+    (Get-Sha256 (Join-Path $packageRoot "mss32.dll")) -eq $expectedMilesHash
+) "manifest=$($manifest.runtime_dependency_verification.sha256) external=$expectedMilesHash"
 Add-Check "source.runtime_dependency_provenance" (
     [string]$manifest.runtime_dependency_verification.name -eq "mss32.dll" -and
     [string]$manifest.runtime_dependency_verification.policy -eq "two_isolated_integrated_release_builds_byte_identical"
