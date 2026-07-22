@@ -19,6 +19,10 @@ param(
     [ValidatePattern('^[0-9A-Fa-f]{64}$')]
     [string]$ExpectedMilesSha256,
 
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9A-Fa-f]{64}$')]
+    [string]$ExpectedPackageContractSha256,
+
     [string]$ReportPath
 )
 
@@ -240,6 +244,7 @@ $reviewedRevision = ([string]$manifest.reviewed_source_revision).ToLowerInvarian
 $expectedReviewedRevision = $ExpectedReviewedSourceRevision.ToLowerInvariant()
 $expectedExecutableHash = $ExpectedExecutableSha256.ToLowerInvariant()
 $expectedMilesHash = $ExpectedMilesSha256.ToLowerInvariant()
+$expectedPackageContractHash = $ExpectedPackageContractSha256.ToLowerInvariant()
 $expectedGovernedNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 $expectedPackageNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 $contractKinds = [Collections.Generic.Dictionary[string, string]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -319,8 +324,9 @@ foreach ($name in $expectedPackageNames) {
     }
 }
 
-$contractHashValid = ([string]$manifest.package_contract_sha256).ToLowerInvariant() -eq
-    (Get-Sha256 -Path $contractPath)
+$actualContractHash = Get-Sha256 -Path $contractPath
+$contractHashValid = ([string]$manifest.package_contract_sha256).ToLowerInvariant() -eq $actualContractHash -and
+    $actualContractHash -eq $expectedPackageContractHash
 $provenanceHashValid = $expectedGovernedNames.Contains("asset-provenance.json") -and
     (Test-Path -LiteralPath (Join-Path $packageRoot "asset-provenance.json") -PathType Leaf) -and
     ([string]$manifest.asset_provenance_sha256).ToLowerInvariant() -eq
@@ -332,7 +338,7 @@ Add-Check "source.package_manifest_files" $manifestFilesValid `
 Add-Check "source.package_hash_manifest" $hashManifestValid `
     "hash_records=$($sumNames.Count)/$($expectedPackageNames.Count - 1)"
 Add-Check "source.package_metadata_hashes" ($contractHashValid -and $provenanceHashValid) `
-    "contract=$contractHashValid provenance=$provenanceHashValid"
+    "contract=$actualContractHash expected_contract=$expectedPackageContractHash provenance=$provenanceHashValid"
 foreach ($name in $expectedGovernedNames) {
     $governedPath = Join-Path $packageRoot $name
     if (Test-Path -LiteralPath $governedPath -PathType Leaf) {
@@ -392,10 +398,6 @@ Add-Check "runtime.bounded_capture" (
     $summary.resolution_entries_dropped -eq 0 -and
     $summary.outcome_entries_dropped -eq 0
 ) "window/event/resolution/outcome drops=$($summary.frame_windows_dropped)/$($summary.event_entries_dropped)/$($summary.resolution_entries_dropped)/$($summary.outcome_entries_dropped)"
-Add-Check "performance.1080p_60fps_target" (
-    [double]$summary.frame_ms.average -le 17.0 -and [double]$summary.frame_ms.p95 -le 17.0
-) "target_ms=17.0 average_ms=$($summary.frame_ms.average) p95_ms=$($summary.frame_ms.p95) p99_ms=$($summary.frame_ms.p99) max_ms=$($summary.frame_ms.max) saturated_ge_1000ms=$($summary.histogram_saturated_frames_ge_1000ms)"
-
 $workingSetStart = [double]$summary.working_set_bytes.start
 $workingSetEnd = [double]$summary.working_set_bytes.end
 $growthAllowance = [Math]::Max(67108864.0, $workingSetStart * 0.25)

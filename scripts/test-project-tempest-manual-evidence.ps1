@@ -86,6 +86,8 @@ try {
         ExpectedReviewedSourceRevision = $revision
         ExpectedExecutableSha256 = $executableHash
         ExpectedMilesSha256 = $milesHash
+        ExpectedPackageContractSha256 = (
+            Get-FileHash -LiteralPath $contractPackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
     }
     $fixtureManifestFiles = @(
         @($fixtureContract.runtime_files) + @($fixtureContract.repository_files) |
@@ -318,6 +320,37 @@ try {
     finally { Pop-Location }
     Expect $sumsTamperRejected "modified SHA256SUMS passed unpacked-package integrity checks"
     [IO.File]::WriteAllBytes((Join-Path $packageRoot "SHA256SUMS.txt"), $originalSumsBytes)
+
+    $originalManifestPackageBytes = [IO.File]::ReadAllBytes((Join-Path $packageRoot "package-manifest.json"))
+    $coherentlyForgedContract = [Text.UTF8Encoding]::new($false, $true).GetString(
+        $originalContractPackageBytes) | ConvertFrom-Json
+    $coherentlyForgedContract.repository_files = @(
+        $coherentlyForgedContract.repository_files |
+            Where-Object { [string]$_.name -ne "ANALYSE-MANUAL-EVIDENCE.ps1" }
+    )
+    Write-Utf8NoBomJson -Path $contractPackagePath -Value $coherentlyForgedContract
+    Remove-Item -LiteralPath $analyserPackagePath -Force
+    $coherentlyForgedManifest = [Text.UTF8Encoding]::new($false, $true).GetString(
+        $originalManifestPackageBytes) | ConvertFrom-Json
+    $coherentlyForgedManifest.files = @(
+        $coherentlyForgedManifest.files |
+            Where-Object { [string]$_.name -ne "ANALYSE-MANUAL-EVIDENCE.ps1" }
+    )
+    $coherentlyForgedManifest.package_contract_sha256 = (
+        Get-FileHash -LiteralPath $contractPackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Write-Utf8NoBomJson -Path (Join-Path $packageRoot "package-manifest.json") -Value $coherentlyForgedManifest
+    Write-FixtureHashManifest -PackageRoot $packageRoot
+    $coherentContractRewriteRejected = $false
+    Push-Location $repositoryRoot
+    try { .\scripts\analyse-project-tempest-manual-evidence.ps1 @analysisArguments }
+    catch { $coherentContractRewriteRejected = $_.Exception.Message -match "source.package_metadata_hashes" }
+    finally { Pop-Location }
+    Expect $coherentContractRewriteRejected `
+        "coherent package contract/manifest/checksum rewrite bypassed the external reviewed contract hash"
+    [IO.File]::WriteAllBytes($analyserPackagePath, $originalAnalyserPackageBytes)
+    [IO.File]::WriteAllBytes($contractPackagePath, $originalContractPackageBytes)
+    [IO.File]::WriteAllBytes((Join-Path $packageRoot "package-manifest.json"), $originalManifestPackageBytes)
+    Write-FixtureHashManifest -PackageRoot $packageRoot
 
     $summaryPath = Join-Path $evidenceRoot $summaryName
     $invalidSummary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
