@@ -192,6 +192,7 @@ foreach ($coreFile in @(
 }
 
 $revisionPattern = '^[0-9a-f]{40}$'
+$buildRevision = ([string]$manifest.source_revision).ToLowerInvariant()
 $reviewedRevision = ([string]$manifest.reviewed_source_revision).ToLowerInvariant()
 Add-Check "source.package_contract" (
     $manifest.schema_version -eq 2 -and
@@ -201,15 +202,15 @@ Add-Check "source.package_contract" (
 ) "schema=$($manifest.schema_version) distribution=$($manifest.distribution) renderer=$($manifest.renderer_execution)"
 Add-Check "source.reviewed_revision" (
     $reviewedRevision -match $revisionPattern -and
-    ([string]$manifest.source_revision).ToLowerInvariant() -eq $reviewedRevision -and
+    $buildRevision -match $revisionPattern -and
     ([string]$observations.source_revision).ToLowerInvariant() -eq $reviewedRevision
-) "manifest=$reviewedRevision observations=$($observations.source_revision)"
+) "build=$buildRevision reviewed=$reviewedRevision observations=$($observations.source_revision)"
 Add-Check "source.clean_tree" ([string]$manifest.source_tree -eq "clean") "source_tree=$($manifest.source_tree)"
 Add-Check "source.executable_provenance" (
     [string]$manifest.executable_verification.name -eq "ProjectTempestDemo.exe" -and
     [string]$manifest.executable_verification.policy -eq "two_isolated_integrated_release_builds_byte_identical" -and
     [string]$manifest.executable_verification.source_binding -eq "clean_build_revision_and_reviewed_head_and_governed_integrated_release_output" -and
-    ([string]$manifest.executable_verification.source_revision).ToLowerInvariant() -eq $reviewedRevision -and
+    ([string]$manifest.executable_verification.source_revision).ToLowerInvariant() -eq $buildRevision -and
     ([string]$manifest.executable_verification.reviewed_source_revision).ToLowerInvariant() -eq $reviewedRevision -and
     [string]$manifest.executable_verification.runtime_input_policy -eq "governed_integrated_release_outputs_only"
 ) "policy=$($manifest.executable_verification.policy) source=$($manifest.executable_verification.source_revision)"
@@ -268,6 +269,7 @@ Add-Check "runtime.two_outcomes" (
 
 $traceStart = $traceRecords[0]
 $traceEnd = $traceRecords[-1]
+$traceEvents = @($traceRecords | Where-Object { [string]$_.type -eq "event" })
 $traceWindows = @($traceRecords | Where-Object { [string]$_.type -eq "frame_window" })
 Add-Check "trace.session_boundary" (
     [string]$traceStart.type -eq "session_start" -and
@@ -277,6 +279,77 @@ Add-Check "trace.session_boundary" (
 ) "start=$($traceStart.type) end=$($traceEnd.type) session=$($summary.session_id)"
 Add-Check "trace.window_count" ($traceWindows.Count -eq $summary.frame_windows) `
     "trace_windows=$($traceWindows.Count) summary_windows=$($summary.frame_windows)"
+
+$traceFrameTotal = [uint64](($traceWindows | Measure-Object -Property frames -Sum).Sum)
+$weightedFrameMsTotal = 0.0
+foreach ($window in $traceWindows) {
+    $weightedFrameMsTotal += [double]$window.frame_ms.average * [double]$window.frames
+}
+$traceAverageFrameMs = if ($traceFrameTotal -gt 0) { $weightedFrameMsTotal / $traceFrameTotal } else { 0.0 }
+$traceMinimumFrameMs = [double](($traceWindows | ForEach-Object { [double]$_.frame_ms.min } | Measure-Object -Minimum).Minimum)
+$traceMaximumFrameMs = [double](($traceWindows | ForEach-Object { [double]$_.frame_ms.max } | Measure-Object -Maximum).Maximum)
+$traceMaximumP95Ms = [double](($traceWindows | ForEach-Object { [double]$_.frame_ms.p95 } | Measure-Object -Maximum).Maximum)
+$traceMaximumP99Ms = [double](($traceWindows | ForEach-Object { [double]$_.frame_ms.p99 } | Measure-Object -Maximum).Maximum)
+$traceWorkingSets = @($traceWindows | ForEach-Object { [uint64]$_.working_set_bytes } | Where-Object { $_ -gt 0 })
+$traceWorkingSetStart = if ($traceWorkingSets.Count -gt 0) { $traceWorkingSets[0] } else { 0 }
+$traceWorkingSetEnd = if ($traceWorkingSets.Count -gt 0) { $traceWorkingSets[-1] } else { 0 }
+$traceWorkingSetPeak = if ($traceWorkingSets.Count -gt 0) {
+    [uint64](($traceWorkingSets | Measure-Object -Maximum).Maximum)
+} else { 0 }
+$traceCoverageMs = if ($traceWindows.Count -gt 0) {
+    [uint64]$traceWindows[-1].end_ms - [uint64]$traceWindows[0].start_ms
+} else { 0 }
+$activeTraceWindows = @($traceWindows | Where-Object { [uint64]$_.active_frames -gt 0 })
+$targetTraceWindows = @($activeTraceWindows | Where-Object { [double]$_.frame_ms.p95 -le 17.0 })
+$targetTraceWindowRatio = if ($activeTraceWindows.Count -gt 0) {
+    [double]$targetTraceWindows.Count / [double]$activeTraceWindows.Count
+} else { 0.0 }
+
+$traceResolutions = [Collections.Generic.List[string]]::new()
+$traceOutcomes = [Collections.Generic.List[string]]::new()
+foreach ($event in $traceEvents) {
+    if ([string]$event.name -eq "resolution" -and -not $traceResolutions.Contains([string]$event.detail)) {
+        $traceResolutions.Add([string]$event.detail)
+    }
+    if ([string]$event.name -eq "outcome") {
+        $traceOutcomes.Add(([string]$event.detail).ToLowerInvariant())
+    }
+}
+$traceFocusLosses = @($traceEvents | Where-Object { [string]$_.name -eq "focus_lost" }).Count
+$traceRestarts = @($traceEvents | Where-Object { [string]$_.name -eq "restart" }).Count
+
+Add-Check "trace.summary_totals" (
+    [uint64]$traceEnd.elapsed_ms -eq [uint64]$summary.duration_ms -and
+    $traceFrameTotal -eq [uint64]$summary.frames -and
+    $traceEvents.Count -eq [uint64]$summary.events
+) "elapsed=$($traceEnd.elapsed_ms)/$($summary.duration_ms) frames=$traceFrameTotal/$($summary.frames) events=$($traceEvents.Count)/$($summary.events)"
+Add-Check "trace.summary_lifecycle" (
+    $traceFocusLosses -eq [uint64]$summary.focus_losses -and
+    $traceRestarts -eq [uint64]$summary.restarts -and
+    ($traceResolutions -join '|') -eq ($recordedResolutions -join '|') -and
+    ($traceOutcomes -join '|') -eq ($runtimeOutcomes -join '|')
+) "focus=$traceFocusLosses/$($summary.focus_losses) restart=$traceRestarts/$($summary.restarts) resolutions=$($traceResolutions -join ',') outcomes=$($traceOutcomes -join ',')"
+Add-Check "trace.summary_frame_statistics" (
+    [Math]::Abs($traceAverageFrameMs - [double]$summary.frame_ms.average) -le 0.1 -and
+    [Math]::Abs($traceMinimumFrameMs - [double]$summary.frame_ms.min) -le 0.1 -and
+    [Math]::Abs($traceMaximumFrameMs - [double]$summary.frame_ms.max) -le 0.1 -and
+    [double]$summary.frame_ms.p95 -le $traceMaximumP95Ms + 0.1 -and
+    [double]$summary.frame_ms.p99 -le $traceMaximumP99Ms + 0.1
+) "average=$traceAverageFrameMs/$($summary.frame_ms.average) min=$traceMinimumFrameMs/$($summary.frame_ms.min) max=$traceMaximumFrameMs/$($summary.frame_ms.max)"
+Add-Check "trace.summary_working_set" (
+    $traceWorkingSetEnd -eq [uint64]$summary.working_set_bytes.end -and
+    [uint64]$summary.working_set_bytes.start -gt 0 -and
+    [uint64]$summary.working_set_bytes.peak -ge $traceWorkingSetPeak -and
+    [uint64]$summary.working_set_bytes.peak -ge [uint64]$summary.working_set_bytes.start -and
+    [Math]::Abs([double]$traceWorkingSetStart - [double]$summary.working_set_bytes.start) -le 67108864.0 -and
+    ([double]$summary.working_set_bytes.peak - [double]$traceWorkingSetPeak) -le 67108864.0
+) "start=$traceWorkingSetStart/$($summary.working_set_bytes.start) end=$traceWorkingSetEnd/$($summary.working_set_bytes.end) peak=$traceWorkingSetPeak/$($summary.working_set_bytes.peak) tolerance=67108864"
+Add-Check "trace.session_coverage" (
+    $traceCoverageMs -ge [uint64]([double]$summary.duration_ms * 0.95)
+) "coverage_ms=$traceCoverageMs duration_ms=$($summary.duration_ms)"
+Add-Check "performance.trace_1080p_60fps_target" (
+    $traceAverageFrameMs -le 17.0 -and $targetTraceWindowRatio -ge 0.95
+) "weighted_average_ms=$traceAverageFrameMs target_windows=$($targetTraceWindows.Count)/$($activeTraceWindows.Count) ratio=$targetTraceWindowRatio"
 
 $attestationFields = @("user_started_demo", "non_rdp_desktop", "automatic_retry_disabled", "observations_are_truthful")
 $attestationPass = @($attestationFields | Where-Object {
@@ -377,6 +450,7 @@ $failedChecks = @($checks | Where-Object { -not $_.passed })
 $report = [ordered]@{
     schema_version = 1
     result = if ($failedChecks.Count -eq 0) { "pass" } else { "fail" }
+    build_source_revision = $buildRevision
     reviewed_source_revision = $reviewedRevision
     session_id = [string]$summary.session_id
     checks_total = $checks.Count

@@ -55,11 +55,43 @@ try {
 
     $traceName = "project-tempest-runtime-fixture.jsonl"
     $summaryName = "project-tempest-runtime-fixture-summary.json"
-    @(
-        '{"schema_version":1,"type":"session_start","session_id":"fixture","started_unix_ms":1}',
-        '{"schema_version":1,"type":"frame_window","start_ms":0,"end_ms":1000,"frames":60,"active_frames":60,"frame_ms":{"average":16.0,"min":15.0,"p95":16.0,"p99":16.5,"max":16.6},"last_simulation_tick":20,"width":1920,"height":1080,"working_set_bytes":110000000}',
-        '{"schema_version":1,"type":"session_end","elapsed_ms":1800000,"exit_code":0,"clean_shutdown":true}'
-    ) | Set-Content -LiteralPath (Join-Path $evidenceRoot $traceName) -Encoding UTF8
+    $traceLines = [Collections.Generic.List[string]]::new()
+    $traceLines.Add('{"schema_version":1,"type":"session_start","session_id":"fixture","started_unix_ms":1}')
+    foreach ($event in @(
+        @{ elapsed_ms = 1000; name = "resolution"; detail = "1920x1080" },
+        @{ elapsed_ms = 2000; name = "focus_lost"; detail = "" },
+        @{ elapsed_ms = 3000; name = "focus_gained"; detail = "" },
+        @{ elapsed_ms = 4000; name = "restart"; detail = "" },
+        @{ elapsed_ms = 5000; name = "resolution"; detail = "2560x1440" },
+        @{ elapsed_ms = 6000; name = "resolution"; detail = "3840x2160" },
+        @{ elapsed_ms = 7000; name = "resolution"; detail = "3440x1440" },
+        @{ elapsed_ms = 8000; name = "outcome"; detail = "victory" },
+        @{ elapsed_ms = 9000; name = "outcome"; detail = "defeat" }
+    )) {
+        $record = [ordered]@{ schema_version = 1; type = "event"; elapsed_ms = $event.elapsed_ms; name = $event.name }
+        if ($event.detail) { $record.detail = $event.detail }
+        $traceLines.Add(($record | ConvertTo-Json -Compress))
+    }
+    $resolutions = @("1920x1080", "2560x1440", "3840x2160", "3440x1440")
+    for ($index = 0; $index -lt 1800; ++$index) {
+        $dimensions = $resolutions[$index % $resolutions.Count] -split 'x'
+        $workingSet = if ($index -eq 0) { 100000000 } elseif ($index -eq 900) { 140000000 } elseif ($index -eq 1799) { 110000000 } else { 105000000 }
+        $traceLines.Add(([ordered]@{
+            schema_version = 1
+            type = "frame_window"
+            start_ms = $index * 1000
+            end_ms = ($index + 1) * 1000
+            frames = 60
+            active_frames = 60
+            frame_ms = [ordered]@{ average = 16.0; min = 10.0; p95 = 16.6; p99 = 16.8; max = 16.8 }
+            last_simulation_tick = ($index + 1) * 20
+            width = [int]$dimensions[0]
+            height = [int]$dimensions[1]
+            working_set_bytes = $workingSet
+        } | ConvertTo-Json -Compress -Depth 5))
+    }
+    $traceLines.Add('{"schema_version":1,"type":"session_end","elapsed_ms":1800000,"exit_code":0,"clean_shutdown":true}')
+    $traceLines | Set-Content -LiteralPath (Join-Path $evidenceRoot $traceName) -Encoding UTF8
     [ordered]@{
         schema_version = 1
         mode = "user_initiated_runtime_evidence"
@@ -70,13 +102,13 @@ try {
         exit_code = 0
         clean_shutdown = $true
         frames = 108000
-        frame_windows = 1
+        frame_windows = 1800
         frame_windows_dropped = 0
         percentile_resolution_ms = 0.1
-        histogram_saturated_frames_ge_1000ms = 1
-        frame_ms = [ordered]@{ min = 10.0; average = 16.0; p50 = 16.0; p95 = 16.6; p99 = 20.0; max = 1500.0 }
+        histogram_saturated_frames_ge_1000ms = 0
+        frame_ms = [ordered]@{ min = 10.0; average = 16.0; p50 = 16.0; p95 = 16.6; p99 = 16.8; max = 16.8 }
         working_set_bytes = [ordered]@{ start = 100000000; end = 110000000; peak = 140000000 }
-        events = 12
+        events = 9
         event_entries_dropped = 0
         focus_losses = 1
         restarts = 1
@@ -205,6 +237,26 @@ try {
         Pop-Location
     }
     Expect $forgedSourceRejected "forged observation revision was not rejected by the production analyser"
+
+    $forgedObservations.source_revision = $revision
+    $forgedObservations | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $observationsPath -Encoding UTF8
+    $mergeRevision = "cccccccccccccccccccccccccccccccccccccccc"
+    $mergeManifestPath = Join-Path $packageRoot "package-manifest.json"
+    $mergeManifest = Get-Content -LiteralPath $mergeManifestPath -Raw | ConvertFrom-Json
+    $mergeManifest.source_revision = $mergeRevision
+    $mergeManifest.executable_verification.source_revision = $mergeRevision
+    $mergeManifest | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $mergeManifestPath -Encoding UTF8
+    Push-Location $repositoryRoot
+    try {
+        .\scripts\analyse-project-tempest-manual-evidence.ps1 `
+            -EvidenceDirectory $evidenceRoot `
+            -PackageDirectory $packageRoot
+    }
+    finally {
+        Pop-Location
+    }
+    $mergeReport = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+    Expect ($mergeReport.result -eq "pass") "valid merge-build/reviewed-head revision pair was rejected"
 }
 finally {
     if (Test-Path -LiteralPath $sessionRoot) {
