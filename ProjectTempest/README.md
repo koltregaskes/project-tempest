@@ -346,6 +346,24 @@ The receipt proves package consumption, source binding, containment, and byte in
 renderer, audio, performance, soak, alt-tab, resolution, accessibility, usability, or playthrough evidence; those
 player-visible M5/M6 gates remain explicit manual-only work on an appropriate local Windows desktop.
 
+### User-initiated runtime evidence
+
+The demo contains a disabled-by-default runtime recorder so one manual acceptance session can produce governed frame-time,
+working-set, focus, resolution, restart, outcome, and clean-shutdown evidence. It does not launch the game, take screenshots,
+capture audio/video, simulate input, or claim that a playthrough happened.
+
+For a manual session, the user creates an empty evidence directory and sets `PROJECT_TEMPEST_EVIDENCE_DIR` to its absolute
+path in the same interactive desktop environment before starting `ProjectTempestDemo.exe` themselves. No agent,
+automation, CI job, scheduled task, or unattended wrapper may start the executable or retry it. The user should then
+perform the governed M5/M6 checklist, exit normally, and return the evidence directory for analysis.
+
+Each opted-in session uses a fixed-size frame-time histogram plus bounded one-second aggregates to avoid contaminating the
+measurement or creating recorder-driven memory growth. It writes a JSONL frame-window/event trace plus a summary JSON
+during normal shutdown. The trace caps stored windows at two hours and reports any dropped windows. The summary records average, p50, p95, p99,
+and maximum frame time; sampled initial/end/peak working set; tested resolutions; focus-loss count; restart count;
+terminal outcomes; exit code; and whether the normal shutdown path completed. `manual_playthrough_claimed` remains false:
+the files are machine measurements that must be paired with the user's checklist, screenshots, capture, and observations.
+
 Build with a modern Generals preset, for example:
 
 ```powershell

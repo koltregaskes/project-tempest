@@ -10,6 +10,8 @@ add_executable(project_tempest_demo WIN32
     Code/TempestPresentationD3D8.cpp
     Code/TempestPresentationD3D8.h
     Code/TempestPresentationShader.h
+    Code/TempestRuntimeEvidence.cpp
+    Code/TempestRuntimeEvidence.h
     Code/TempestSimulation.cpp
 )
 
@@ -38,6 +40,7 @@ target_link_libraries(project_tempest_demo PRIVATE
     imm32
     milesstub
     ole32
+    psapi
     Version
     vfw32
     winmm
@@ -155,6 +158,18 @@ target_include_directories(project_tempest_headless_acceptance PRIVATE Code)
 add_test(
     NAME project_tempest_headless_acceptance
     COMMAND project_tempest_headless_acceptance
+)
+
+add_executable(project_tempest_runtime_evidence_tests
+    Code/TempestRuntimeEvidence.cpp
+    Code/TempestRuntimeEvidence.h
+    Tests/TempestRuntimeEvidenceTests.cpp
+)
+target_compile_features(project_tempest_runtime_evidence_tests PRIVATE cxx_std_20)
+target_include_directories(project_tempest_runtime_evidence_tests PRIVATE Code)
+add_test(
+    NAME project_tempest_runtime_evidence_tests
+    COMMAND project_tempest_runtime_evidence_tests
 )
 
 add_executable(project_tempest_presentation_shader_tests

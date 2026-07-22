@@ -11,8 +11,10 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <mmsystem.h>
+#include <psapi.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
@@ -34,6 +36,7 @@
 #include "TempestAudio.h"
 #include "TempestInterface.h"
 #include "TempestPresentationD3D8.h"
+#include "TempestRuntimeEvidence.h"
 #include "TempestSimulation.h"
 #include "vector3.h"
 #include "ww3d.h"
@@ -76,8 +79,10 @@ Tempest::Simulation g_simulation;
 Tempest::Ui::InterfaceState g_interface;
 Tempest::Audio::AudioSystem g_audio;
 Tempest::Presentation::Renderer g_presentation;
+Tempest::Evidence::Recorder g_runtimeEvidence;
 Tempest::MatchOutcome g_previousOutcome = Tempest::MatchOutcome::InProgress;
 std::filesystem::path g_settingsPath;
+std::uint64_t g_evidenceStartTickMs = 0;
 
 constexpr Tempest::Presentation::FontStyle g_hudFont = Tempest::Presentation::FontStyle::Body;
 constexpr Tempest::Presentation::FontStyle g_hudSmallFont = Tempest::Presentation::FontStyle::Small;
@@ -111,6 +116,47 @@ Line3DClass *g_selectionVertical = nullptr;
 void UpdateCameraTransform();
 void UpdateCameraProjection(int width, int height);
 bool DrawInterface();
+
+std::uint64_t EvidenceElapsedMilliseconds()
+{
+    const std::uint64_t now = GetTickCount64();
+    return now >= g_evidenceStartTickMs ? now - g_evidenceStartTickMs : 0;
+}
+
+void InitialiseRuntimeEvidence()
+{
+    const DWORD required = GetEnvironmentVariableW(L"PROJECT_TEMPEST_EVIDENCE_DIR", nullptr, 0);
+    if (required == 0) {
+        return;
+    }
+    std::wstring directory(required, L'\0');
+    const DWORD written = GetEnvironmentVariableW(
+        L"PROJECT_TEMPEST_EVIDENCE_DIR",
+        directory.data(),
+        static_cast<DWORD>(directory.size()));
+    if (written == 0 || written >= static_cast<DWORD>(directory.size())) {
+        OutputDebugStringA("Project Tempest runtime evidence path is invalid; evidence capture is disabled.\n");
+        return;
+    }
+    directory.resize(written);
+
+    const auto unixMs = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count());
+    const std::string sessionId = std::to_string(unixMs) + "-" + std::to_string(GetCurrentProcessId());
+    if (!g_runtimeEvidence.Begin(std::filesystem::path(directory), sessionId, unixMs)) {
+        OutputDebugStringA("Project Tempest could not create the requested runtime evidence files.\n");
+    }
+}
+
+std::uint64_t CurrentWorkingSetBytes()
+{
+    PROCESS_MEMORY_COUNTERS counters {};
+    counters.cb = sizeof(counters);
+    if (!GetProcessMemoryInfo(GetCurrentProcess(), &counters, sizeof(counters))) {
+        return 0;
+    }
+    return static_cast<std::uint64_t>(counters.WorkingSetSize);
+}
 
 std::int64_t DistanceSquared(Tempest::Point left, Tempest::Point right)
 {
@@ -584,10 +630,12 @@ void HandleInterfaceEvent(HWND window, const Tempest::Ui::InputEvent &event)
     if (event.intent == Tempest::Ui::Intent::ExitRequested) {
         DestroyWindow(window);
     } else if (event.intent == Tempest::Ui::Intent::BeginMatch) {
+        g_runtimeEvidence.RecordEvent(EvidenceElapsedMilliseconds(), "match_begin");
         ResetPrototype();
         g_audio.Play(Tempest::Audio::Cue::UiConfirm);
         SetFeedback("Link established. Capture a substation, build a Relay, then break the Chorus Spire.");
     } else if (event.intent == Tempest::Ui::Intent::RestartMatch) {
+        g_runtimeEvidence.RecordRestart(EvidenceElapsedMilliseconds());
         ResetPrototype();
         g_audio.Play(Tempest::Audio::Cue::UiConfirm);
         SetFeedback("Substation 9 restarted.");
@@ -812,6 +860,7 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
 
         case WM_ACTIVATEAPP:
             g_applicationActive = wParam != 0;
+            g_runtimeEvidence.RecordFocus(EvidenceElapsedMilliseconds(), g_applicationActive);
             g_audio.SetSuspended(wParam == 0);
             if (!wParam) {
                 g_pointerInClient = false;
@@ -832,6 +881,7 @@ LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARA
                 WW3D::Set_Device_Resolution(width, height, 24, true);
                 g_presentation.Resize(width, height);
                 UpdateCameraProjection(width, height);
+                g_runtimeEvidence.RecordResolution(EvidenceElapsedMilliseconds(), width, height);
             }
             return 0;
 
@@ -1844,6 +1894,9 @@ void UpdatePrototype(float deltaSeconds)
         if (g_previousOutcome == Tempest::MatchOutcome::InProgress &&
             outcome != Tempest::MatchOutcome::InProgress) {
             g_audio.Play(Tempest::Audio::Cue::Alert);
+            g_runtimeEvidence.RecordOutcome(
+                EvidenceElapsedMilliseconds(),
+                outcome == Tempest::MatchOutcome::Victory ? "victory" : "defeat");
         }
         g_previousOutcome = outcome;
         g_simulationAccumulator -= kSimulationTickSeconds;
@@ -1955,6 +2008,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
 {
     ApplicationHInstance = instance;
     g_interface.ResetForBoot();
+    g_evidenceStartTickMs = GetTickCount64();
+    InitialiseRuntimeEvidence();
 
     char executablePath[MAX_PATH] = {};
     GetModuleFileNameA(nullptr, executablePath, MAX_PATH);
@@ -1966,6 +2021,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
     const ConfigurationLoadResult configurationLoad = LoadInterfaceConfiguration();
 
     if (!CreateMainWindow(instance, commandShow)) {
+        g_runtimeEvidence.RecordEvent(EvidenceElapsedMilliseconds(), "startup_failure", "window");
+        g_runtimeEvidence.Finish(EvidenceElapsedMilliseconds(), 1, true);
         MessageBoxA(nullptr, "Unable to create the Project Tempest window.", "Project Tempest", MB_ICONERROR);
         return 1;
     }
@@ -1973,16 +2030,21 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
     RECT client = {};
     GetClientRect(ApplicationHWnd, &client);
     g_pointerClient = { client.right / 2, client.bottom / 2 };
+    g_runtimeEvidence.RecordResolution(EvidenceElapsedMilliseconds(), client.right, client.bottom);
+    g_runtimeEvidence.RecordEvent(EvidenceElapsedMilliseconds(), "window_created");
 
     if (!InitialiseRenderer()) {
+        g_runtimeEvidence.RecordEvent(EvidenceElapsedMilliseconds(), "startup_failure", "renderer");
         MessageBoxA(
             ApplicationHWnd,
             "The renderer or a required Project Tempest W3D could not be initialised. Verify the demo package.",
             "Project Tempest startup failed",
             MB_ICONERROR);
         ShutdownRenderer();
+        g_runtimeEvidence.Finish(EvidenceElapsedMilliseconds(), 2, true);
         return 2;
     }
+    g_runtimeEvidence.RecordEvent(EvidenceElapsedMilliseconds(), "renderer_ready");
     std::string audioError;
     bool audioReady = g_audio.Initialize(std::filesystem::current_path(), audioError);
     if (audioReady) {
@@ -1998,6 +2060,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
     }
     if (!audioReady) {
         OutputDebugStringA(("Project Tempest audio unavailable: " + audioError + "\n").c_str());
+        g_runtimeEvidence.RecordEvent(EvidenceElapsedMilliseconds(), "audio_unavailable", audioError);
+    } else {
+        g_runtimeEvidence.RecordEvent(EvidenceElapsedMilliseconds(), "audio_ready");
     }
     if (!audioReady) {
         SetFeedback("Original audio is unavailable; gameplay remains active with visual feedback.");
@@ -2017,6 +2082,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
     MSG message = {};
     bool running = true;
     int exitCode = 0;
+    bool hasRenderedFrameInterval = false;
+    std::uint64_t lastWorkingSetSampleMs = std::numeric_limits<std::uint64_t>::max();
     while (running) {
         while (PeekMessage(&message, nullptr, 0, 0, PM_REMOVE)) {
             if (message.message == WM_QUIT) {
@@ -2033,18 +2100,41 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int commandShow)
 
         LARGE_INTEGER current = {};
         QueryPerformanceCounter(&current);
+        const float rawDeltaSeconds = static_cast<float>(current.QuadPart - previous.QuadPart) /
+            static_cast<float>(frequency.QuadPart);
         const float deltaSeconds = std::min(
             0.05F,
-            static_cast<float>(current.QuadPart - previous.QuadPart) /
-                static_cast<float>(frequency.QuadPart));
+            rawDeltaSeconds);
         previous = current;
 
         UpdatePrototype(deltaSeconds);
         RenderPrototype(deltaSeconds);
+        if (hasRenderedFrameInterval) {
+            const std::uint64_t elapsedMs = EvidenceElapsedMilliseconds();
+            std::uint64_t workingSetBytes = 0;
+            if (lastWorkingSetSampleMs == std::numeric_limits<std::uint64_t>::max() ||
+                elapsedMs - lastWorkingSetSampleMs >= 1000) {
+                workingSetBytes = CurrentWorkingSetBytes();
+                lastWorkingSetSampleMs = elapsedMs;
+            }
+            RECT evidenceClient = {};
+            GetClientRect(ApplicationHWnd, &evidenceClient);
+            g_runtimeEvidence.RecordFrame(
+                elapsedMs,
+                static_cast<double>(rawDeltaSeconds) * 1000.0,
+                static_cast<std::uint64_t>(g_simulation.GetState().tick),
+                std::max(0L, evidenceClient.right - evidenceClient.left),
+                std::max(0L, evidenceClient.bottom - evidenceClient.top),
+                g_applicationActive,
+                workingSetBytes);
+        }
+        hasRenderedFrameInterval = true;
         Sleep(1);
     }
 
     g_audio.Shutdown();
     ShutdownRenderer();
+    g_runtimeEvidence.RecordEvent(EvidenceElapsedMilliseconds(), "shutdown_complete");
+    g_runtimeEvidence.Finish(EvidenceElapsedMilliseconds(), exitCode, true);
     return exitCode;
 }
