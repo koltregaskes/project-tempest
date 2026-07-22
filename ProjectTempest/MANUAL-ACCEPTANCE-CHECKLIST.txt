@@ -10,9 +10,10 @@ Before the session
 
 1. Use the governed private package and keep package-manifest.json beside the
    executable.
-   Keep the reviewed source revision, executable SHA-256, and Miles SHA-256
-   from the exact-head acceptance packet; the analyser requires all three as
-   external package-identity anchors.
+   Keep the reviewed source revision, executable SHA-256, Miles SHA-256,
+   package-contract SHA-256, and package-manifest SHA-256 from the exact-head
+   acceptance packet; the analyser requires all five as external
+   package-identity anchors.
 2. Create one empty evidence directory on a local drive.
 3. Copy manual-acceptance-observations.example.json into that directory as
    manual-acceptance-observations.json.
