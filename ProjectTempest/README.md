@@ -156,9 +156,11 @@ ctest --test-dir .\build\win32 -C Release --output-on-failure
 ```
 
 The rendered prototype now drives that simulation at the same fixed 20 Hz, converts player input into sequenced
-commands, and presents the current match through a neon procedural grid, faction-coloured and shape-distinct
+commands, and presents the match through a neon procedural grid, faction-coloured and shape-distinct
 substation/building markers, selection brackets, dedicated Courier scout/Skitter visuals, pristine/damaged Courier
-switching, authored Dynamo relay, Arc Sentry, and Signal Pylon models, and a scalable in-window HUD. The original interface includes a loading panel,
+switching, authored Dynamo relay, Arc Sentry, and Signal Pylon models, and a scalable in-window HUD. Living unit meshes
+and the selection bracket interpolate from the previous fixed step toward the current one; that blend never writes
+back into the match. The original interface includes a loading panel,
 mission briefing, live resources/objective/selection state, visible command acknowledgement, pause, settings, and a
 victory/defeat explanation with restart and settings available without leaving the process. This is a compile- and
 headless-test-proven integration checkpoint; safe manual gameplay/legibility verification and dedicated Relay Core,

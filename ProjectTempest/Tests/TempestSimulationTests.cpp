@@ -1,6 +1,7 @@
 #include "TempestSimulation.h"
 #include "TempestAudio.h"
 #include "TempestInterface.h"
+#include "TempestPresentationInterp.h"
 
 #include <algorithm>
 #include <cmath>
@@ -1182,6 +1183,54 @@ void TestAccessibilityColourContract()
     }
 }
 
+void TestPresentationInterpolation()
+{
+    const Tempest::Point previous { 0, 0 };
+    const Tempest::Point current { 100, -40 };
+    const Tempest::PresentationPoint atPrevious =
+        Tempest::InterpolatePresentationPoint(previous, current, Tempest::PresentationAlpha(0.0, 0.05));
+    const Tempest::PresentationPoint midway =
+        Tempest::InterpolatePresentationPoint(previous, current, Tempest::PresentationAlpha(0.025, 0.05));
+    const Tempest::PresentationPoint atCurrent =
+        Tempest::InterpolatePresentationPoint(previous, current, Tempest::PresentationAlpha(0.05, 0.05));
+    Expect(atPrevious.x == 0.0F && atPrevious.y == 0.0F,
+        "a fresh simulation tick renders the previous fixed step");
+    Expect(std::abs(midway.x - 50.0F) < 0.001F && std::abs(midway.y + 20.0F) < 0.001F,
+        "half a frame between ticks blends the previous and current steps");
+    Expect(std::abs(atCurrent.x - 100.0F) < 0.001F && std::abs(atCurrent.y + 40.0F) < 0.001F,
+        "a full tick of accumulator reaches the current fixed step");
+
+    const Tempest::PresentationPoint clampedLow =
+        Tempest::InterpolatePresentationPoint(previous, current, Tempest::PresentationAlpha(-1.0, 0.05));
+    const Tempest::PresentationPoint clampedHigh =
+        Tempest::InterpolatePresentationPoint(previous, current, Tempest::PresentationAlpha(1.0, 0.05));
+    const Tempest::PresentationPoint invalidTick =
+        Tempest::InterpolatePresentationPoint(previous, current, Tempest::PresentationAlpha(0.0, 0.0));
+    Expect(clampedLow.x == 0.0F && clampedLow.y == 0.0F &&
+            std::abs(clampedHigh.x - 100.0F) < 0.001F && std::abs(clampedHigh.y + 40.0F) < 0.001F &&
+            std::abs(invalidTick.x - 100.0F) < 0.001F && std::abs(invalidTick.y + 40.0F) < 0.001F,
+        "presentation alpha clamps hostile clock values and snaps when the tick duration is invalid");
+
+    Tempest::Simulation authoritative;
+    Tempest::Simulation observed;
+    Tempest::Command move = MakeCommand(0, Tempest::CommandKind::Move, 2, 0, { -8000, -4000 });
+    authoritative.Submit(move);
+    observed.Submit(move);
+    authoritative.Step(3);
+    observed.Step(3);
+    const Tempest::Unit &unit = observed.GetState().units[1];
+    const Tempest::PresentationPoint rendered = Tempest::InterpolatePresentationPoint(
+        { unit.position.x - 30, unit.position.y + 12 },
+        unit.position,
+        0.25);
+    Expect(rendered.x != static_cast<float>(unit.position.x) || rendered.y != static_cast<float>(unit.position.y),
+        "the rendered sample can leave the authoritative unit position");
+    Expect(authoritative.Checksum() == observed.Checksum() &&
+            observed.GetState().units[1].position.x == unit.position.x &&
+            observed.GetState().units[1].position.y == unit.position.y,
+        "presentation blending does not change the deterministic match checksum");
+}
+
 void TestAudioContract()
 {
     std::vector<std::uint8_t> bytes = MakePcmWave();
@@ -1249,6 +1298,7 @@ int main()
     TestSettingsBoundsAndRemapping();
     TestConfigurationPersistence();
     TestAccessibilityColourContract();
+    TestPresentationInterpolation();
     TestAudioContract();
     std::cout << "PASS: Project Tempest deterministic simulation tests\n";
     return 0;

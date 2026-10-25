@@ -90,8 +90,9 @@ release. These can only enter after the standalone skirmish passes its gates.
 - the active community CMake/Visual Studio baseline and upstream-compatible fixes;
 - separation between simulation time and presentation/render timing.
 
-The simulation may remain fixed-step. Presentation should interpolate independently so 60 Hz, 120 Hz, and variable
-refresh displays do not change game outcomes.
+The simulation remains fixed-step. Living unit meshes and the selection bracket interpolate from the previous fixed
+step toward the current one using the frame accumulator, lagging the authoritative state by at most one tick. That
+blend is presentation-only, so 60 Hz, 120 Hz, and variable refresh displays do not change game outcomes.
 
 ### Replace or isolate
 

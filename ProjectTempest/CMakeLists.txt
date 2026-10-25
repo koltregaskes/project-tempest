@@ -9,6 +9,7 @@ add_executable(project_tempest_demo WIN32
     Code/TempestInterface.h
     Code/TempestPresentationD3D8.cpp
     Code/TempestPresentationD3D8.h
+    Code/TempestPresentationInterp.h
     Code/TempestPresentationShader.h
     Code/TempestSimulation.cpp
 )
@@ -113,6 +114,7 @@ add_executable(project_tempest_sim_tests
     Code/TempestAudio.h
     Code/TempestInterface.cpp
     Code/TempestInterface.h
+    Code/TempestPresentationInterp.h
     Code/TempestSimulation.cpp
     Tests/TempestSimulationTests.cpp
 )

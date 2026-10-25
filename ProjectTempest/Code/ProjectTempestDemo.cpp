@@ -34,6 +34,7 @@
 #include "TempestAudio.h"
 #include "TempestInterface.h"
 #include "TempestPresentationD3D8.h"
+#include "TempestPresentationInterp.h"
 #include "TempestSimulation.h"
 #include "vector3.h"
 #include "ww3d.h"
@@ -62,6 +63,11 @@ std::uint32_t g_selectedUnitId = 0;
 Tempest::Point g_pointerPoint;
 POINT g_pointerClient = {};
 double g_simulationAccumulator = 0.0;
+struct PreviousUnitSample {
+    std::uint32_t id = 0;
+    Tempest::Point position;
+};
+std::vector<PreviousUnitSample> g_previousUnitPositions;
 float g_cameraCenterX = 0.0F;
 float g_cameraCenterY = 0.0F;
 char g_feedback[160] = "Select a Courier scout and restore the first substation.";
@@ -277,9 +283,41 @@ void UpdateWindowTitle()
     SetWindowTextA(ApplicationHWnd, title);
 }
 
+void RememberPreviousUnitPositions()
+{
+    g_previousUnitPositions.clear();
+    for (const Tempest::Unit &unit : g_simulation.GetState().units) {
+        if (unit.alive) {
+            g_previousUnitPositions.push_back({ unit.id, unit.position });
+        }
+    }
+}
+
+Tempest::Point PreviousUnitPosition(const Tempest::Unit &unit)
+{
+    for (const PreviousUnitSample &sample : g_previousUnitPositions) {
+        if (sample.id == unit.id) {
+            return sample.position;
+        }
+    }
+    return unit.position;
+}
+
+void UnitPresentationWorld(const Tempest::Unit &unit, float &worldX, float &worldY)
+{
+    const double alpha = Tempest::PresentationAlpha(g_simulationAccumulator, kSimulationTickSeconds);
+    const Tempest::PresentationPoint point = Tempest::InterpolatePresentationPoint(
+        PreviousUnitPosition(unit),
+        unit.position,
+        alpha);
+    worldX = point.x * kSimulationToWorld;
+    worldY = point.y * kSimulationToWorld;
+}
+
 void ResetPrototype()
 {
     g_simulation.Reset();
+    g_previousUnitPositions.clear();
     g_previousOutcome = Tempest::MatchOutcome::InProgress;
     g_simulationAccumulator = 0.0;
     g_cameraCenterX = 0.0F;
@@ -1205,10 +1243,10 @@ bool SyncUnitVisuals()
         Matrix3D transform(1);
         transform.Rotate_Z(heading);
         transform.Scale(isChorus ? 0.72F : 1.0F);
-        transform.Set_Translation(Vector3(
-            static_cast<float>(unit.position.x) * kSimulationToWorld,
-            static_cast<float>(unit.position.y) * kSimulationToWorld,
-            0.0F));
+        float worldX = 0.0F;
+        float worldY = 0.0F;
+        UnitPresentationWorld(unit, worldX, worldY);
+        transform.Set_Translation(Vector3(worldX, worldY, 0.0F));
         found->object->Set_Transform(transform);
         found->object->Set_ObjectColor(unit.faction == Tempest::Faction::Chorus ? 0xFF1F5A : 0x16D9FF);
     }
@@ -1225,8 +1263,9 @@ bool SyncUnitVisuals()
         }
     }
     if (selected) {
-        const float x = static_cast<float>(selected->position.x) * kSimulationToWorld;
-        const float y = static_cast<float>(selected->position.y) * kSimulationToWorld;
+        float x = 0.0F;
+        float y = 0.0F;
+        UnitPresentationWorld(*selected, x, y);
         g_selectionHorizontal->Reset(Vector3(x - 1.7F, y, 0.03F), Vector3(x + 1.7F, y, 0.03F));
         g_selectionVertical->Reset(Vector3(x, y - 1.7F, 0.03F), Vector3(x, y + 1.7F, 0.03F));
         g_selectionHorizontal->Set_Hidden(0);
@@ -1808,9 +1847,15 @@ void UpdatePrototype(float deltaSeconds)
         g_simulationAccumulator = std::min(0.25, g_simulationAccumulator + static_cast<double>(deltaSeconds));
     } else {
         g_simulationAccumulator = 0.0;
+        g_previousUnitPositions.clear();
     }
     while (g_interface.AdvancesSimulation() && g_simulationAccumulator >= kSimulationTickSeconds) {
+        const std::uint64_t tickBefore = g_simulation.GetState().tick;
+        RememberPreviousUnitPositions();
         g_simulation.Step();
+        if (g_simulation.GetState().tick == 0 && tickBefore != 0) {
+            g_previousUnitPositions.clear();
+        }
         const Tempest::MatchOutcome outcome = g_simulation.GetState().outcome;
         g_interface.SyncOutcome(outcome);
         if (g_previousOutcome == Tempest::MatchOutcome::InProgress &&
