@@ -1,0 +1,4 @@
+# Player command stream for a Substation 9 loss.
+# Start the match and give no orders. Chorus destroys the Relay Core.
+begin
+wait 300

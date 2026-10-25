@@ -11,6 +11,22 @@ developed. See [PROJECT_TEMPEST.md](PROJECT_TEMPEST.md) for the delivery contrac
 The governed first-demo plan is [PROJECT_TEMPEST_DEMO_SPEC.md](PROJECT_TEMPEST_DEMO_SPEC.md): a 15–20 minute original
 cyberpunk skirmish slice, its content budget, asset/tool pipeline, milestone evidence, and review gates.
 
+## Play Substation 9
+
+The retail instructions later in this file start the original engine against a legally owned Command & Conquer
+install. They do not start Project Tempest.
+
+Substation 9, the standalone skirmish, starts from this command. It does not need retail assets or a graphics window:
+
+```bash
+./scripts/play-substation-9.sh
+```
+
+The briefing states the goal before the first order. Destroying the Chorus Spire wins. Losing the Relay Core loses.
+`help` lists the commands. `begin` starts the match. This is the playable Substation 9 rules session. It is not the
+rendered Windows demo, and [PROJECT_TEMPEST.md](PROJECT_TEMPEST.md) still treats the larger programme as unfinished.
+`ProjectTempestDemo.exe` remains a manual non-RDP desktop check and must not be launched unattended.
+
 Original concept, editable source, runtime-content, and provenance work is rooted in
 [ProjectTempest/README.md](ProjectTempest/README.md). Retail game assets are prohibited from that tree.
 

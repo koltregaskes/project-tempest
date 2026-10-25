@@ -147,3 +147,5 @@ add_custom_command(TARGET project_tempest_presentation_shader_tests POST_BUILD
     VERBATIM
 )
 add_dependencies(project_tempest_demo project_tempest_presentation_shader_tests)
+
+add_subdirectory(session)

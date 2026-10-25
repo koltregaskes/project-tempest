@@ -26,7 +26,8 @@ constexpr std::int32_t OverchargeMoveDenominator = 4;
 
 constexpr std::array<UnitDefinition, static_cast<std::size_t>(UnitKind::Count)> UnitDefinitions {{
     { "Fabricator rig", Faction::Freegrid, 240, 250, TicksPerSecond * 5, 2, 80, 8, 12, 1200 },
-    { "Courier scout", Faction::Freegrid, 180, 150, TicksPerSecond * 3, 1, 150, 20, 9, 1800 },
+    // A Dynamo plus three scouts has to fit the opening bank once the first substation is live.
+    { "Courier scout", Faction::Freegrid, 180, 100, TicksPerSecond * 3, 1, 150, 20, 9, 1800 },
     { "Lancer crew", Faction::Freegrid, 260, 240, TicksPerSecond * 6, 2, 110, 28, 10, 2600 },
     { "Coil carrier", Faction::Freegrid, 520, 450, TicksPerSecond * 10, 4, 70, 55, 18, 3200 },
     { "Skitter", Faction::Chorus, 110, 0, 0, 0, 160, 11, 12, 1000 },

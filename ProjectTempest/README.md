@@ -210,6 +210,18 @@ cmake --preset win32
 cmake --build --preset win32 --target project_tempest_demo
 ```
 
+The same rules are playable without a window, a retail install, or the rendered demo. From the repository root:
+
+```bash
+./scripts/play-substation-9.sh
+```
+
+The process opens on a briefing that states the win and the loss, then accepts `begin`, selection, capture, production,
+construction, combat, abilities, `wait`, `pause`, and `restart`. Destroying the Chorus Spire prints `GRID RESTORED`.
+Losing the Relay Core prints `DISTRICT LOST`. This console session is safe for unattended runs because it does not
+create a window. It does not replace the manual rendered check below, and it is not the whole programme described in
+`PROJECT_TEMPEST.md`.
+
 The build places `courier.w3d` beside the executable. A user performing an explicit manual test on a non-RDP desktop
 may prepare the demo directory with the same hash-pinned compatibility layer used by W3DView:
 

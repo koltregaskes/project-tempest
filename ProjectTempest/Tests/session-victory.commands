@@ -1,0 +1,11 @@
+# Briefing order: capture a substation, restore a relay, field scouts, destroy the Spire.
+begin
+capture 1
+produce courier
+produce courier
+produce courier
+wait 11
+build dynamo 1
+select couriers
+attack spire
+wait 180
