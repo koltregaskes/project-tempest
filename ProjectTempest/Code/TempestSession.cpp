@@ -28,7 +28,7 @@ namespace Ui = Tempest::Ui;
 
 constexpr std::int32_t GridScanRange = 5000;
 constexpr std::uint32_t StatusIntervalTicks = static_cast<std::uint32_t>(Tempest::TicksPerSecond) * 10U;
-constexpr std::int32_t MaximumWaitSeconds = 600;
+constexpr std::int32_t MaximumWaitSeconds = 1200;
 
 enum class LineResult {
     Continue,
@@ -141,9 +141,14 @@ public:
             << "\n"
             << "2089. Chorus has colonised the basin's abandoned control grid.\n"
             << "\n"
-            << "You command Freegrid.\n"
+            << "You command Freegrid. This match is the whole game.\n"
             << "Win: destroy the Chorus Spire.\n"
             << "Loss: if the Relay Core falls, the district is lost.\n"
+            << "\n"
+            << "A first win takes about 15 to 20 minutes.\n"
+            << "Capture the western substation. Build a Dynamo and an Arc Sentry there.\n"
+            << "Produce a Coil carrier and a Lancer crew, then destroy the Spire.\n"
+            << "Courier scouts capture and spot. They cannot break the Spire alone.\n"
             << "\n"
             << "Salvage pays for construction and production. Captured substations add salvage and ability charge.\n"
             << "\n"
@@ -509,6 +514,7 @@ private:
     {
         std::cout
             << "Win by destroying the Chorus Spire. Lose if the Relay Core falls.\n"
+            << "Capture the west substation, build a Dynamo and an Arc Sentry, produce a Coil and a Lancer, then attack the Spire.\n"
             << "Commands:\n"
             << "  begin                         start the match\n"
             << "  look                          show the battlefield\n"
@@ -733,7 +739,7 @@ private:
         }));
         std::cout << '\n' << OutcomeTitle(state.outcome) << '\n'
                   << (victory
-                          ? "You severed the Chorus Spire and returned the grid to Freegrid control."
+                          ? "The Chorus Spire fell, and the grid returned to Freegrid control."
                           : "The Relay Core fell before the Chorus signal could be isolated.")
                   << "\n\nDecisive state: " << linked << " of " << state.nodes.size()
                   << " substations linked, " << state.salvage << " salvage banked, "

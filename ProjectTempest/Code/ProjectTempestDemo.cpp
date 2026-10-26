@@ -1718,9 +1718,9 @@ void DrawModalOverlay(UiDevice &device, const RECT &client, float scale)
             briefing,
             sizeof(briefing),
             "2089. Chorus has colonised the basin's abandoned control grid.\n\n"
-            "SELECT a Freegrid Courier scout. CAPTURE substations to earn salvage and ability charge. "
-            "RESTORE grid relays, PRODUCE Courier scouts, then destroy the Chorus Spire [C]. "
-            "If your Relay Core [F] falls, the district is lost.\n\n"
+            "SELECT a Freegrid Courier scout. CAPTURE the western substation. "
+            "BUILD a Dynamo and an Arc Sentry, PRODUCE a Coil carrier and a Lancer crew, then destroy the Chorus Spire [C]. "
+            "Courier scouts cannot break the Spire alone. If your Relay Core [F] falls, the district is lost.\n\n"
             "ENTER  establish link and begin     [%s]  settings     ESC  exit",
             settingsKey);
         DrawLabel(
@@ -1770,7 +1770,7 @@ void DrawModalOverlay(UiDevice &device, const RECT &client, float scale)
             sizeof(copy),
             "%s\n\nDecisive state: %d of 3 substations linked, %d salvage banked, %d%% ability charge.\n\n[%s]  restart without returning to desktop\n[%s]  settings\nESC  exit",
             victory
-                ? "You severed the Chorus Spire and returned the grid to Freegrid control."
+                ? "The Chorus Spire fell, and the grid returned to Freegrid control."
                 : "The Relay Core fell before the Chorus signal could be isolated.",
             freegridNodes,
             match.salvage,

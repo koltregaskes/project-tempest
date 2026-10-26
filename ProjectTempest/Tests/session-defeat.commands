@@ -1,4 +1,11 @@
-# Player command stream for a Substation 9 loss.
-# Start the match and give no orders. Chorus destroys the Relay Core.
+# Substation 9 loss. Scout rush, no Dynamo and no Arc Sentry. The Spire holds and the Relay Core falls.
 begin
-wait 300
+capture 1
+wait 25
+produce courier
+produce courier
+produce courier
+wait 380
+select couriers
+attack spire
+wait 1200

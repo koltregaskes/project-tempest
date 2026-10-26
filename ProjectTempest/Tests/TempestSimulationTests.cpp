@@ -238,7 +238,8 @@ void TestCompleteRosterProduction()
     Expect(simulation.GetState().salvage ==
             salvageBefore - Tempest::GetUnitDefinition(Tempest::UnitKind::LancerCrew).salvageCost,
         "queued Lancer production spends its salvage cost exactly once");
-    simulation.Step(Tempest::TicksPerSecond * 6);
+    simulation.Step(static_cast<std::uint32_t>(
+        Tempest::GetUnitDefinition(Tempest::UnitKind::LancerCrew).buildTicks));
     Expect(FindUnit(simulation.GetState(), Tempest::UnitKind::LancerCrew) != 0,
         "Fabricator Bay completes Lancer crew production deterministically");
 
@@ -265,7 +266,8 @@ void TestCompleteRosterProduction()
         0,
         {},
         Tempest::UnitKind::FabricatorRig));
-    replacementSimulation.Step(Tempest::TicksPerSecond * 5 + 1);
+    replacementSimulation.Step(static_cast<std::uint32_t>(
+        Tempest::GetUnitDefinition(Tempest::UnitKind::FabricatorRig).buildTicks + 1));
     Expect(CountUnits(replacementSimulation.GetState(), Tempest::UnitKind::FabricatorRig) == rigsBefore + 1,
         "Fabricator Bay can replace the construction and repair role");
 
@@ -294,7 +296,8 @@ void TestCompleteRosterProduction()
         Tempest::CommandKind::BuildStructure,
         rigId,
         nodeId));
-    heavySimulation.Step(Tempest::TicksPerSecond * 4 + 1);
+    heavySimulation.Step(static_cast<std::uint32_t>(
+        Tempest::GetBuildingDefinition(Tempest::BuildingKind::Dynamo).buildTicks + 1));
     Expect(heavySimulation.FreegridCapacity() == 10,
         "a completed Dynamo provides capacity for Coil carrier production");
     Expect(heavySimulation.CanProduceUnit(heavyBayId, Tempest::UnitKind::CoilCarrier),
@@ -307,7 +310,8 @@ void TestCompleteRosterProduction()
         0,
         {},
         Tempest::UnitKind::CoilCarrier));
-    heavySimulation.Step(Tempest::TicksPerSecond * 10 + 1);
+    heavySimulation.Step(static_cast<std::uint32_t>(
+        Tempest::GetUnitDefinition(Tempest::UnitKind::CoilCarrier).buildTicks + 1));
     Expect(FindUnit(heavySimulation.GetState(), Tempest::UnitKind::CoilCarrier) != 0,
         "Fabricator Bay completes Coil carrier production deterministically");
     Expect(heavySimulation.GetState().salvage >= heavySalvageBefore -
@@ -359,7 +363,8 @@ void TestStructuresAndDefensivePressure()
     simulation.Step();
     Expect(simulation.GetState().salvage == salvageAfterBuild,
         "duplicate Arc Sentry construction is rejected without spending salvage");
-    simulation.Step(Tempest::TicksPerSecond * 5);
+    simulation.Step(static_cast<std::uint32_t>(
+        Tempest::GetBuildingDefinition(Tempest::BuildingKind::ArcSentry).buildTicks));
     sentry = FindBuildingById(simulation.GetState(), sentryId);
     Expect(sentry && sentry->complete, "Arc Sentry construction completes on its deterministic build timer");
 
@@ -512,13 +517,23 @@ void TestFabricatorRepair()
     const Tempest::Unit *rig = FindUnitById(simulation.GetState(), rigId);
     Expect(rig != nullptr, "repair fixture starts with a Fabricator rig");
 
-    for (int tick = 0; tick < Tempest::TicksPerSecond * 30 && rig &&
+    simulation.Submit(MakeCommand(0, Tempest::CommandKind::Move, rigId, 0, { 7200, 6100 }));
+    for (int tick = 0; tick < Tempest::TicksPerSecond * 40 && rig &&
          rig->hitPoints == rig->maximumHitPoints; ++tick) {
         simulation.Step();
         rig = FindUnitById(simulation.GetState(), rigId);
     }
     Expect(rig && rig->alive && rig->hitPoints < rig->maximumHitPoints,
         "Chorus pressure creates a damaged deterministic repair target");
+    const Tempest::Point home = { -12400, -9400 };
+    simulation.Submit(MakeCommand(simulation.GetState().tick, Tempest::CommandKind::Move, rigId, 0, home));
+    for (int tick = 0; tick < Tempest::TicksPerSecond * 20 && rig && rig->alive &&
+         !IsWithin(rig->position, home, 100); ++tick) {
+        simulation.Step();
+        rig = FindUnitById(simulation.GetState(), rigId);
+    }
+    Expect(rig && rig->alive && rig->hitPoints < rig->maximumHitPoints,
+        "the damaged Fabricator rig can leave Signal Pylon range");
     const std::int32_t hitPointsBefore = rig ? rig->hitPoints : 0;
     const std::int32_t salvageBefore = simulation.GetState().salvage;
     simulation.Submit(MakeCommand(
@@ -548,7 +563,7 @@ void TestFabricatorRepair()
 void TestEscalatingChorusReinforcements()
 {
     Tempest::Simulation simulation;
-    simulation.Step(Tempest::TicksPerSecond * 46);
+    simulation.Step(Tempest::TicksPerSecond * 241);
     Expect(simulation.GetState().chorusWave >= 3, "Machine Nest reinforcement pressure advances deterministic waves");
     Expect(FindUnit(simulation.GetState(), Tempest::UnitKind::Skitter) != 0 &&
             FindUnit(simulation.GetState(), Tempest::UnitKind::Warden) != 0 &&
@@ -616,7 +631,8 @@ void TestEconomyConstructionAndProduction()
         nodeId));
     simulation.Step();
     Expect(simulation.GetState().salvage == salvageBeforeRelay - 200, "Dynamo reserves its full salvage cost");
-    simulation.Step(Tempest::TicksPerSecond * 4);
+    simulation.Step(static_cast<std::uint32_t>(
+        Tempest::GetBuildingDefinition(Tempest::BuildingKind::Dynamo).buildTicks));
     const std::uint32_t relayId = FindBuilding(simulation.GetState(), Tempest::BuildingKind::Dynamo);
     Expect(relayId != 0, "owned substation can restore a relay Dynamo");
     Expect(simulation.FreegridCapacity() == 10, "completed Dynamo adds four unit-capacity points");
@@ -628,9 +644,11 @@ void TestEconomyConstructionAndProduction()
     Expect(simulation.GetState().units.size() == unitsBeforeProduction, "rejected Relay production creates no unit");
 
     const std::uint32_t workshopId = FindBuilding(simulation.GetState(), Tempest::BuildingKind::FabricatorBay);
+    const std::size_t couriersBefore = FindCouriers(simulation.GetState()).size();
     simulation.Submit(MakeCommand(simulation.GetState().tick, Tempest::CommandKind::ProduceUnit, workshopId));
-    simulation.Step(Tempest::TicksPerSecond * 3 + 1);
-    Expect(simulation.GetState().units.size() == unitsBeforeProduction + 1,
+    simulation.Step(static_cast<std::uint32_t>(
+        Tempest::GetUnitDefinition(Tempest::UnitKind::CourierScout).buildTicks + 1));
+    Expect(FindCouriers(simulation.GetState()).size() == couriersBefore + 1,
         "completed Fabricator Bay produces a Courier scout");
 }
 
@@ -720,7 +738,8 @@ void TestLethalArcPulseResolvesBeforeActions()
     Tempest::Simulation simulation;
     const std::uint32_t workshopId = FindBuilding(simulation.GetState(), Tempest::BuildingKind::FabricatorBay);
     simulation.Submit(MakeCommand(0, Tempest::CommandKind::ProduceUnit, workshopId));
-    simulation.Step(Tempest::TicksPerSecond * 3 + 1);
+    simulation.Step(static_cast<std::uint32_t>(
+        Tempest::GetUnitDefinition(Tempest::UnitKind::CourierScout).buildTicks + 1));
 
     const std::vector<std::uint32_t> couriers = FindCouriers(simulation.GetState());
     const std::uint32_t droneId = FindDrone(simulation.GetState());
@@ -791,41 +810,104 @@ void TestLethalArcPulseResolvesBeforeActions()
     }
 }
 
+void OrderAttack(Tempest::Simulation &simulation, std::uint32_t actorId, std::uint32_t targetId)
+{
+    simulation.Submit(MakeCommand(
+        simulation.GetState().tick,
+        Tempest::CommandKind::Attack,
+        actorId,
+        targetId));
+}
+
 void TestVictoryAndDefeat()
 {
-    Tempest::Simulation victorySimulation;
-    const std::uint32_t workshopId = FindBuilding(victorySimulation.GetState(), Tempest::BuildingKind::FabricatorBay);
-    victorySimulation.Submit(MakeCommand(0, Tempest::CommandKind::ProduceUnit, workshopId));
-    victorySimulation.Submit(MakeCommand(0, Tempest::CommandKind::ProduceUnit, workshopId));
-    victorySimulation.Submit(MakeCommand(0, Tempest::CommandKind::ProduceUnit, workshopId));
-    victorySimulation.Step(Tempest::TicksPerSecond * 10);
-
-    const std::uint32_t chorusCoreId = FindBuilding(victorySimulation.GetState(), Tempest::BuildingKind::ChorusSpire);
-    for (const std::uint32_t courierId : FindCouriers(victorySimulation.GetState())) {
-        victorySimulation.Submit(MakeCommand(
-            victorySimulation.GetState().tick,
-            Tempest::CommandKind::Attack,
-            courierId,
-            chorusCoreId));
+    Tempest::Simulation rush;
+    const std::uint32_t rushBay = FindBuilding(rush.GetState(), Tempest::BuildingKind::FabricatorBay);
+    for (int index = 0; index < 3; ++index) {
+        rush.Submit(MakeCommand(0, Tempest::CommandKind::ProduceUnit, rushBay));
     }
-    victorySimulation.Step(Tempest::TicksPerSecond * 120);
+    rush.Step(static_cast<std::uint32_t>(
+        Tempest::GetUnitDefinition(Tempest::UnitKind::CourierScout).buildTicks * 3 + Tempest::TicksPerSecond));
+    const std::uint32_t rushSpire = FindBuilding(rush.GetState(), Tempest::BuildingKind::ChorusSpire);
+    for (const std::uint32_t courierId : FindCouriers(rush.GetState())) {
+        OrderAttack(rush, courierId, rushSpire);
+    }
+    rush.Step(Tempest::TicksPerSecond * 180);
+    Expect(rush.GetState().outcome != Tempest::MatchOutcome::Victory,
+        "Courier scouts cannot rush the Chorus Spire");
+
+    Tempest::Simulation victorySimulation;
+    const std::uint32_t courierId = FindCourier(victorySimulation.GetState());
+    const std::uint32_t rigId = FindUnit(victorySimulation.GetState(), Tempest::UnitKind::FabricatorRig);
+    const std::uint32_t nodeId = victorySimulation.GetState().nodes.front().id;
+    const std::uint32_t bayId = FindBuilding(victorySimulation.GetState(), Tempest::BuildingKind::FabricatorBay);
+    victorySimulation.Submit(MakeCommand(0, Tempest::CommandKind::Capture, courierId, nodeId));
+    victorySimulation.Step(Tempest::TicksPerSecond * 20);
+    victorySimulation.Submit(MakeCommand(
+        victorySimulation.GetState().tick,
+        Tempest::CommandKind::BuildStructure,
+        rigId,
+        nodeId));
+    victorySimulation.Submit(MakeCommand(
+        victorySimulation.GetState().tick,
+        Tempest::CommandKind::BuildStructure,
+        rigId,
+        nodeId,
+        {},
+        Tempest::UnitKind::CourierScout,
+        Tempest::BuildingKind::ArcSentry));
+    victorySimulation.Step(static_cast<std::uint32_t>(
+        Tempest::GetBuildingDefinition(Tempest::BuildingKind::Dynamo).buildTicks + Tempest::TicksPerSecond));
+    victorySimulation.Submit(MakeCommand(
+        victorySimulation.GetState().tick,
+        Tempest::CommandKind::ProduceUnit,
+        bayId,
+        0,
+        {},
+        Tempest::UnitKind::CoilCarrier));
+    victorySimulation.Submit(MakeCommand(
+        victorySimulation.GetState().tick,
+        Tempest::CommandKind::ProduceUnit,
+        bayId,
+        0,
+        {},
+        Tempest::UnitKind::LancerCrew));
+    victorySimulation.Submit(MakeCommand(
+        victorySimulation.GetState().tick,
+        Tempest::CommandKind::ProduceUnit,
+        bayId));
+    const std::int32_t armyBuild =
+        Tempest::GetUnitDefinition(Tempest::UnitKind::CoilCarrier).buildTicks +
+        Tempest::GetUnitDefinition(Tempest::UnitKind::LancerCrew).buildTicks +
+        Tempest::GetUnitDefinition(Tempest::UnitKind::CourierScout).buildTicks;
+    victorySimulation.Step(static_cast<std::uint32_t>(armyBuild + Tempest::TicksPerSecond));
+    const std::uint32_t spireId = FindBuilding(victorySimulation.GetState(), Tempest::BuildingKind::ChorusSpire);
+    for (const Tempest::Unit &unit : victorySimulation.GetState().units) {
+        if (unit.alive && unit.faction == Tempest::Faction::Freegrid && unit.kind != Tempest::UnitKind::FabricatorRig) {
+            OrderAttack(victorySimulation, unit.id, spireId);
+        }
+    }
+    victorySimulation.Step(Tempest::TicksPerSecond * 240);
     if (victorySimulation.GetState().outcome != Tempest::MatchOutcome::Victory) {
+        std::int32_t spireHitPoints = -1;
         std::int32_t coreHitPoints = -1;
         for (const Tempest::Building &building : victorySimulation.GetState().buildings) {
-            if (building.id == chorusCoreId) {
+            if (building.kind == Tempest::BuildingKind::ChorusSpire) {
+                spireHitPoints = building.hitPoints;
+            }
+            if (building.kind == Tempest::BuildingKind::RelayCore) {
                 coreHitPoints = building.hitPoints;
-                break;
             }
         }
         std::cerr << "Victory diagnostic: tick=" << victorySimulation.GetState().tick
-                  << " core_hp=" << coreHitPoints
-                  << " living_couriers=" << FindCouriers(victorySimulation.GetState()).size() << '\n';
+                  << " spire_hp=" << spireHitPoints
+                  << " core_hp=" << coreHitPoints << '\n';
     }
     Expect(victorySimulation.GetState().outcome == Tempest::MatchOutcome::Victory,
-        "destroying the Chorus Spire produces victory");
+        "a Dynamo, an Arc Sentry, a Coil carrier, and a Lancer crew destroy the Chorus Spire");
 
     Tempest::Simulation defeatSimulation;
-    defeatSimulation.Step(Tempest::TicksPerSecond * 300);
+    defeatSimulation.Step(Tempest::TicksPerSecond * 1200);
     Expect(defeatSimulation.GetState().outcome == Tempest::MatchOutcome::Defeat,
         "losing the Relay Core produces defeat");
 }
@@ -850,7 +932,7 @@ std::vector<std::uint64_t> RunDeterministicScript()
 
 void TestDeterministicReplay()
 {
-    constexpr std::uint64_t ExpectedFinalChecksum = 12677904989527814140ULL;
+    constexpr std::uint64_t ExpectedFinalChecksum = 16503097162009149841ULL;
     const std::vector<std::uint64_t> first = RunDeterministicScript();
     const std::vector<std::uint64_t> second = RunDeterministicScript();
     Expect(first == second, "identical command streams produce identical per-tick checksums");

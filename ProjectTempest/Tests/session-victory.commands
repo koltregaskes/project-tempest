@@ -1,11 +1,18 @@
-# Briefing order: capture a substation, restore a relay, field scouts, destroy the Spire.
+# Substation 9. Capture, restore a Dynamo, raise an Arc Sentry, field a Coil and a Lancer, destroy the Spire.
 begin
 capture 1
-produce courier
-produce courier
-produce courier
-wait 11
+wait 25
 build dynamo 1
+build sentry 1
+wait 160
+produce coil
+produce lancer
+produce courier
+wait 800
+select coils
+attack spire
+select lancers
+attack spire
 select couriers
 attack spire
-wait 180
+wait 400

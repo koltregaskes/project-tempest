@@ -1,34 +1,39 @@
 # Project Tempest
 
-Project Tempest is a downstream, experimental modernization programme for a legally distinct real-time strategy game.
-It preserves the GPL-licensed engine history from Electronic Arts and builds on the active engineering work maintained
-by TheSuperHackers. It is not endorsed by, affiliated with, or a product of Electronic Arts.
+The game this repository ships is one match: Substation 9. That match is the whole game.
 
-No Project Tempest binary or modified public release may use Electronic Arts or *Command & Conquer* trademarks. The
-current engine still requires legally owned retail game data while the standalone content and identity pipeline is
-developed. See [PROJECT_TEMPEST.md](PROJECT_TEMPEST.md) for the delivery contract and release gates.
-
-The governed first-demo plan is [PROJECT_TEMPEST_DEMO_SPEC.md](PROJECT_TEMPEST_DEMO_SPEC.md): a 15–20 minute original
-cyberpunk skirmish slice, its content budget, asset/tool pipeline, milestone evidence, and review gates.
-
-## Play Substation 9
-
-The retail instructions later in this file start the original engine against a legally owned Command & Conquer
-install. They do not start Project Tempest.
-
-Substation 9, the standalone skirmish, starts from this command. It does not need retail assets or a graphics window:
+Start it from the repository root:
 
 ```bash
 ./scripts/play-substation-9.sh
 ```
 
-The briefing states the goal before the first order. Destroying the Chorus Spire wins. Losing the Relay Core loses.
-`help` lists the commands. `begin` starts the match. This is the playable Substation 9 rules session. It is not the
-rendered Windows demo, and [PROJECT_TEMPEST.md](PROJECT_TEMPEST.md) still treats the larger programme as unfinished.
-`ProjectTempestDemo.exe` remains a manual non-RDP desktop check and must not be launched unattended.
+That launch does not use a retail Command & Conquer install and does not open a window. The briefing states the goal
+before the first order. You command Freegrid. Destroying the Chorus Spire wins, and the result says the Chorus Spire
+fell (`GRID RESTORED`). Losing the Relay Core loses, and the result says the Relay Core fell (`DISTRICT LOST`). A
+first win takes about 15 to 20 minutes. `help` lists the commands. `begin` starts the match.
 
+Play it in this order: capture the western substation, build a Dynamo and an Arc Sentry there, produce a Coil carrier
+and a Lancer crew, then destroy the Chorus Spire. Courier scouts capture and spot. They cannot break the Spire alone.
+For the first twelve minutes Chorus contests the substations. Chorus then assaults the Relay Core, and the Arc Sentry
+holds that assault.
+
+Campaign, multiplayer, a second playable faction, and the Generals engine-port programme are later work. They are not
+this match. The delivery contract is [PROJECT_TEMPEST.md](PROJECT_TEMPEST.md). The match is specified in
+[PROJECT_TEMPEST_DEMO_SPEC.md](PROJECT_TEMPEST_DEMO_SPEC.md). That filename is historical.
+
+The rendered Windows window, `ProjectTempestDemo.exe`, is a manual presentation of the same match on a non-RDP
+desktop. It must not be launched unattended, and finishing the match does not require it.
+
+No Project Tempest binary or modified public release may use Electronic Arts or *Command & Conquer* trademarks.
 Original concept, editable source, runtime-content, and provenance work is rooted in
 [ProjectTempest/README.md](ProjectTempest/README.md). Retail game assets are prohibited from that tree.
+
+## Upstream Generals engine
+
+The sections below are the inherited GeneralsGameCode community baseline. They describe how to build and run the
+upstream *Command & Conquer: Generals* and *Zero Hour* engine from this source tree. They do not start Substation 9,
+and they are not the game this repository ships.
 
 ## Community baseline
 
@@ -79,13 +84,17 @@ Here's an overview of our current focus and future plans
 - **Community-Driven Improvements**: Once the community grows, we plan to incorporate more features, updates, and
   changes based on player feedback.
 
-## Running the Game
+## Running the upstream Generals engine
 
-To run *Generals* or *Zero Hour* using this project, you need to have the original *Command & Conquer: Generals and Zero Hour* game
-installed. The easiest way to get it is through *Command & Conquer The Ultimate Collection*
-on [Steam](https://store.steampowered.com/bundle/39394). Once the game is ready, download the latest version of the
-project from [GitHub Releases](https://github.com/TheSuperHackers/GeneralsGameCode/releases), extract the necessary 
-files, and follow the instructions in the [Wiki](https://github.com/TheSuperHackers/GeneralsGameCode/wiki).
+This section is not Project Tempest and does not start Substation 9. It is the inherited instruction for the upstream
+*Generals* and *Zero Hour* engine. That engine needs a legally owned retail install. Project Tempest's match does not.
+
+To run upstream *Generals* or *Zero Hour* from this source tree, you need the original *Command & Conquer: Generals and
+Zero Hour* game installed. The easiest way to get that upstream game is through *Command & Conquer The Ultimate
+Collection* on [Steam](https://store.steampowered.com/bundle/39394). Once that upstream game is ready, download the
+latest version of the community project from [GitHub Releases](https://github.com/TheSuperHackers/GeneralsGameCode/releases),
+extract the necessary files, and follow the instructions in the
+[Wiki](https://github.com/TheSuperHackers/GeneralsGameCode/wiki).
 
 
 ## Joining the Community

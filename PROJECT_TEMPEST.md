@@ -18,10 +18,43 @@ to imply endorsement, affiliation, or ownership of Electronic Arts trademarks.
 All upstream copyright, attribution, warranty, provenance, and modification notices must remain intact. New or changed
 source must remain GPL-compatible.
 
-## Player outcome
+## The game
 
-The target is a stable, responsive RTS that feels native on current hardware rather than a compatibility wrapper around
-a 2003 executable. The programme is complete only when it has:
+The game this repository ships is one match: Substation 9.
+
+A new player starts it from the repository root:
+
+```bash
+./scripts/play-substation-9.sh
+```
+
+That launch does not use a retail Command & Conquer install and does not open a window. The briefing states the goal
+before the first order. You command Freegrid. Salvage pays for construction and production. Captured substations add
+salvage and ability charge.
+
+Play the match in this order:
+
+1. Capture the western substation.
+2. Build a Dynamo and an Arc Sentry there.
+3. Produce a Coil carrier and a Lancer crew. Courier scouts capture and spot. They cannot break the Spire.
+4. For the first twelve minutes Chorus contests the substations. Chorus then assaults the Relay Core. The Arc Sentry
+   holds that assault.
+5. Destroy the Chorus Spire.
+
+Win: the Chorus Spire falls. The result is `GRID RESTORED`. Loss: the Relay Core falls. The result is `DISTRICT LOST`.
+
+A successful play takes about 15 to 20 minutes. `ProjectTempest/Tests/session-victory.commands` is that order and
+reaches `GRID RESTORED` just after 17 minutes 25 seconds. `ProjectTempest/Tests/session-defeat.commands` is a Courier
+scout rush with no Arc Sentry. The Spire holds, and the Relay Core falls just after 12 minutes 5 seconds, when the
+assault arrives.
+
+Campaign, multiplayer, a second playable faction, and the Generals engine-port programme are later work. They are not
+an unfinished session wrapped around this match.
+
+## Later programme
+
+The engine programme is later work. It is not the match above, and its gates are not a session a player wins or loses.
+That programme is complete only when it has:
 
 1. reproducible builds and signed, traceable release inputs;
 2. a 64-bit and cross-platform-capable engine path;
@@ -58,10 +91,13 @@ No modified public binary or release is allowed until all applicable gates pass:
 - a real game session has been checked at relevant resolutions and input modes, with screenshots and error logs; and
 - performance and compatibility evidence is attached to the release decision.
 
-Until the standalone gate passes, local engine testing may require a legally owned installation of the original retail
-game data. That prerequisite is never permission to copy, commit, upload, or redistribute those assets.
+Until the standalone gate passes, local engine testing of the upstream Generals baseline may require a legally owned
+installation of the original retail game data. That prerequisite is never permission to copy, commit, upload, or
+redistribute those assets, and it is not how a player starts Substation 9.
 
 ## First milestone: verified modern baseline
+
+This baseline is engine work. It is not Substation 9, and it is not a session a player wins or loses.
 
 The first milestone is intentionally narrow:
 
@@ -75,7 +111,6 @@ The first milestone is intentionally narrow:
 Large renderer, 64-bit, multiplayer, or asset-pipeline work must be split into independently verifiable slices. A plan or
 successful compile is not evidence that the game is playable.
 
-The first standalone playable is governed by
-[PROJECT_TEMPEST_DEMO_SPEC.md](PROJECT_TEMPEST_DEMO_SPEC.md). Where that specification narrows this programme to a
-finishable demo, its content budget, milestone evidence, and review gates control the work; this delivery contract
-continues to govern the longer programme and public-release boundary.
+Substation 9, the match above, is specified in
+[PROJECT_TEMPEST_DEMO_SPEC.md](PROJECT_TEMPEST_DEMO_SPEC.md). That file keeps its historical filename. It describes
+this match. This delivery contract still governs the later engine programme and the public-release boundary.

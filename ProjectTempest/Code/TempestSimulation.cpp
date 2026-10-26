@@ -23,13 +23,20 @@ constexpr std::int32_t OverchargeDamageNumerator = 3;
 constexpr std::int32_t OverchargeDamageDenominator = 2;
 constexpr std::int32_t OverchargeMoveNumerator = 5;
 constexpr std::int32_t OverchargeMoveDenominator = 4;
+// Waves are probes, then armour. Eighty seconds gives a player time to restore a relay
+// and raise a sentry before Chorus siege reaches the Relay Core.
+constexpr std::int32_t ChorusWaveIntervalTicks = TicksPerSecond * 80;
+// The first twelve minutes are a territory contest. After that, Chorus assaults the Relay Core.
+constexpr std::int32_t ChorusSiegeStartTicks = TicksPerSecond * 60 * 12;
+// While the Machine Nest stands, the Spire heals faster than Courier scouts can hurt it.
+constexpr std::int32_t SpireRegenPerTick = 3;
 
 constexpr std::array<UnitDefinition, static_cast<std::size_t>(UnitKind::Count)> UnitDefinitions {{
-    { "Fabricator rig", Faction::Freegrid, 240, 250, TicksPerSecond * 5, 2, 80, 8, 12, 1200 },
-    // A Dynamo plus three scouts has to fit the opening bank once the first substation is live.
-    { "Courier scout", Faction::Freegrid, 180, 100, TicksPerSecond * 3, 1, 150, 20, 9, 1800 },
-    { "Lancer crew", Faction::Freegrid, 260, 240, TicksPerSecond * 6, 2, 110, 28, 10, 2600 },
-    { "Coil carrier", Faction::Freegrid, 520, 450, TicksPerSecond * 10, 4, 70, 55, 18, 3200 },
+    { "Fabricator rig", Faction::Freegrid, 240, 250, TicksPerSecond * 90, 2, 80, 8, 12, 1200 },
+    // Scouts spot and capture. Their range sits inside the Spire's point defense, so a scout rush cannot win.
+    { "Courier scout", Faction::Freegrid, 180, 100, TicksPerSecond * 120, 1, 150, 14, 12, 1500 },
+    { "Lancer crew", Faction::Freegrid, 340, 200, TicksPerSecond * 300, 2, 110, 34, 10, 2800 },
+    { "Coil carrier", Faction::Freegrid, 700, 280, TicksPerSecond * 360, 4, 70, 70, 15, 3600 },
     { "Skitter", Faction::Chorus, 110, 0, 0, 0, 160, 11, 12, 1000 },
     { "Warden", Faction::Chorus, 280, 0, 0, 0, 95, 24, 14, 2200 },
     { "Harrower", Faction::Chorus, 650, 0, 0, 0, 60, 48, 20, 3000 },
@@ -38,11 +45,12 @@ constexpr std::array<UnitDefinition, static_cast<std::size_t>(UnitKind::Count)> 
 constexpr std::array<BuildingDefinition, static_cast<std::size_t>(BuildingKind::Count)> BuildingDefinitions {{
     { "Relay Core", Faction::Freegrid, 900, 0, 0, 4, 0, 0, 0 },
     { "Fabricator Bay", Faction::Freegrid, 650, 300, TicksPerSecond * 6, 2, 0, 0, 0 },
-    { "Dynamo", Faction::Freegrid, 260, 200, TicksPerSecond * 4, 4, 0, 0, 0 },
-    { "Arc Sentry", Faction::Freegrid, 400, 250, TicksPerSecond * 5, 0, 30, TicksPerSecond, 2800 },
+    { "Dynamo", Faction::Freegrid, 260, 200, TicksPerSecond * 150, 4, 0, 0, 0 },
+    // Range covers the western substation and the Relay Core behind it, so one sentry can hold the siege.
+    { "Arc Sentry", Faction::Freegrid, 500, 250, TicksPerSecond * 90, 0, 55, TicksPerSecond, 15000 },
     { "Machine Nest", Faction::Chorus, 500, 0, 0, 0, 0, 0, 0 },
     { "Signal Pylon", Faction::Chorus, 340, 0, 0, 0, 22, TicksPerSecond * 3 / 2, 3200 },
-    { "Chorus Spire", Faction::Chorus, 800, 0, 0, 0, 0, 0, 0 },
+    { "Chorus Spire", Faction::Chorus, 4200, 0, 0, 0, 18, 10, 1700 },
 }};
 
 constexpr std::array<AbilityDefinition, static_cast<std::size_t>(AbilityKind::Count)> AbilityDefinitions {{
@@ -742,6 +750,18 @@ void Simulation::UpdateBuildingCombat()
 
 void Simulation::UpdateEconomyAndAi()
 {
+    const bool nestAlive = std::any_of(m_state.buildings.begin(), m_state.buildings.end(), [](const Building &building) {
+        return building.kind == BuildingKind::MachineNest && building.hitPoints > 0;
+    });
+    if (nestAlive) {
+        for (Building &building : m_state.buildings) {
+            if (building.kind == BuildingKind::ChorusSpire && building.hitPoints > 0 &&
+                building.hitPoints < building.maximumHitPoints) {
+                building.hitPoints = std::min(building.maximumHitPoints, building.hitPoints + SpireRegenPerTick);
+            }
+        }
+    }
+
     if (++m_state.incomeRemainderTicks >= TicksPerSecond) {
         m_state.incomeRemainderTicks = 0;
         const std::int32_t ownedNodes = static_cast<std::int32_t>(std::count_if(
@@ -759,7 +779,7 @@ void Simulation::UpdateEconomyAndAi()
             break;
         }
     }
-    if (machineNest && ++m_state.chorusSpawnTicks >= TicksPerSecond * 15) {
+    if (machineNest && ++m_state.chorusSpawnTicks >= ChorusWaveIntervalTicks) {
         m_state.chorusSpawnTicks = 0;
         ++m_state.chorusWave;
         const UnitKind reinforcement = m_state.chorusWave % 3U == 0U
@@ -772,7 +792,7 @@ void Simulation::UpdateEconomyAndAi()
         if (!drone.alive || drone.faction != Faction::Chorus) {
             continue;
         }
-        if (drone.kind == UnitKind::Skitter) {
+        if (m_state.tick < static_cast<std::uint64_t>(ChorusSiegeStartTicks)) {
             if (drone.order == OrderKind::Capture) {
                 if (const ControlNode *target = FindNode(drone.targetId);
                     target && target->owner != Faction::Chorus) {
@@ -789,7 +809,7 @@ void Simulation::UpdateEconomyAndAi()
                 }
                 const std::int64_t distance = DistanceSquared(drone.position, node.position);
                 if (distance < nearestNodeDistance ||
-                    (distance == nearestNodeDistance && node.id < nearestNodeId)) {
+                    (distance == nearestNodeDistance && (nearestNodeId == 0 || node.id < nearestNodeId))) {
                     nearestNodeDistance = distance;
                     nearestNodeId = node.id;
                     nearestNodePosition = node.position;
@@ -799,8 +819,27 @@ void Simulation::UpdateEconomyAndAi()
                 drone.order = OrderKind::Capture;
                 drone.targetId = nearestNodeId;
                 drone.destination = nearestNodePosition;
+            } else {
+                drone.order = OrderKind::Idle;
+                drone.targetId = 0;
+            }
+            continue;
+        }
+
+        const Building *relayCore = nullptr;
+        for (const Building &building : m_state.buildings) {
+            if (building.kind == BuildingKind::RelayCore && building.hitPoints > 0) {
+                relayCore = &building;
+                break;
+            }
+        }
+        if (relayCore != nullptr) {
+            if (drone.order == OrderKind::Attack && drone.targetId == relayCore->id) {
                 continue;
             }
+            drone.order = OrderKind::Attack;
+            drone.targetId = relayCore->id;
+            continue;
         }
 
         bool hasTarget = false;
