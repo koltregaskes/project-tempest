@@ -1,0 +1,11 @@
+# Substation 9 loss. Scout rush, no Dynamo and no Arc Sentry. The Spire holds and the Relay Core falls.
+begin
+capture 1
+wait 25
+produce courier
+produce courier
+produce courier
+wait 380
+select couriers
+attack spire
+wait 1200

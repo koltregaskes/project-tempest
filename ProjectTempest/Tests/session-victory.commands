@@ -1,0 +1,18 @@
+# Substation 9. Capture, restore a Dynamo, raise an Arc Sentry, field a Coil and a Lancer, destroy the Spire.
+begin
+capture 1
+wait 25
+build dynamo 1
+build sentry 1
+wait 160
+produce coil
+produce lancer
+produce courier
+wait 800
+select coils
+attack spire
+select lancers
+attack spire
+select couriers
+attack spire
+wait 400

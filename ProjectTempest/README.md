@@ -1,7 +1,7 @@
 # Project Tempest Original Content
 
-This tree holds the legally distinct source material and, later, runtime content for the standalone Project Tempest
-demo. It must never contain copied or derived Electronic Arts retail assets.
+This tree holds the legally distinct source material and runtime content for Substation 9, the match this repository
+ships. It must never contain copied or derived Electronic Arts retail assets.
 
 ## Layout
 
@@ -75,12 +75,12 @@ python .\scripts\create-tempest-audio.py
 The deterministic standard-library synthesiser produces three synchronised industrial-electronic Substation 9 stems
 (base, pressure, and crisis) plus confirmation, selection, command, Arc Pulse, and alert cues as 48 kHz stereo PCM16
 WAVs. The normal asset gate regenerates all eight files in the ignored build tree and requires byte-identical hashes.
-The standalone demo loads them through a strict WAV parser and Windows XAudio2, adds pressure/crisis layers as Chorus
+The rendered window loads them through a strict WAV parser and Windows XAudio2, adds pressure/crisis layers as Chorus
 territory, force disadvantage, and elapsed match pressure rise, routes music/effects through separate submixes, and
 applies persisted master/music/effects settings immediately. Audio processing suspends when the window loses focus and
 resumes without discarding voice positions. Missing or invalid audio is nonfatal and leaves visual command feedback active.
 Audible balance, loop perception, device switching, and long-session stability remain explicit user-run manual evidence;
-agents must not launch the demo to obtain it.
+agents must not launch that window to obtain it.
 
 The colour-vision accessibility foundation is derived from Electronic Arts' Apache-2.0
 [Tunable Colorblindness Solution](https://github.com/electronicarts/Tunable-Colorblindness-Solution). The isolated
@@ -160,19 +160,18 @@ commands, and presents the current match through a neon procedural grid, faction
 substation/building markers, selection brackets, dedicated Courier scout/Skitter visuals, pristine/damaged Courier
 switching, authored Dynamo relay, Arc Sentry, and Signal Pylon models, and a scalable in-window HUD. The original interface includes a loading panel,
 mission briefing, live resources/objective/selection state, visible command acknowledgement, pause, settings, and a
-victory/defeat explanation with restart and settings available without leaving the process. This is a compile- and
-headless-test-proven integration checkpoint; safe manual gameplay/legibility verification and dedicated Relay Core,
-Fabricator Bay, and Chorus Spire art remain required before the skirmish is release-quality.
+victory/defeat explanation with restart and settings available without leaving the process. Safe manual
+gameplay and legibility verification of this window, and dedicated Relay Core, Fabricator Bay, and Chorus Spire art,
+remain later presentation work. They are not required to finish the match.
 
-Modern Generals Win32 builds also produce `ProjectTempestDemo.exe`, a retail-asset-free executable that loads the
-Courier scout, damaged Courier scout, Skitter, and Freegrid Dynamo relay directly from this tree. Its current Substation
-9 integration slice provides a bounded panning RTS camera, bounded Freegrid unit selection, context-sensitive
+Modern Generals Win32 builds also produce `ProjectTempestDemo.exe`, a retail-asset-free window that presents the same
+Substation 9 match. It loads the Courier scout, damaged Courier scout, Skitter, and Freegrid Dynamo relay directly
+from this tree. The window provides a bounded panning RTS camera, bounded Freegrid unit selection, context-sensitive
 movement/capture/attack/repair orders, node income, Dynamo/Arc Sentry construction, production of all four Freegrid
 roles, role-specific combat, Signal Pylon pressure, grid-link scan, emergency overcharge, Arc Pulse,
-pause/settings/restart/result flow, escalating Chorus reinforcements, and
+pause/settings/restart/result flow, Chorus reinforcements, and
 victory/defeat. The Dynamo, Arc Sentry, and Signal Pylon now load dedicated authored runtime models rather than sharing
-procedural markers. It is an executable
-integration checkpoint, not the final polished vertical slice.
+procedural markers. The window is a manual presentation of the match. Finishing the match does not require it.
 
 Controls:
 
@@ -210,8 +209,24 @@ cmake --preset win32
 cmake --build --preset win32 --target project_tempest_demo
 ```
 
+The game this repository ships is this match, played from the repository root:
+
+```bash
+./scripts/play-substation-9.sh
+```
+
+The process opens on a briefing that states the goal, the win, and the loss, then accepts `begin`, selection, capture,
+production, construction, combat, abilities, `wait`, `pause`, and `restart`. Capture the western substation, build a
+Dynamo and an Arc Sentry, produce a Coil carrier and a Lancer crew, and destroy the Chorus Spire. Courier scouts
+cannot break the Spire alone. A first win takes about 15 to 20 minutes. Destroying the Chorus Spire prints
+`GRID RESTORED` and says the Chorus Spire fell. Losing the Relay Core prints `DISTRICT LOST` and says the Relay Core
+fell. This session does not create a window and does not read a retail install.
+
+The rendered `ProjectTempestDemo.exe` above is a manual presentation of the same match on a non-RDP Windows desktop.
+It is not a different product, and it is not required to finish the match.
+
 The build places `courier.w3d` beside the executable. A user performing an explicit manual test on a non-RDP desktop
-may prepare the demo directory with the same hash-pinned compatibility layer used by W3DView:
+may prepare that window's directory with the same hash-pinned compatibility layer used by W3DView:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\prepare-w3dview-compat.ps1 `
